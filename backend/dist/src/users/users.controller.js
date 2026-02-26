@@ -16,10 +16,16 @@ exports.UsersController = void 0;
 const common_1 = require("@nestjs/common");
 const users_service_1 = require("./users.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const tasks_service_1 = require("../tasks/tasks.service");
 let UsersController = class UsersController {
     usersService;
-    constructor(usersService) {
+    tasksService;
+    constructor(usersService, tasksService) {
         this.usersService = usersService;
+        this.tasksService = tasksService;
+    }
+    async getStats(req) {
+        return this.tasksService.getUserStats(req.user.userId);
     }
     async search(query) {
         return this.usersService.search(query || '');
@@ -29,6 +35,13 @@ let UsersController = class UsersController {
     }
 };
 exports.UsersController = UsersController;
+__decorate([
+    (0, common_1.Get)('stats'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getStats", null);
 __decorate([
     (0, common_1.Get)('search'),
     __param(0, (0, common_1.Query)('q')),
@@ -45,6 +58,7 @@ __decorate([
 exports.UsersController = UsersController = __decorate([
     (0, common_1.Controller)('users'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [users_service_1.UsersService])
+    __metadata("design:paramtypes", [users_service_1.UsersService,
+        tasks_service_1.TasksService])
 ], UsersController);
 //# sourceMappingURL=users.controller.js.map

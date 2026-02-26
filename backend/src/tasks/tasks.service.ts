@@ -299,6 +299,36 @@ export class TasksService {
         });
     }
 
+    async getUserStats(userId: string) {
+        const ownedTasks = await this.db.query.tasks.findMany({
+            where: eq(schema.tasks.responsibleOwner, userId),
+        });
+
+        const delegatedTasksCount = await this.db.select().from(schema.tasks)
+            .where(eq(schema.tasks.assignedBy, userId));
+
+        const timeLogs = await this.db.query.timeLogs.findMany({
+            where: eq(schema.timeLogs.userId, userId),
+        });
+
+        const stats = {
+            active: ownedTasks.filter(t => t.status === 'ACTIVE').length,
+            pending: ownedTasks.filter(t => t.status === 'PENDING').length,
+            blocked: ownedTasks.filter(t => t.syncState === 'BLOCKED').length,
+            helpRequested: ownedTasks.filter(t => t.syncState === 'HELP_REQUESTED').length,
+            delegated: delegatedTasksCount.length,
+            totalTimeMins: timeLogs.reduce((sum, log) => sum + parseInt(log.durationMinutes || '0'), 0),
+            syncStates: {
+                IN_SYNC: ownedTasks.filter(t => t.syncState === 'IN_SYNC').length,
+                NEEDS_UPDATE: ownedTasks.filter(t => t.syncState === 'NEEDS_UPDATE').length,
+                BLOCKED: ownedTasks.filter(t => t.syncState === 'BLOCKED').length,
+                HELP_REQUESTED: ownedTasks.filter(t => t.syncState === 'HELP_REQUESTED').length,
+            }
+        };
+
+        return stats;
+    }
+
     private async logAction(taskId: string, userId: string, action: string) {
         await this.db.insert(schema.syncLogs).values({
             taskId,

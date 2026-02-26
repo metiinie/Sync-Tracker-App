@@ -150,5 +150,19 @@ export declare class TasksService {
             };
         }[];
     } | undefined>;
+    getUserStats(userId: string): Promise<{
+        active: number;
+        pending: number;
+        blocked: number;
+        helpRequested: number;
+        delegated: number;
+        totalTimeMins: number;
+        syncStates: {
+            IN_SYNC: number;
+            NEEDS_UPDATE: number;
+            BLOCKED: number;
+            HELP_REQUESTED: number;
+        };
+    }>;
     private logAction;
 }
