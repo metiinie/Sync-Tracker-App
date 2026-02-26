@@ -1,14 +1,17 @@
-import { pgTable, uuid, text, timestamp, pgEnum, foreignKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, pgEnum, foreignKey, boolean } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const userRoleEnum = pgEnum('user_role', ['contributor', 'helper', 'reviewer', 'observer']);
-export const taskStatusEnum = pgEnum('task_status', ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED']);
+export const systemRoleEnum = pgEnum('system_role', ['ADMIN', 'USER']);
+export const taskStatusEnum = pgEnum('task_status', ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'FROZEN']);
 export const syncStateEnum = pgEnum('sync_state', ['IN_SYNC', 'NEEDS_UPDATE', 'BLOCKED', 'HELP_REQUESTED']);
 
 export const users = pgTable('users', {
     id: uuid('id').primaryKey(),
     name: text('name').notNull(),
     email: text('email').unique().notNull(),
+    systemRole: systemRoleEnum('system_role').default('USER').notNull(),
+    isSuspended: boolean('is_suspended').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -26,6 +29,7 @@ export const tasks = pgTable('tasks', {
     responsibleOwner: uuid('responsible_owner').references(() => users.id).notNull(),
     status: taskStatusEnum('status').default('PENDING').notNull(),
     syncState: syncStateEnum('sync_state').default('IN_SYNC').notNull(),
+    lastUpdatedAt: timestamp('last_updated_at').defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -69,7 +73,7 @@ export const taskParticipantsRelations = relations(taskParticipants, ({ one }) =
 
 export const syncLogs = pgTable('sync_logs', {
     id: uuid('id').primaryKey().defaultRandom(),
-    taskId: uuid('task_id').references(() => tasks.id).notNull(),
+    taskId: uuid('task_id').references(() => tasks.id),
     userId: uuid('user_id').references(() => users.id).notNull(),
     action: text('action').notNull(),
     timestamp: timestamp('timestamp').defaultNow().notNull(),

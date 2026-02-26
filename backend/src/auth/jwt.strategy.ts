@@ -20,6 +20,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     async validate(payload: any) {
         // Automatically sync Supabase user to local DB
         const user = await this.authService.getOrCreateUser(payload);
-        return { userId: user.id, email: user.email, name: user.name };
+        return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
     }
 }

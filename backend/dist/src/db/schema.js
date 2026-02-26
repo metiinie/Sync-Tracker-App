@@ -1,15 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notificationsRelations = exports.notifications = exports.timeLogsRelations = exports.timeLogs = exports.milestonesRelations = exports.milestones = exports.syncLogsRelations = exports.syncLogs = exports.taskParticipantsRelations = exports.taskParticipants = exports.tasksRelations = exports.tasks = exports.usersRelations = exports.users = exports.syncStateEnum = exports.taskStatusEnum = exports.userRoleEnum = void 0;
+exports.notificationsRelations = exports.notifications = exports.timeLogsRelations = exports.timeLogs = exports.milestonesRelations = exports.milestones = exports.syncLogsRelations = exports.syncLogs = exports.taskParticipantsRelations = exports.taskParticipants = exports.tasksRelations = exports.tasks = exports.usersRelations = exports.users = exports.syncStateEnum = exports.taskStatusEnum = exports.systemRoleEnum = exports.userRoleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const drizzle_orm_1 = require("drizzle-orm");
 exports.userRoleEnum = (0, pg_core_1.pgEnum)('user_role', ['contributor', 'helper', 'reviewer', 'observer']);
-exports.taskStatusEnum = (0, pg_core_1.pgEnum)('task_status', ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED']);
+exports.systemRoleEnum = (0, pg_core_1.pgEnum)('system_role', ['ADMIN', 'USER']);
+exports.taskStatusEnum = (0, pg_core_1.pgEnum)('task_status', ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'FROZEN']);
 exports.syncStateEnum = (0, pg_core_1.pgEnum)('sync_state', ['IN_SYNC', 'NEEDS_UPDATE', 'BLOCKED', 'HELP_REQUESTED']);
 exports.users = (0, pg_core_1.pgTable)('users', {
     id: (0, pg_core_1.uuid)('id').primaryKey(),
     name: (0, pg_core_1.text)('name').notNull(),
     email: (0, pg_core_1.text)('email').unique().notNull(),
+    systemRole: (0, exports.systemRoleEnum)('system_role').default('USER').notNull(),
+    isSuspended: (0, pg_core_1.boolean)('is_suspended').default(false).notNull(),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
 });
 exports.usersRelations = (0, drizzle_orm_1.relations)(exports.users, ({ many }) => ({
@@ -25,6 +28,7 @@ exports.tasks = (0, pg_core_1.pgTable)('tasks', {
     responsibleOwner: (0, pg_core_1.uuid)('responsible_owner').references(() => exports.users.id).notNull(),
     status: (0, exports.taskStatusEnum)('status').default('PENDING').notNull(),
     syncState: (0, exports.syncStateEnum)('sync_state').default('IN_SYNC').notNull(),
+    lastUpdatedAt: (0, pg_core_1.timestamp)('last_updated_at').defaultNow().notNull(),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
 });
 exports.tasksRelations = (0, drizzle_orm_1.relations)(exports.tasks, ({ one, many }) => ({
@@ -64,7 +68,7 @@ exports.taskParticipantsRelations = (0, drizzle_orm_1.relations)(exports.taskPar
 }));
 exports.syncLogs = (0, pg_core_1.pgTable)('sync_logs', {
     id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
-    taskId: (0, pg_core_1.uuid)('task_id').references(() => exports.tasks.id).notNull(),
+    taskId: (0, pg_core_1.uuid)('task_id').references(() => exports.tasks.id),
     userId: (0, pg_core_1.uuid)('user_id').references(() => exports.users.id).notNull(),
     action: (0, pg_core_1.text)('action').notNull(),
     timestamp: (0, pg_core_1.timestamp)('timestamp').defaultNow().notNull(),

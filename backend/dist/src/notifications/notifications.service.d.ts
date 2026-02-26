@@ -8,8 +8,8 @@ export declare class NotificationsService {
     create(userId: string, taskId: string | null, type: string, content: string): Promise<{
         id: string;
         createdAt: Date;
-        userId: string;
         taskId: string | null;
+        userId: string;
         type: string;
         content: string;
         isRead: string;
@@ -17,20 +17,21 @@ export declare class NotificationsService {
     findAllForUser(userId: string): Promise<{
         id: string;
         createdAt: Date;
-        userId: string;
         taskId: string | null;
+        userId: string;
         type: string;
         content: string;
         isRead: string;
         task: {
             id: string;
             createdAt: Date;
-            title: string;
             description: string | null;
+            title: string;
             assignedBy: string;
             responsibleOwner: string;
-            status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+            status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
             syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            lastUpdatedAt: Date;
         } | null;
     }[]>;
     markAsRead(notificationId: string, userId: string): Promise<{

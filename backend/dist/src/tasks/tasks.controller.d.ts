@@ -4,13 +4,14 @@ export declare class TasksController {
     constructor(tasksService: TasksService);
     create(body: any, req: any): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
     }>;
     accept(id: string, req: any): Promise<{
         id: string;
@@ -18,8 +19,9 @@ export declare class TasksController {
         description: string | null;
         assignedBy: string;
         responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
         createdAt: Date;
     }>;
     updateSync(id: string, syncState: any, req: any): Promise<{
@@ -32,33 +34,83 @@ export declare class TasksController {
         description: string | null;
         assignedBy: string;
         responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
         createdAt: Date;
     }>;
     addParticipant(id: string, body: any, req: any): Promise<{
         id: string;
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
         taskId: string;
         userId: string;
         role: "contributor" | "helper" | "reviewer" | "observer";
         joinedAt: Date;
-        lastUpdatedAt: Date;
     }>;
     findAll(req: any): Promise<any[]>;
     findOne(id: string): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
+        assigner: {
+            id: string;
+            name: string;
+            email: string;
+            systemRole: "ADMIN" | "USER";
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+        owner: {
+            id: string;
+            name: string;
+            email: string;
+            systemRole: "ADMIN" | "USER";
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+        participants: {
+            id: string;
+            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            lastUpdatedAt: Date;
+            taskId: string;
+            userId: string;
+            role: "contributor" | "helper" | "reviewer" | "observer";
+            joinedAt: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
+        logs: {
+            id: string;
+            taskId: string | null;
+            userId: string;
+            action: string;
+            timestamp: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
         milestones: {
             id: string;
-            title: string;
             createdAt: Date;
+            title: string;
             taskId: string;
             isCompleted: string;
             dueDate: Date | null;
@@ -68,60 +120,22 @@ export declare class TasksController {
             description: string | null;
             taskId: string;
             userId: string;
+            timestamp: Date;
             durationMinutes: string;
-            timestamp: Date;
             user: {
                 id: string;
                 name: string;
                 email: string;
-                createdAt: Date;
-            };
-        }[];
-        assigner: {
-            id: string;
-            name: string;
-            email: string;
-            createdAt: Date;
-        };
-        owner: {
-            id: string;
-            name: string;
-            email: string;
-            createdAt: Date;
-        };
-        participants: {
-            id: string;
-            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
-            taskId: string;
-            userId: string;
-            role: "contributor" | "helper" | "reviewer" | "observer";
-            joinedAt: Date;
-            lastUpdatedAt: Date;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                createdAt: Date;
-            };
-        }[];
-        logs: {
-            id: string;
-            taskId: string;
-            userId: string;
-            timestamp: Date;
-            action: string;
-            user: {
-                id: string;
-                name: string;
-                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
                 createdAt: Date;
             };
         }[];
     } | undefined>;
     addMilestone(id: string, title: string, req: any): Promise<{
         id: string;
-        title: string;
         createdAt: Date;
+        title: string;
         taskId: string;
         isCompleted: string;
         dueDate: Date | null;
@@ -139,7 +153,7 @@ export declare class TasksController {
         description: string | null;
         taskId: string;
         userId: string;
-        durationMinutes: string;
         timestamp: Date;
+        durationMinutes: string;
     }>;
 }

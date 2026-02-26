@@ -12,18 +12,19 @@ export declare class TasksService {
         role: string;
     }[], milestones?: string[]): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
     }>;
     addMilestone(taskId: string, title: string, userId: string): Promise<{
         id: string;
-        title: string;
         createdAt: Date;
+        title: string;
         taskId: string;
         isCompleted: string;
         dueDate: Date | null;
@@ -41,8 +42,8 @@ export declare class TasksService {
         description: string | null;
         taskId: string;
         userId: string;
-        durationMinutes: string;
         timestamp: Date;
+        durationMinutes: string;
     }>;
     accept(taskId: string, userId: string): Promise<{
         id: string;
@@ -50,8 +51,9 @@ export declare class TasksService {
         description: string | null;
         assignedBy: string;
         responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
         createdAt: Date;
     }>;
     updateSyncState(taskId: string, userId: string, syncState: 'IN_SYNC' | 'NEEDS_UPDATE' | 'BLOCKED' | 'HELP_REQUESTED'): Promise<{
@@ -64,33 +66,83 @@ export declare class TasksService {
         description: string | null;
         assignedBy: string;
         responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
         createdAt: Date;
     }>;
     addParticipant(taskId: string, userId: string, role: string, addedBy: string): Promise<{
         id: string;
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
         taskId: string;
         userId: string;
         role: "contributor" | "helper" | "reviewer" | "observer";
         joinedAt: Date;
-        lastUpdatedAt: Date;
     }>;
     findAllForUser(userId: string): Promise<any[]>;
     findOne(taskId: string): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
+        assigner: {
+            id: string;
+            name: string;
+            email: string;
+            systemRole: "ADMIN" | "USER";
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+        owner: {
+            id: string;
+            name: string;
+            email: string;
+            systemRole: "ADMIN" | "USER";
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+        participants: {
+            id: string;
+            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            lastUpdatedAt: Date;
+            taskId: string;
+            userId: string;
+            role: "contributor" | "helper" | "reviewer" | "observer";
+            joinedAt: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
+        logs: {
+            id: string;
+            taskId: string | null;
+            userId: string;
+            action: string;
+            timestamp: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
         milestones: {
             id: string;
-            title: string;
             createdAt: Date;
+            title: string;
             taskId: string;
             isCompleted: string;
             dueDate: Date | null;
@@ -100,52 +152,14 @@ export declare class TasksService {
             description: string | null;
             taskId: string;
             userId: string;
+            timestamp: Date;
             durationMinutes: string;
-            timestamp: Date;
             user: {
                 id: string;
                 name: string;
                 email: string;
-                createdAt: Date;
-            };
-        }[];
-        assigner: {
-            id: string;
-            name: string;
-            email: string;
-            createdAt: Date;
-        };
-        owner: {
-            id: string;
-            name: string;
-            email: string;
-            createdAt: Date;
-        };
-        participants: {
-            id: string;
-            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
-            taskId: string;
-            userId: string;
-            role: "contributor" | "helper" | "reviewer" | "observer";
-            joinedAt: Date;
-            lastUpdatedAt: Date;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                createdAt: Date;
-            };
-        }[];
-        logs: {
-            id: string;
-            taskId: string;
-            userId: string;
-            timestamp: Date;
-            action: string;
-            user: {
-                id: string;
-                name: string;
-                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
                 createdAt: Date;
             };
         }[];

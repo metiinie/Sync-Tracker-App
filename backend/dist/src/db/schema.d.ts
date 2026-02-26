@@ -1,5 +1,6 @@
 export declare const userRoleEnum: import("drizzle-orm/pg-core").PgEnum<["contributor", "helper", "reviewer", "observer"]>;
-export declare const taskStatusEnum: import("drizzle-orm/pg-core").PgEnum<["PENDING", "ACTIVE", "COMPLETED", "CANCELLED"]>;
+export declare const systemRoleEnum: import("drizzle-orm/pg-core").PgEnum<["ADMIN", "USER"]>;
+export declare const taskStatusEnum: import("drizzle-orm/pg-core").PgEnum<["PENDING", "ACTIVE", "COMPLETED", "CANCELLED", "FROZEN"]>;
 export declare const syncStateEnum: import("drizzle-orm/pg-core").PgEnum<["IN_SYNC", "NEEDS_UPDATE", "BLOCKED", "HELP_REQUESTED"]>;
 export declare const users: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "users";
@@ -52,6 +53,40 @@ export declare const users: import("drizzle-orm/pg-core").PgTableWithColumns<{
             isAutoincrement: false;
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        systemRole: import("drizzle-orm/pg-core").PgColumn<{
+            name: "system_role";
+            tableName: "users";
+            dataType: "string";
+            columnType: "PgEnumColumn";
+            data: "ADMIN" | "USER";
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: ["ADMIN", "USER"];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        isSuspended: import("drizzle-orm/pg-core").PgColumn<{
+            name: "is_suspended";
+            tableName: "users";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
             baseColumn: never;
             identity: undefined;
             generated: undefined;
@@ -175,14 +210,14 @@ export declare const tasks: import("drizzle-orm/pg-core").PgTableWithColumns<{
             tableName: "tasks";
             dataType: "string";
             columnType: "PgEnumColumn";
-            data: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+            data: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
             driverParam: string;
             notNull: true;
             hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: ["PENDING", "ACTIVE", "COMPLETED", "CANCELLED"];
+            enumValues: ["PENDING", "ACTIVE", "COMPLETED", "CANCELLED", "FROZEN"];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
@@ -200,6 +235,23 @@ export declare const tasks: import("drizzle-orm/pg-core").PgTableWithColumns<{
             isAutoincrement: false;
             hasRuntimeDefault: false;
             enumValues: ["IN_SYNC", "NEEDS_UPDATE", "BLOCKED", "HELP_REQUESTED"];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lastUpdatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "last_updated_at";
+            tableName: "tasks";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
             baseColumn: never;
             identity: undefined;
             generated: undefined;
@@ -390,7 +442,7 @@ export declare const syncLogs: import("drizzle-orm/pg-core").PgTableWithColumns<
             columnType: "PgUUID";
             data: string;
             driverParam: string;
-            notNull: true;
+            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -455,7 +507,7 @@ export declare const syncLogs: import("drizzle-orm/pg-core").PgTableWithColumns<
     dialect: "pg";
 }>;
 export declare const syncLogsRelations: import("drizzle-orm").Relations<"sync_logs", {
-    task: import("drizzle-orm").One<"tasks", true>;
+    task: import("drizzle-orm").One<"tasks", false>;
     user: import("drizzle-orm").One<"users", true>;
 }>;
 export declare const milestones: import("drizzle-orm/pg-core").PgTableWithColumns<{

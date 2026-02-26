@@ -64,6 +64,9 @@ let AuthService = class AuthService {
             where: (0, drizzle_orm_1.eq)(schema.users.id, userId),
         });
         if (existing) {
+            if (existing.isSuspended) {
+                throw new common_1.UnauthorizedException('Your account has been suspended by an administrator.');
+            }
             return existing;
         }
         const [user] = await this.db.insert(schema.users).values({

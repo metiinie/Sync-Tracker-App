@@ -22,6 +22,9 @@ export class AuthService {
         });
 
         if (existing) {
+            if (existing.isSuspended) {
+                throw new UnauthorizedException('Your account has been suspended by an administrator.');
+            }
             return existing;
         }
 

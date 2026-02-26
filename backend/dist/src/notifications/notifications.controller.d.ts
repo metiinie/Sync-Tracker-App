@@ -17,8 +17,9 @@ export declare class NotificationsController {
             title: string;
             assignedBy: string;
             responsibleOwner: string;
-            status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+            status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
             syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            lastUpdatedAt: Date;
         } | null;
     }[]>;
     markAsRead(id: string, req: any): Promise<{

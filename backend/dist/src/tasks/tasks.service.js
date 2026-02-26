@@ -137,7 +137,10 @@ let TasksService = class TasksService {
         if (task.status !== 'PENDING')
             throw new common_1.BadRequestException('Task is not in PENDING state');
         const [updatedTask] = await this.db.update(schema.tasks)
-            .set({ status: 'ACTIVE' })
+            .set({
+            status: 'ACTIVE',
+            lastUpdatedAt: new Date()
+        })
             .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
             .returning();
         await this.logAction(taskId, userId, 'Responsibility accepted');
@@ -161,7 +164,10 @@ let TasksService = class TasksService {
         }
         if (task?.responsibleOwner === userId) {
             await this.db.update(schema.tasks)
-                .set({ syncState })
+                .set({
+                syncState,
+                lastUpdatedAt: new Date()
+            })
                 .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId));
             if (syncState === 'HELP_REQUESTED') {
                 const fullTask = await this.findOne(taskId);
@@ -185,7 +191,8 @@ let TasksService = class TasksService {
         const [updatedTask] = await this.db.update(schema.tasks)
             .set({
             responsibleOwner: newOwnerId,
-            status: 'PENDING'
+            status: 'PENDING',
+            lastUpdatedAt: new Date()
         })
             .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
             .returning();

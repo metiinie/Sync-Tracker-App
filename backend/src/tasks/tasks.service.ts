@@ -112,7 +112,10 @@ export class TasksService {
         if (task.status !== 'PENDING') throw new BadRequestException('Task is not in PENDING state');
 
         const [updatedTask] = await this.db.update(schema.tasks)
-            .set({ status: 'ACTIVE' })
+            .set({
+                status: 'ACTIVE',
+                lastUpdatedAt: new Date()
+            })
             .where(eq(schema.tasks.id, taskId))
             .returning();
 
@@ -147,7 +150,10 @@ export class TasksService {
 
         if (task?.responsibleOwner === userId) {
             await this.db.update(schema.tasks)
-                .set({ syncState })
+                .set({
+                    syncState,
+                    lastUpdatedAt: new Date()
+                })
                 .where(eq(schema.tasks.id, taskId));
 
             // Trigger notification if help requested by Owner
@@ -177,7 +183,8 @@ export class TasksService {
         const [updatedTask] = await this.db.update(schema.tasks)
             .set({
                 responsibleOwner: newOwnerId,
-                status: 'PENDING'
+                status: 'PENDING',
+                lastUpdatedAt: new Date()
             })
             .where(eq(schema.tasks.id, taskId))
             .returning();

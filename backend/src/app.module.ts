@@ -8,6 +8,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { SyncModule } from './sync/sync.module';
 import { UsersModule } from './users/users.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     SyncModule,
     UsersModule,
     NotificationsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [],
