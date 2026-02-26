@@ -10,7 +10,7 @@ import { useAuthStore } from './src/store/authStore';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import TaskDetailScreen from './src/screens/TaskDetailScreen';
-import CreateTaskScreen from './src/screens/CreateTaskScreen';
+import SplashScreen from './src/screens/SplashScreen';
 
 const Stack = createNativeStackNavigator();
 const queryClient = new QueryClient();
@@ -18,6 +18,7 @@ const queryClient = new QueryClient();
 export default function App() {
   const { token, loadAuth } = useAuthStore();
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const init = async () => {
@@ -27,7 +28,10 @@ export default function App() {
     init();
   }, []);
 
-  if (loading) {
+  if (loading || showSplash) {
+    if (showSplash) {
+      return <SplashScreen onFinish={() => setShowSplash(false)} />;
+    }
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
         <ActivityIndicator size="large" color="#2563eb" />
