@@ -49,10 +49,36 @@ export class AuthService {
             where: eq(schema.users.email, email),
         });
 
-        if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+        if (user && user.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
             const { passwordHash, ...result } = user;
             return result;
         }
         return null;
+    }
+
+    async validateOAuthUser(profile: any): Promise<any> {
+        const { emails, displayName, id, provider } = profile;
+        const email = emails[0].value;
+
+        let user = await this.db.query.users.findFirst({
+            where: eq(schema.users.email, email),
+        });
+
+        if (!user) {
+            [user] = await this.db.insert(schema.users).values({
+                name: displayName,
+                email,
+                provider,
+                providerId: id,
+            }).returning();
+        } else if (!user.provider) {
+            // Link local account to SSO if it exists
+            [user] = await this.db.update(schema.users)
+                .set({ provider, providerId: id })
+                .where(eq(schema.users.id, user.id))
+                .returning();
+        }
+
+        return user;
     }
 }

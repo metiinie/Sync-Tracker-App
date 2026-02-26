@@ -18,4 +18,8 @@ export declare class AuthController {
             email: any;
         };
     }>;
+    googleAuth(req: any): Promise<void>;
+    googleAuthRedirect(req: any, res: any): Promise<any>;
+    microsoftAuth(req: any): Promise<void>;
+    microsoftAuthRedirect(req: any, res: any): Promise<any>;
 }

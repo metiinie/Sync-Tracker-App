@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus, Get, UseGuards, Req, Res } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -18,5 +19,28 @@ export class AuthController {
             throw new UnauthorizedException('Invalid credentials');
         }
         return this.authService.login(user);
+    }
+
+    @Get('google')
+    @UseGuards(AuthGuard('google'))
+    async googleAuth(@Req() req) { }
+
+    @Get('google/callback')
+    @UseGuards(AuthGuard('google'))
+    async googleAuthRedirect(@Req() req, @Res() res) {
+        const result = await this.authService.login(req.user);
+        // In a real app, you'd redirect to a deep link or web page with the token
+        return res.json(result);
+    }
+
+    @Get('microsoft')
+    @UseGuards(AuthGuard('microsoft'))
+    async microsoftAuth(@Req() req) { }
+
+    @Get('microsoft/callback')
+    @UseGuards(AuthGuard('microsoft'))
+    async microsoftAuthRedirect(@Req() req, @Res() res) {
+        const result = await this.authService.login(req.user);
+        return res.json(result);
     }
 }

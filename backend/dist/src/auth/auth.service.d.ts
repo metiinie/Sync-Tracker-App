@@ -22,4 +22,5 @@ export declare class AuthService {
         };
     }>;
     validateUser(email: string, pass: string): Promise<any>;
+    validateOAuthUser(profile: any): Promise<any>;
 }

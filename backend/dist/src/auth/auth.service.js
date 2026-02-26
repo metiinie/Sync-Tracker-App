@@ -90,11 +90,33 @@ let AuthService = class AuthService {
         const user = await this.db.query.users.findFirst({
             where: (0, drizzle_orm_1.eq)(schema.users.email, email),
         });
-        if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+        if (user && user.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
             const { passwordHash, ...result } = user;
             return result;
         }
         return null;
+    }
+    async validateOAuthUser(profile) {
+        const { emails, displayName, id, provider } = profile;
+        const email = emails[0].value;
+        let user = await this.db.query.users.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.users.email, email),
+        });
+        if (!user) {
+            [user] = await this.db.insert(schema.users).values({
+                name: displayName,
+                email,
+                provider,
+                providerId: id,
+            }).returning();
+        }
+        else if (!user.provider) {
+            [user] = await this.db.update(schema.users)
+                .set({ provider, providerId: id })
+                .where((0, drizzle_orm_1.eq)(schema.users.id, user.id))
+                .returning();
+        }
+        return user;
     }
 };
 exports.AuthService = AuthService;

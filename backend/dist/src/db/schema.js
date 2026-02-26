@@ -10,7 +10,9 @@ exports.users = (0, pg_core_1.pgTable)('users', {
     id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
     name: (0, pg_core_1.text)('name').notNull(),
     email: (0, pg_core_1.text)('email').unique().notNull(),
-    passwordHash: (0, pg_core_1.text)('password_hash').notNull(),
+    passwordHash: (0, pg_core_1.text)('password_hash'),
+    provider: (0, pg_core_1.text)('provider'),
+    providerId: (0, pg_core_1.text)('provider_id'),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
 });
 exports.usersRelations = (0, drizzle_orm_1.relations)(exports.users, ({ many }) => ({

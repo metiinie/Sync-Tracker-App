@@ -8,6 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api/v1');
+  app.enableCors();
   app.useGlobalPipes(new ValidationPipe());
 
   // Use Redis adapter for Socket.IO if REDIS_URL is provided
