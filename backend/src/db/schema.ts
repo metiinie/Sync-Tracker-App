@@ -25,6 +25,7 @@ export const tasks = pgTable('tasks', {
     assignedBy: uuid('assigned_by').references(() => users.id).notNull(),
     responsibleOwner: uuid('responsible_owner').references(() => users.id).notNull(),
     status: taskStatusEnum('status').default('PENDING').notNull(),
+    syncState: syncStateEnum('sync_state').default('IN_SYNC').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

@@ -24,6 +24,7 @@ exports.tasks = (0, pg_core_1.pgTable)('tasks', {
     assignedBy: (0, pg_core_1.uuid)('assigned_by').references(() => exports.users.id).notNull(),
     responsibleOwner: (0, pg_core_1.uuid)('responsible_owner').references(() => exports.users.id).notNull(),
     status: (0, exports.taskStatusEnum)('status').default('PENDING').notNull(),
+    syncState: (0, exports.syncStateEnum)('sync_state').default('IN_SYNC').notNull(),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
 });
 exports.tasksRelations = (0, drizzle_orm_1.relations)(exports.tasks, ({ one, many }) => ({

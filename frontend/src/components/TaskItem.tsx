@@ -4,9 +4,10 @@ import { View, Text, TouchableOpacity } from 'react-native';
 interface TaskItemProps {
     task: any;
     onPress: () => void;
+    role?: string;
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
+const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, role }) => {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'PENDING': return 'bg-yellow-100 text-yellow-800';
@@ -19,38 +20,50 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress }) => {
     const getSyncColor = (sync: string) => {
         switch (sync) {
             case 'IN_SYNC': return 'bg-green-500';
-            case 'NEEDS_UPDATE': return 'bg-orange-500';
+            case 'NEEDS_UPDATE': return 'bg-yellow-500';
             case 'BLOCKED': return 'bg-red-500';
-            case 'HELP_REQUESTED': return 'bg-purple-500';
+            case 'HELP_REQUESTED': return 'bg-blue-500';
             default: return 'bg-gray-500';
         }
     };
+
+    const participantCount = task.participants?.length || 0;
 
     return (
         <TouchableOpacity
             onPress={onPress}
             className="bg-white p-4 rounded-xl shadow-sm mb-3 border border-gray-100"
         >
-            <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-lg font-bold text-gray-900">{task.title}</Text>
+            <View className="flex-row justify-between items-start mb-2">
+                <View className="flex-1 mr-2">
+                    <Text className="text-lg font-bold text-gray-900" numberOfLines={1}>{task.title}</Text>
+                    {role && (
+                        <View className="bg-gray-100 self-start px-2 py-0.5 rounded-md mt-1">
+                            <Text className="text-[10px] font-bold text-gray-500 uppercase">{role}</Text>
+                        </View>
+                    )}
+                </View>
                 <View className={`px-2 py-1 rounded-full ${getStatusColor(task.status).split(' ')[0]}`}>
-                    <Text className={`text-xs font-semibold ${getStatusColor(task.status).split(' ')[1]}`}>
+                    <Text className={`text-[10px] font-bold ${getStatusColor(task.status).split(' ')[1]}`}>
                         {task.status}
                     </Text>
                 </View>
             </View>
 
-            <Text className="text-gray-600 mb-3" numberOfLines={2}>
-                {task.description || 'No description provided'}
-            </Text>
+            <View className="flex-row items-center mb-3">
+                <View className={`w-2.5 h-2.5 rounded-full mr-2 ${getSyncColor(task.syncState)}`} />
+                <Text className="text-xs font-medium text-gray-700">{task.syncState?.replace('_', ' ') || 'IN SYNC'}</Text>
+                {participantCount > 0 && (
+                    <Text className="text-xs text-gray-400 ml-2">• {participantCount} participants</Text>
+                )}
+            </View>
 
-            <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                    <View className={`w-3 h-3 rounded-full mr-2 ${getSyncColor(task.syncState)}`} />
-                    <Text className="text-sm text-gray-500">{task.syncState || 'IN_SYNC'}</Text>
-                </View>
-                <Text className="text-xs text-gray-400">
-                    Responsible: {task.responsibleOwnerName || 'Unknown'}
+            <View className="flex-row items-center justify-between border-t border-gray-50 pt-3">
+                <Text className="text-[11px] text-gray-400">
+                    By: {task.assigner?.name || 'System'}
+                </Text>
+                <Text className="text-[11px] text-gray-500 font-medium">
+                    Owner: {task.owner?.name || 'Unassigned'}
                 </Text>
             </View>
         </TouchableOpacity>

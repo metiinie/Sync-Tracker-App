@@ -187,6 +187,23 @@ export declare const tasks: import("drizzle-orm/pg-core").PgTableWithColumns<{
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        syncState: import("drizzle-orm/pg-core").PgColumn<{
+            name: "sync_state";
+            tableName: "tasks";
+            dataType: "string";
+            columnType: "PgEnumColumn";
+            data: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: ["IN_SYNC", "NEEDS_UPDATE", "BLOCKED", "HELP_REQUESTED"];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "tasks";

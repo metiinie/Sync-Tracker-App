@@ -38,7 +38,7 @@ const LoginScreen = () => {
         }
     };
 
-    const handleSSO = async (provider: 'google' | 'azure') => {
+    const handleSSO = async (provider: 'google' | 'linkedin_oidc') => {
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider,
@@ -127,11 +127,11 @@ const LoginScreen = () => {
                             <Text className="ml-2 font-semibold text-gray-700">Google</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            onPress={() => handleSSO('azure')}
+                            onPress={() => handleSSO('linkedin_oidc')}
                             className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
                         >
-                            <Ionicons name="logo-windows" size={20} color="#0078d4" />
-                            <Text className="ml-2 font-semibold text-gray-700">Microsoft</Text>
+                            <Ionicons name="logo-linkedin" size={20} color="#0077b5" />
+                            <Text className="ml-2 font-semibold text-gray-700">LinkedIn</Text>
                         </TouchableOpacity>
                     </View>
 

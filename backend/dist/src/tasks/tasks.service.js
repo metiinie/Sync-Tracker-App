@@ -104,8 +104,13 @@ let TasksService = class TasksService {
                 .set({ syncState })
                 .where((0, drizzle_orm_1.eq)(schema.taskParticipants.id, participant.id));
         }
+        if (task?.responsibleOwner === userId) {
+            await this.db.update(schema.tasks)
+                .set({ syncState })
+                .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId));
+        }
         await this.logAction(taskId, userId, `Sync state updated to ${syncState}`);
-        this.syncGateway.emitToTask(taskId, 'sync:update', { userId, syncState });
+        this.syncGateway.emitToTask(taskId, 'sync:update', { taskId, userId, syncState });
         if (syncState === 'HELP_REQUESTED') {
             this.syncGateway.emitToTask(taskId, 'task:help', { userId });
         }
@@ -142,9 +147,42 @@ let TasksService = class TasksService {
         return participant;
     }
     async findAllForUser(userId) {
-        return this.db.query.tasks.findMany({
+        const ownedTasks = await this.db.query.tasks.findMany({
             where: (0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(schema.tasks.responsibleOwner, userId), (0, drizzle_orm_1.eq)(schema.tasks.assignedBy, userId)),
+            with: {
+                assigner: true,
+                owner: true,
+                participants: {
+                    with: {
+                        user: true
+                    }
+                }
+            }
         });
+        const participatedTasks = await this.db.query.taskParticipants.findMany({
+            where: (0, drizzle_orm_1.eq)(schema.taskParticipants.userId, userId),
+            with: {
+                task: {
+                    with: {
+                        assigner: true,
+                        owner: true,
+                        participants: {
+                            with: {
+                                user: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        const taskMap = new Map();
+        ownedTasks.forEach(t => taskMap.set(t.id, t));
+        participatedTasks.forEach(p => {
+            if (!taskMap.has(p.taskId)) {
+                taskMap.set(p.taskId, p.task);
+            }
+        });
+        return Array.from(taskMap.values());
     }
     async logAction(taskId, userId, action) {
         await this.db.insert(schema.syncLogs).values({

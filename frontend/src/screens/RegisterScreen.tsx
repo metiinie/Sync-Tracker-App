@@ -53,6 +53,17 @@ const RegisterScreen = () => {
         }
     };
 
+    const handleSSO = async (provider: 'google' | 'linkedin_oidc') => {
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider,
+            });
+            if (error) throw error;
+        } catch (error: any) {
+            Alert.alert('SSO Failed', error.message || 'Something went wrong');
+        }
+    };
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -144,6 +155,31 @@ const RegisterScreen = () => {
                             {loading ? 'Processing...' : 'Create Account'}
                         </Text>
                     </TouchableOpacity>
+
+                    {/* Divider */}
+                    <View className="flex-row items-center my-8">
+                        <View className="flex-1 h-[1px] bg-gray-100" />
+                        <Text className="mx-4 text-gray-400 font-medium">OR CONTINUE WITH</Text>
+                        <View className="flex-1 h-[1px] bg-gray-100" />
+                    </View>
+
+                    {/* SSO Buttons */}
+                    <View className="flex-row gap-4 mb-4">
+                        <TouchableOpacity
+                            onPress={() => handleSSO('google')}
+                            className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
+                        >
+                            <Ionicons name="logo-google" size={20} color="#ea4335" />
+                            <Text className="ml-2 font-semibold text-gray-700">Google</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => handleSSO('linkedin_oidc')}
+                            className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
+                        >
+                            <Ionicons name="logo-linkedin" size={20} color="#0077b5" />
+                            <Text className="ml-2 font-semibold text-gray-700">LinkedIn</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     {/* Toggle Mode */}
                     <TouchableOpacity

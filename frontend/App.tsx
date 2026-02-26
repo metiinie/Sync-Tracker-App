@@ -10,7 +10,7 @@ import { useAuthStore } from './src/store/authStore';
 import { supabase } from './src/services/supabase';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
-import HomeScreen from './src/screens/HomeScreen';
+import MainTabs from './src/navigation/MainTabs';
 import TaskDetailScreen from './src/screens/TaskDetailScreen';
 import CreateTaskScreen from './src/screens/CreateTaskScreen';
 import SplashScreen from './src/screens/SplashScreen';
@@ -61,7 +61,7 @@ export default function App() {
             </>
           ) : (
             <>
-              <Stack.Screen name="Home" component={HomeScreen} />
+              <Stack.Screen name="Main" component={MainTabs} />
               <Stack.Screen
                 name="TaskDetail"
                 component={TaskDetailScreen}

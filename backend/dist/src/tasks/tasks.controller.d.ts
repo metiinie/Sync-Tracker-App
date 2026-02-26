@@ -4,12 +4,13 @@ export declare class TasksController {
     constructor(tasksService: TasksService);
     create(body: any, req: any): Promise<{
         id: string;
-        createdAt: Date;
-        description: string | null;
         title: string;
+        description: string | null;
+        createdAt: Date;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
     }>;
     accept(id: string, req: any): Promise<{
         id: string;
@@ -18,6 +19,7 @@ export declare class TasksController {
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         createdAt: Date;
     }>;
     updateSync(id: string, syncState: any, req: any): Promise<{
@@ -31,24 +33,17 @@ export declare class TasksController {
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         createdAt: Date;
     }>;
     addParticipant(id: string, body: any, req: any): Promise<{
         id: string;
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         taskId: string;
         userId: string;
         role: "contributor" | "helper" | "reviewer" | "observer";
-        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         joinedAt: Date;
         lastUpdatedAt: Date;
     }>;
-    findAll(req: any): Promise<{
-        id: string;
-        createdAt: Date;
-        description: string | null;
-        title: string;
-        assignedBy: string;
-        responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
-    }[]>;
+    findAll(req: any): Promise<any[]>;
 }

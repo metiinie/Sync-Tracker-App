@@ -7,12 +7,13 @@ export declare class TasksService {
     constructor(db: NodePgDatabase<typeof schema>, syncGateway: SyncGateway);
     create(title: string, description: string, assignedBy: string, responsibleOwner: string): Promise<{
         id: string;
-        createdAt: Date;
-        description: string | null;
         title: string;
+        description: string | null;
+        createdAt: Date;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
     }>;
     accept(taskId: string, userId: string): Promise<{
         id: string;
@@ -21,6 +22,7 @@ export declare class TasksService {
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         createdAt: Date;
     }>;
     updateSyncState(taskId: string, userId: string, syncState: 'IN_SYNC' | 'NEEDS_UPDATE' | 'BLOCKED' | 'HELP_REQUESTED'): Promise<{
@@ -34,25 +36,18 @@ export declare class TasksService {
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         createdAt: Date;
     }>;
     addParticipant(taskId: string, userId: string, role: string, addedBy: string): Promise<{
         id: string;
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         taskId: string;
         userId: string;
         role: "contributor" | "helper" | "reviewer" | "observer";
-        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         joinedAt: Date;
         lastUpdatedAt: Date;
     }>;
-    findAllForUser(userId: string): Promise<{
-        id: string;
-        createdAt: Date;
-        description: string | null;
-        title: string;
-        assignedBy: string;
-        responsibleOwner: string;
-        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
-    }[]>;
+    findAllForUser(userId: string): Promise<any[]>;
     private logAction;
 }

@@ -72,9 +72,15 @@ export class TasksService {
                 .where(eq(schema.taskParticipants.id, participant.id));
         }
 
+        if (task?.responsibleOwner === userId) {
+            await this.db.update(schema.tasks)
+                .set({ syncState })
+                .where(eq(schema.tasks.id, taskId));
+        }
+
         await this.logAction(taskId, userId, `Sync state updated to ${syncState}`);
 
-        this.syncGateway.emitToTask(taskId, 'sync:update', { userId, syncState });
+        this.syncGateway.emitToTask(taskId, 'sync:update', { taskId, userId, syncState });
 
         if (syncState === 'HELP_REQUESTED') {
             this.syncGateway.emitToTask(taskId, 'task:help', { userId });
@@ -122,12 +128,49 @@ export class TasksService {
     }
 
     async findAllForUser(userId: string) {
-        return this.db.query.tasks.findMany({
+        const ownedTasks = await this.db.query.tasks.findMany({
             where: or(
                 eq(schema.tasks.responsibleOwner, userId),
                 eq(schema.tasks.assignedBy, userId)
             ),
+            with: {
+                assigner: true,
+                owner: true,
+                participants: {
+                    with: {
+                        user: true
+                    }
+                }
+            }
         });
+
+        const participatedTasks = await this.db.query.taskParticipants.findMany({
+            where: eq(schema.taskParticipants.userId, userId),
+            with: {
+                task: {
+                    with: {
+                        assigner: true,
+                        owner: true,
+                        participants: {
+                            with: {
+                                user: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Unique tasks by ID
+        const taskMap = new Map();
+        ownedTasks.forEach(t => taskMap.set(t.id, t));
+        participatedTasks.forEach(p => {
+            if (!taskMap.has(p.taskId)) {
+                taskMap.set(p.taskId, p.task);
+            }
+        });
+
+        return Array.from(taskMap.values());
     }
 
     private async logAction(taskId: string, userId: string, action: string) {
