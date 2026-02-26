@@ -1,0 +1,164 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.TasksService = void 0;
+const common_1 = require("@nestjs/common");
+const db_module_1 = require("../db/db.module");
+const node_postgres_1 = require("drizzle-orm/node-postgres");
+const schema = __importStar(require("../db/schema"));
+const drizzle_orm_1 = require("drizzle-orm");
+const sync_gateway_1 = require("../sync/sync.gateway");
+let TasksService = class TasksService {
+    db;
+    syncGateway;
+    constructor(db, syncGateway) {
+        this.db = db;
+        this.syncGateway = syncGateway;
+    }
+    async create(title, description, assignedBy, responsibleOwner) {
+        const [task] = await this.db.insert(schema.tasks).values({
+            title,
+            description,
+            assignedBy,
+            responsibleOwner,
+            status: 'PENDING',
+        }).returning();
+        await this.logAction(task.id, assignedBy, `Task created and assigned to ${responsibleOwner}`);
+        this.syncGateway.emitToTask(task.id, 'task:created', task);
+        return task;
+    }
+    async accept(taskId, userId) {
+        const task = await this.db.query.tasks.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
+        });
+        if (!task)
+            throw new common_1.NotFoundException('Task not found');
+        if (task.responsibleOwner !== userId)
+            throw new common_1.UnauthorizedException('Only the responsible owner can accept the task');
+        if (task.status !== 'PENDING')
+            throw new common_1.BadRequestException('Task is not in PENDING state');
+        const [updatedTask] = await this.db.update(schema.tasks)
+            .set({ status: 'ACTIVE' })
+            .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
+            .returning();
+        await this.logAction(taskId, userId, 'Responsibility accepted');
+        this.syncGateway.emitToTask(taskId, 'task:accepted', updatedTask);
+        return updatedTask;
+    }
+    async updateSyncState(taskId, userId, syncState) {
+        const participant = await this.db.query.taskParticipants.findFirst({
+            where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema.taskParticipants.taskId, taskId), (0, drizzle_orm_1.eq)(schema.taskParticipants.userId, userId)),
+        });
+        const task = await this.db.query.tasks.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
+        });
+        if (!participant && task?.responsibleOwner !== userId) {
+            throw new common_1.UnauthorizedException('Not authorized to update sync state for this task');
+        }
+        if (participant) {
+            await this.db.update(schema.taskParticipants)
+                .set({ syncState })
+                .where((0, drizzle_orm_1.eq)(schema.taskParticipants.id, participant.id));
+        }
+        await this.logAction(taskId, userId, `Sync state updated to ${syncState}`);
+        this.syncGateway.emitToTask(taskId, 'sync:update', { userId, syncState });
+        if (syncState === 'HELP_REQUESTED') {
+            this.syncGateway.emitToTask(taskId, 'task:help', { userId });
+        }
+        return { success: true, syncState };
+    }
+    async transfer(taskId, currentOwnerId, newOwnerId) {
+        const task = await this.db.query.tasks.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
+        });
+        if (!task)
+            throw new common_1.NotFoundException('Task not found');
+        if (task.responsibleOwner !== currentOwnerId)
+            throw new common_1.UnauthorizedException('Only the current responsible owner can transfer responsibility');
+        const [updatedTask] = await this.db.update(schema.tasks)
+            .set({
+            responsibleOwner: newOwnerId,
+            status: 'PENDING'
+        })
+            .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
+            .returning();
+        await this.logAction(taskId, currentOwnerId, `Transfer initiated to ${newOwnerId}`);
+        await this.logAction(taskId, newOwnerId, `Received responsibility (PENDING acceptance)`);
+        this.syncGateway.emitToTask(taskId, 'task:transfer', { from: currentOwnerId, to: newOwnerId });
+        return updatedTask;
+    }
+    async addParticipant(taskId, userId, role, addedBy) {
+        const [participant] = await this.db.insert(schema.taskParticipants).values({
+            taskId,
+            userId,
+            role: role,
+        }).returning();
+        await this.logAction(taskId, addedBy, `User ${userId} added as ${role}`);
+        this.syncGateway.emitToTask(taskId, 'task:join', { userId, role });
+        return participant;
+    }
+    async findAllForUser(userId) {
+        return this.db.query.tasks.findMany({
+            where: (0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(schema.tasks.responsibleOwner, userId), (0, drizzle_orm_1.eq)(schema.tasks.assignedBy, userId)),
+        });
+    }
+    async logAction(taskId, userId, action) {
+        await this.db.insert(schema.syncLogs).values({
+            taskId,
+            userId,
+            action,
+        });
+    }
+};
+exports.TasksService = TasksService;
+exports.TasksService = TasksService = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, common_1.Inject)(db_module_1.DRIZZLE)),
+    __metadata("design:paramtypes", [node_postgres_1.NodePgDatabase,
+        sync_gateway_1.SyncGateway])
+], TasksService);
+//# sourceMappingURL=tasks.service.js.map
