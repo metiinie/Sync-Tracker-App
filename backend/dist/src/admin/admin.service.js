@@ -292,6 +292,51 @@ let AdminService = class AdminService {
             limit: 30,
         });
     }
+    async getSettings() {
+        let settings = await this.db.query.workspaceSettings.findFirst();
+        if (!settings) {
+            const [newSettings] = await this.db.insert(schema.workspaceSettings).values({}).returning();
+            return newSettings;
+        }
+        return settings;
+    }
+    async updateSettings(data) {
+        return await this.db.update(schema.workspaceSettings)
+            .set({ ...data, updatedAt: new Date() })
+            .returning();
+    }
+    async getGlobalAuditLogs(filters) {
+        const conditions = [];
+        if (filters.userId)
+            conditions.push((0, drizzle_orm_1.eq)(schema.syncLogs.userId, filters.userId));
+        if (filters.taskId)
+            conditions.push((0, drizzle_orm_1.eq)(schema.syncLogs.taskId, filters.taskId));
+        if (filters.action)
+            conditions.push((0, drizzle_orm_1.ilike)(schema.syncLogs.action, `%${filters.action}%`));
+        return await this.db.query.syncLogs.findMany({
+            where: drizzle_orm_1.and(...conditions),
+            with: {
+                user: { columns: { name: true, email: true } },
+                task: { columns: { title: true } },
+            },
+            orderBy: [(0, drizzle_orm_1.desc)(schema.syncLogs.timestamp)],
+            limit: filters.limit || 100,
+        });
+    }
+    async getSystemSnapshot() {
+        const [userCount] = await this.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema.users);
+        const [taskCount] = await this.db.select({ count: (0, drizzle_orm_1.count)() }).from(schema.tasks);
+        const [activeTasks] = await this.db.select({ count: (0, drizzle_orm_1.count)() })
+            .from(schema.tasks)
+            .where((0, drizzle_orm_1.eq)(schema.tasks.status, 'ACTIVE'));
+        return {
+            totalUsers: Number(userCount.count),
+            totalTasks: Number(taskCount.count),
+            activeTasks: Number(activeTasks.count),
+            health: 'OPTIMAL',
+            timestamp: new Date(),
+        };
+    }
 };
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([

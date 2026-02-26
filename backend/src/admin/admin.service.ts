@@ -319,4 +319,52 @@ export class AdminService {
             limit: 30,
         });
     }
+
+    async getSettings() {
+        let settings = await this.db.query.workspaceSettings.findFirst();
+        if (!settings) {
+            const [newSettings] = await this.db.insert(schema.workspaceSettings).values({}).returning();
+            return newSettings;
+        }
+        return settings;
+    }
+
+    async updateSettings(data: any) {
+        return await this.db.update(schema.workspaceSettings)
+            .set({ ...data, updatedAt: new Date() })
+            .returning();
+    }
+
+    async getGlobalAuditLogs(filters: { userId?: string; taskId?: string; action?: string; limit?: number }) {
+        const conditions = [];
+        if (filters.userId) conditions.push(eq(schema.syncLogs.userId, filters.userId));
+        if (filters.taskId) conditions.push(eq(schema.syncLogs.taskId, filters.taskId));
+        if (filters.action) conditions.push(ilike(schema.syncLogs.action, `%${filters.action}%`));
+
+        return await this.db.query.syncLogs.findMany({
+            where: (and as any)(...conditions),
+            with: {
+                user: { columns: { name: true, email: true } },
+                task: { columns: { title: true } },
+            },
+            orderBy: [desc(schema.syncLogs.timestamp)],
+            limit: filters.limit || 100,
+        });
+    }
+
+    async getSystemSnapshot() {
+        const [userCount] = await this.db.select({ count: count() }).from(schema.users);
+        const [taskCount] = await this.db.select({ count: count() }).from(schema.tasks);
+        const [activeTasks] = await this.db.select({ count: count() })
+            .from(schema.tasks)
+            .where(eq(schema.tasks.status, 'ACTIVE'));
+
+        return {
+            totalUsers: Number(userCount.count),
+            totalTasks: Number(taskCount.count),
+            activeTasks: Number(activeTasks.count),
+            health: 'OPTIMAL',
+            timestamp: new Date(),
+        };
+    }
 }

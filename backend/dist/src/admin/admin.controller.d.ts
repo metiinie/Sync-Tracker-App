@@ -254,4 +254,39 @@ export declare class AdminController {
         isSuspended: boolean;
         createdAt: Date;
     }>;
-  
+    getSettings(): Promise<{
+        id: string;
+        staleThresholdHours: string;
+        allowResponsibilityTransfer: boolean;
+        enableHelperRole: boolean;
+        updatedAt: Date;
+    }>;
+    updateSettings(data: any): Promise<{
+        id: string;
+        staleThresholdHours: string;
+        allowResponsibilityTransfer: boolean;
+        enableHelperRole: boolean;
+        updatedAt: Date;
+    }[]>;
+    getAuditLogs(userId?: string, taskId?: string, action?: string, limit?: number): Promise<{
+        id: string;
+        taskId: string | null;
+        userId: string;
+        action: string;
+        timestamp: Date;
+        task: {
+            title: string;
+        } | null;
+        user: {
+            name: string;
+            email: string;
+        };
+    }[]>;
+    getSnapshot(): Promise<{
+        totalUsers: number;
+        totalTasks: number;
+        activeTasks: number;
+        health: string;
+        timestamp: Date;
+    }>;
+}

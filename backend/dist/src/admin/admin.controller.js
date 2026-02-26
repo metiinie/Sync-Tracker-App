@@ -66,6 +66,18 @@ let AdminController = class AdminController {
     async reactivate(id, reason, req) {
         return await this.adminService.reactivateUser(id, reason, req.user.userId);
     }
+    async getSettings() {
+        return await this.adminService.getSettings();
+    }
+    async updateSettings(data) {
+        return await this.adminService.updateSettings(data);
+    }
+    async getAuditLogs(userId, taskId, action, limit) {
+        return await this.adminService.getGlobalAuditLogs({ userId, taskId, action, limit: Number(limit) || 100 });
+    }
+    async getSnapshot() {
+        return await this.adminService.getSystemSnapshot();
+    }
 };
 exports.AdminController = AdminController;
 __decorate([
@@ -159,6 +171,35 @@ __decorate([
     __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "reactivate", null);
+__decorate([
+    (0, common_1.Get)('settings'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getSettings", null);
+__decorate([
+    (0, common_1.Patch)('settings'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateSettings", null);
+__decorate([
+    (0, common_1.Get)('audit-logs'),
+    __param(0, (0, common_1.Query)('userId')),
+    __param(1, (0, common_1.Query)('taskId')),
+    __param(2, (0, common_1.Query)('action')),
+    __param(3, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, Number]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAuditLogs", null);
+__decorate([
+    (0, common_1.Get)('snapshot'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getSnapshot", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, admin_guard_1.AdminGuard),
