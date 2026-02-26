@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notificationsRelations = exports.notifications = exports.timeLogsRelations = exports.timeLogs = exports.milestonesRelations = exports.milestones = exports.syncLogsRelations = exports.syncLogs = exports.taskParticipantsRelations = exports.taskParticipants = exports.tasksRelations = exports.tasks = exports.usersRelations = exports.users = exports.syncStateEnum = exports.taskStatusEnum = exports.systemRoleEnum = exports.userRoleEnum = void 0;
+exports.workspaceSettings = exports.notificationsRelations = exports.notifications = exports.timeLogsRelations = exports.timeLogs = exports.milestonesRelations = exports.milestones = exports.syncLogsRelations = exports.syncLogs = exports.taskParticipantsRelations = exports.taskParticipants = exports.tasksRelations = exports.tasks = exports.usersRelations = exports.users = exports.syncStateEnum = exports.taskStatusEnum = exports.systemRoleEnum = exports.userRoleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const drizzle_orm_1 = require("drizzle-orm");
 exports.userRoleEnum = (0, pg_core_1.pgEnum)('user_role', ['contributor', 'helper', 'reviewer', 'observer']);
@@ -134,4 +134,11 @@ exports.notificationsRelations = (0, drizzle_orm_1.relations)(exports.notificati
         references: [exports.tasks.id],
     }),
 }));
+exports.workspaceSettings = (0, pg_core_1.pgTable)('workspace_settings', {
+    id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
+    staleThresholdHours: (0, pg_core_1.text)('stale_threshold_hours').default('24').notNull(),
+    allowResponsibilityTransfer: (0, pg_core_1.boolean)('allow_responsibility_transfer').default(true).notNull(),
+    enableHelperRole: (0, pg_core_1.boolean)('enable_helper_role').default(true).notNull(),
+    updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow().notNull(),
+});
 //# sourceMappingURL=schema.js.map

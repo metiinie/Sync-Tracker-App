@@ -146,3 +146,11 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
         references: [tasks.id],
     }),
 }));
+
+export const workspaceSettings = pgTable('workspace_settings', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    staleThresholdHours: text('stale_threshold_hours').default('24').notNull(),
+    allowResponsibilityTransfer: boolean('allow_responsibility_transfer').default(true).notNull(),
+    enableHelperRole: boolean('enable_helper_role').default(true).notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});

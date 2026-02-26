@@ -254,4 +254,4 @@ export declare class AdminController {
         isSuspended: boolean;
         createdAt: Date;
     }>;
-}
+  

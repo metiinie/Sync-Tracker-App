@@ -79,4 +79,29 @@ export class AdminController {
     async reactivate(@Param('id') id: string, @Body('reason') reason: string, @Request() req: any) {
         return await this.adminService.reactivateUser(id, reason, req.user.userId);
     }
+
+    @Get('settings')
+    async getSettings() {
+        return await this.adminService.getSettings();
+    }
+
+    @Patch('settings')
+    async updateSettings(@Body() data: any) {
+        return await this.adminService.updateSettings(data);
+    }
+
+    @Get('audit-logs')
+    async getAuditLogs(
+        @Query('userId') userId?: string,
+        @Query('taskId') taskId?: string,
+        @Query('action') action?: string,
+        @Query('limit') limit?: number
+    ) {
+        return await this.adminService.getGlobalAuditLogs({ userId, taskId, action, limit: Number(limit) || 100 });
+    }
+
+    @Get('snapshot')
+    async getSnapshot() {
+        return await this.adminService.getSystemSnapshot();
+    }
 }
