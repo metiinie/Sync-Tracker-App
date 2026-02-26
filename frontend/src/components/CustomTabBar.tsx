@@ -34,9 +34,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                     const color = isFocused ? '#000000' : '#9ca3af';
                     const size = 24;
                     switch (route.name) {
+                        case 'Admin': return <LayoutGrid size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
+                        case 'All Tasks': return <CheckSquare size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
+                        case 'Users': return <Users size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
                         case 'Dashboard': return <LayoutGrid size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
                         case 'Tasks': return <CheckSquare size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
-                        case 'Users': return <Users size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
                         case 'Notifications': return <Bell size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
                         case 'Profile': return <User size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
                         default: return null;
