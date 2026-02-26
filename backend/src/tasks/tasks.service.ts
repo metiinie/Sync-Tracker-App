@@ -5,11 +5,14 @@ import * as schema from '../db/schema';
 import { eq, and, or } from 'drizzle-orm';
 import { SyncGateway } from '../sync/sync.gateway';
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 @Injectable()
 export class TasksService {
     constructor(
         @Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>,
         private syncGateway: SyncGateway,
+        private notificationsService: NotificationsService,
     ) { }
 
     async create(title: string, description: string, assignedBy: string, responsibleOwner: string, participants: { userId: string, role: string }[] = [], milestones: string[] = []) {
@@ -22,6 +25,9 @@ export class TasksService {
                 status: 'PENDING',
             }).returning();
 
+            // Create assignment notification
+            await this.notificationsService.create(responsibleOwner, task.id, 'ASSIGNED', `You have been assigned as the responsible owner for "${title}"`);
+
             // Add additional participants if any
             if (participants && participants.length > 0) {
                 await tx.insert(schema.taskParticipants).values(
@@ -31,6 +37,11 @@ export class TasksService {
                         role: p.role as any,
                     }))
                 );
+
+                // Create participant notifications
+                for (const p of participants) {
+                    await this.notificationsService.create(p.userId, task.id, 'PARTICIPANT_ADDED', `You have been added as a ${p.role} to "${title}"`);
+                }
             }
 
             // Add milestones if any
@@ -138,15 +149,19 @@ export class TasksService {
             await this.db.update(schema.tasks)
                 .set({ syncState })
                 .where(eq(schema.tasks.id, taskId));
+
+            // Trigger notification if help requested by Owner
+            if (syncState === 'HELP_REQUESTED') {
+                const fullTask = await this.findOne(taskId);
+                if (fullTask) {
+                    await this.notificationsService.create(fullTask.assignedBy, taskId, 'HELP_REQUESTED', `Help requested on "${fullTask.title}" by ${fullTask.owner?.name}`);
+                }
+            }
         }
 
         await this.logAction(taskId, userId, `Sync state updated to ${syncState}`);
 
         this.syncGateway.emitToTask(taskId, 'sync:update', { taskId, userId, syncState });
-
-        if (syncState === 'HELP_REQUESTED') {
-            this.syncGateway.emitToTask(taskId, 'task:help', { userId });
-        }
 
         return { success: true, syncState };
     }
@@ -172,6 +187,9 @@ export class TasksService {
 
         this.syncGateway.emitToTask(taskId, 'task:transfer', { from: currentOwnerId, to: newOwnerId });
 
+        // Notification for new owner
+        await this.notificationsService.create(newOwnerId, taskId, 'TRANSFER_INITIATED', `Responsibility for "${task.title}" has been transferred to you.`);
+
         return updatedTask;
     }
 
@@ -185,6 +203,12 @@ export class TasksService {
         await this.logAction(taskId, addedBy, `User ${userId} added as ${role}`);
 
         this.syncGateway.emitToTask(taskId, 'task:join', { userId, role });
+
+        // Notification for new participant
+        const task = await this.db.query.tasks.findFirst({ where: eq(schema.tasks.id, taskId) });
+        if (task) {
+            await this.notificationsService.create(userId, taskId, 'PARTICIPANT_ADDED', `You have been added as a ${role} to "${task.title}"`);
+        }
 
         return participant;
     }

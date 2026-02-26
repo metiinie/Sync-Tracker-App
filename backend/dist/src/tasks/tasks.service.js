@@ -52,12 +52,15 @@ const node_postgres_1 = require("drizzle-orm/node-postgres");
 const schema = __importStar(require("../db/schema"));
 const drizzle_orm_1 = require("drizzle-orm");
 const sync_gateway_1 = require("../sync/sync.gateway");
+const notifications_service_1 = require("../notifications/notifications.service");
 let TasksService = class TasksService {
     db;
     syncGateway;
-    constructor(db, syncGateway) {
+    notificationsService;
+    constructor(db, syncGateway, notificationsService) {
         this.db = db;
         this.syncGateway = syncGateway;
+        this.notificationsService = notificationsService;
     }
     async create(title, description, assignedBy, responsibleOwner, participants = [], milestones = []) {
         return await this.db.transaction(async (tx) => {
@@ -68,12 +71,16 @@ let TasksService = class TasksService {
                 responsibleOwner,
                 status: 'PENDING',
             }).returning();
+            await this.notificationsService.create(responsibleOwner, task.id, 'ASSIGNED', `You have been assigned as the responsible owner for "${title}"`);
             if (participants && participants.length > 0) {
                 await tx.insert(schema.taskParticipants).values(participants.map(p => ({
                     taskId: task.id,
                     userId: p.userId,
                     role: p.role,
                 })));
+                for (const p of participants) {
+                    await this.notificationsService.create(p.userId, task.id, 'PARTICIPANT_ADDED', `You have been added as a ${p.role} to "${title}"`);
+                }
             }
             if (milestones && milestones.length > 0) {
                 await tx.insert(schema.milestones).values(milestones.map(m => ({
@@ -156,12 +163,15 @@ let TasksService = class TasksService {
             await this.db.update(schema.tasks)
                 .set({ syncState })
                 .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId));
+            if (syncState === 'HELP_REQUESTED') {
+                const fullTask = await this.findOne(taskId);
+                if (fullTask) {
+                    await this.notificationsService.create(fullTask.assignedBy, taskId, 'HELP_REQUESTED', `Help requested on "${fullTask.title}" by ${fullTask.owner?.name}`);
+                }
+            }
         }
         await this.logAction(taskId, userId, `Sync state updated to ${syncState}`);
         this.syncGateway.emitToTask(taskId, 'sync:update', { taskId, userId, syncState });
-        if (syncState === 'HELP_REQUESTED') {
-            this.syncGateway.emitToTask(taskId, 'task:help', { userId });
-        }
         return { success: true, syncState };
     }
     async transfer(taskId, currentOwnerId, newOwnerId) {
@@ -182,6 +192,7 @@ let TasksService = class TasksService {
         await this.logAction(taskId, currentOwnerId, `Transfer initiated to ${newOwnerId}`);
         await this.logAction(taskId, newOwnerId, `Received responsibility (PENDING acceptance)`);
         this.syncGateway.emitToTask(taskId, 'task:transfer', { from: currentOwnerId, to: newOwnerId });
+        await this.notificationsService.create(newOwnerId, taskId, 'TRANSFER_INITIATED', `Responsibility for "${task.title}" has been transferred to you.`);
         return updatedTask;
     }
     async addParticipant(taskId, userId, role, addedBy) {
@@ -192,6 +203,10 @@ let TasksService = class TasksService {
         }).returning();
         await this.logAction(taskId, addedBy, `User ${userId} added as ${role}`);
         this.syncGateway.emitToTask(taskId, 'task:join', { userId, role });
+        const task = await this.db.query.tasks.findFirst({ where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId) });
+        if (task) {
+            await this.notificationsService.create(userId, taskId, 'PARTICIPANT_ADDED', `You have been added as a ${role} to "${task.title}"`);
+        }
         return participant;
     }
     async findAllForUser(userId) {
@@ -284,6 +299,7 @@ exports.TasksService = TasksService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(db_module_1.DRIZZLE)),
     __metadata("design:paramtypes", [node_postgres_1.NodePgDatabase,
-        sync_gateway_1.SyncGateway])
+        sync_gateway_1.SyncGateway,
+        notifications_service_1.NotificationsService])
 ], TasksService);
 //# sourceMappingURL=tasks.service.js.map

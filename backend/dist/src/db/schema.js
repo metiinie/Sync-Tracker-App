@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.timeLogsRelations = exports.timeLogs = exports.milestonesRelations = exports.milestones = exports.syncLogsRelations = exports.syncLogs = exports.taskParticipantsRelations = exports.taskParticipants = exports.tasksRelations = exports.tasks = exports.usersRelations = exports.users = exports.syncStateEnum = exports.taskStatusEnum = exports.userRoleEnum = void 0;
+exports.notificationsRelations = exports.notifications = exports.timeLogsRelations = exports.timeLogs = exports.milestonesRelations = exports.milestones = exports.syncLogsRelations = exports.syncLogs = exports.taskParticipantsRelations = exports.taskParticipants = exports.tasksRelations = exports.tasks = exports.usersRelations = exports.users = exports.syncStateEnum = exports.taskStatusEnum = exports.userRoleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const drizzle_orm_1 = require("drizzle-orm");
 exports.userRoleEnum = (0, pg_core_1.pgEnum)('user_role', ['contributor', 'helper', 'reviewer', 'observer']);
@@ -109,6 +109,25 @@ exports.timeLogsRelations = (0, drizzle_orm_1.relations)(exports.timeLogs, ({ on
     user: one(exports.users, {
         fields: [exports.timeLogs.userId],
         references: [exports.users.id],
+    }),
+}));
+exports.notifications = (0, pg_core_1.pgTable)('notifications', {
+    id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
+    userId: (0, pg_core_1.uuid)('user_id').references(() => exports.users.id).notNull(),
+    taskId: (0, pg_core_1.uuid)('task_id').references(() => exports.tasks.id),
+    type: (0, pg_core_1.text)('type').notNull(),
+    content: (0, pg_core_1.text)('content').notNull(),
+    isRead: (0, pg_core_1.text)('is_read').default('false').notNull(),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+});
+exports.notificationsRelations = (0, drizzle_orm_1.relations)(exports.notifications, ({ one }) => ({
+    user: one(exports.users, {
+        fields: [exports.notifications.userId],
+        references: [exports.users.id],
+    }),
+    task: one(exports.tasks, {
+        fields: [exports.notifications.taskId],
+        references: [exports.tasks.id],
     }),
 }));
 //# sourceMappingURL=schema.js.map

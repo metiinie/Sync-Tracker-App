@@ -121,3 +121,24 @@ export const timeLogsRelations = relations(timeLogs, ({ one }) => ({
         references: [users.id],
     }),
 }));
+
+export const notifications = pgTable('notifications', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id).notNull(),
+    taskId: uuid('task_id').references(() => tasks.id),
+    type: text('type').notNull(), // ASSIGNED, PARTICIPANT_ADDED, HELP_REQUESTED, TRANSFER_INITIATED, MILESTONE_COMPLETED
+    content: text('content').notNull(),
+    isRead: text('is_read').default('false').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+    user: one(users, {
+        fields: [notifications.userId],
+        references: [users.id],
+    }),
+    task: one(tasks, {
+        fields: [notifications.taskId],
+        references: [tasks.id],
+    }),
+}));

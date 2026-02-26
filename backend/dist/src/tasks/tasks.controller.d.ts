@@ -68,8 +68,8 @@ export declare class TasksController {
             description: string | null;
             taskId: string;
             userId: string;
-            timestamp: Date;
             durationMinutes: string;
+            timestamp: Date;
             user: {
                 id: string;
                 name: string;
@@ -108,8 +108,8 @@ export declare class TasksController {
             id: string;
             taskId: string;
             userId: string;
-            action: string;
             timestamp: Date;
+            action: string;
             user: {
                 id: string;
                 name: string;
@@ -139,7 +139,7 @@ export declare class TasksController {
         description: string | null;
         taskId: string;
         userId: string;
-        timestamp: Date;
         durationMinutes: string;
+        timestamp: Date;
     }>;
 }

@@ -1,10 +1,12 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { SyncGateway } from '../sync/sync.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 export declare class TasksService {
     private db;
     private syncGateway;
-    constructor(db: NodePgDatabase<typeof schema>, syncGateway: SyncGateway);
+    private notificationsService;
+    constructor(db: NodePgDatabase<typeof schema>, syncGateway: SyncGateway, notificationsService: NotificationsService);
     create(title: string, description: string, assignedBy: string, responsibleOwner: string, participants?: {
         userId: string;
         role: string;
