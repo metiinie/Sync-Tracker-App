@@ -47,75 +47,30 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
-const jwt_1 = require("@nestjs/jwt");
 const db_module_1 = require("../db/db.module");
 const node_postgres_1 = require("drizzle-orm/node-postgres");
 const schema = __importStar(require("../db/schema"));
 const drizzle_orm_1 = require("drizzle-orm");
-const bcrypt = __importStar(require("bcrypt"));
 let AuthService = class AuthService {
     db;
-    jwtService;
-    constructor(db, jwtService) {
+    constructor(db) {
         this.db = db;
-        this.jwtService = jwtService;
     }
-    async register(name, email, password) {
+    async getOrCreateUser(payload) {
+        const userId = payload.sub;
+        const email = payload.email;
+        const name = payload.user_metadata?.full_name || email;
         const existing = await this.db.query.users.findFirst({
-            where: (0, drizzle_orm_1.eq)(schema.users.email, email),
+            where: (0, drizzle_orm_1.eq)(schema.users.id, userId),
         });
         if (existing) {
-            throw new common_1.ConflictException('Email already exists');
+            return existing;
         }
-        const passwordHash = await bcrypt.hash(password, 10);
         const [user] = await this.db.insert(schema.users).values({
+            id: userId,
             name,
             email,
-            passwordHash,
         }).returning();
-        return this.login(user);
-    }
-    async login(user) {
-        const payload = { email: user.email, sub: user.id, name: user.name };
-        return {
-            access_token: this.jwtService.sign(payload),
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-            },
-        };
-    }
-    async validateUser(email, pass) {
-        const user = await this.db.query.users.findFirst({
-            where: (0, drizzle_orm_1.eq)(schema.users.email, email),
-        });
-        if (user && user.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
-            const { passwordHash, ...result } = user;
-            return result;
-        }
-        return null;
-    }
-    async validateOAuthUser(profile) {
-        const { emails, displayName, id, provider } = profile;
-        const email = emails[0].value;
-        let user = await this.db.query.users.findFirst({
-            where: (0, drizzle_orm_1.eq)(schema.users.email, email),
-        });
-        if (!user) {
-            [user] = await this.db.insert(schema.users).values({
-                name: displayName,
-                email,
-                provider,
-                providerId: id,
-            }).returning();
-        }
-        else if (!user.provider) {
-            [user] = await this.db.update(schema.users)
-                .set({ provider, providerId: id })
-                .where((0, drizzle_orm_1.eq)(schema.users.id, user.id))
-                .returning();
-        }
         return user;
     }
 };
@@ -123,7 +78,6 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(db_module_1.DRIZZLE)),
-    __metadata("design:paramtypes", [node_postgres_1.NodePgDatabase,
-        jwt_1.JwtService])
+    __metadata("design:paramtypes", [node_postgres_1.NodePgDatabase])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

@@ -10,74 +10,26 @@ import * as bcrypt from 'bcrypt';
 export class AuthService {
     constructor(
         @Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>,
-        private jwtService: JwtService,
     ) { }
 
-    async register(name: string, email: string, password: string) {
+    async getOrCreateUser(payload: any) {
+        const userId = payload.sub;
+        const email = payload.email;
+        const name = payload.user_metadata?.full_name || email;
+
         const existing = await this.db.query.users.findFirst({
-            where: eq(schema.users.email, email),
+            where: eq(schema.users.id, userId),
         });
 
         if (existing) {
-            throw new ConflictException('Email already exists');
+            return existing;
         }
 
-        const passwordHash = await bcrypt.hash(password, 10);
         const [user] = await this.db.insert(schema.users).values({
+            id: userId,
             name,
             email,
-            passwordHash,
         }).returning();
-
-        return this.login(user); // Automatically login after register
-    }
-
-    async login(user: any) {
-        const payload = { email: user.email, sub: user.id, name: user.name };
-        return {
-            access_token: this.jwtService.sign(payload),
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-            },
-        };
-    }
-
-    async validateUser(email: string, pass: string): Promise<any> {
-        const user = await this.db.query.users.findFirst({
-            where: eq(schema.users.email, email),
-        });
-
-        if (user && user.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
-            const { passwordHash, ...result } = user;
-            return result;
-        }
-        return null;
-    }
-
-    async validateOAuthUser(profile: any): Promise<any> {
-        const { emails, displayName, id, provider } = profile;
-        const email = emails[0].value;
-
-        let user = await this.db.query.users.findFirst({
-            where: eq(schema.users.email, email),
-        });
-
-        if (!user) {
-            [user] = await this.db.insert(schema.users).values({
-                name: displayName,
-                email,
-                provider,
-                providerId: id,
-            }).returning();
-        } else if (!user.provider) {
-            // Link local account to SSO if it exists
-            [user] = await this.db.update(schema.users)
-                .set({ provider, providerId: id })
-                .where(eq(schema.users.id, user.id))
-                .returning();
-        }
 
         return user;
     }

@@ -7,12 +7,9 @@ exports.userRoleEnum = (0, pg_core_1.pgEnum)('user_role', ['contributor', 'helpe
 exports.taskStatusEnum = (0, pg_core_1.pgEnum)('task_status', ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED']);
 exports.syncStateEnum = (0, pg_core_1.pgEnum)('sync_state', ['IN_SYNC', 'NEEDS_UPDATE', 'BLOCKED', 'HELP_REQUESTED']);
 exports.users = (0, pg_core_1.pgTable)('users', {
-    id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
+    id: (0, pg_core_1.uuid)('id').primaryKey(),
     name: (0, pg_core_1.text)('name').notNull(),
     email: (0, pg_core_1.text)('email').unique().notNull(),
-    passwordHash: (0, pg_core_1.text)('password_hash'),
-    provider: (0, pg_core_1.text)('provider'),
-    providerId: (0, pg_core_1.text)('provider_id'),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
 });
 exports.usersRelations = (0, drizzle_orm_1.relations)(exports.users, ({ many }) => ({

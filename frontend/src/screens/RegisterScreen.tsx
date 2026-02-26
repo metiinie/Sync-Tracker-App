@@ -5,47 +5,51 @@ import { supabase } from '../services/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-const LoginScreen = () => {
+const RegisterScreen = () => {
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const navigation = useNavigation<any>();
 
     const setSession = useAuthStore(state => state.setSession);
 
-    const handleLogin = async () => {
-        if (!email || !password) {
+    const handleRegister = async () => {
+        if (!name || !email || !password || !confirmPassword) {
             Alert.alert('Error', 'Please fill in all fields');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            Alert.alert('Error', 'Passwords do not match');
             return;
         }
 
         setLoading(true);
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    data: {
+                        full_name: name,
+                    },
+                },
             });
 
             if (error) throw error;
 
             if (data.session) {
                 setSession(data.session);
+            } else {
+                Alert.alert('Success', 'Registration successful! Please check your email for verification.');
+                navigation.navigate('Login');
             }
         } catch (error: any) {
-            Alert.alert('Login Failed', error.message || 'Something went wrong');
+            Alert.alert('Registration Failed', error.message || 'Something went wrong');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleSSO = async (provider: 'google' | 'azure') => {
-        try {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider,
-            });
-            if (error) throw error;
-        } catch (error: any) {
-            Alert.alert('SSO Failed', error.message || 'Something went wrong');
         }
     };
 
@@ -62,10 +66,25 @@ const LoginScreen = () => {
                         <Text className="text-gray-400 text-lg mt-1 font-medium italic">Visible responsibility, realtime sync</Text>
                     </View>
 
-                    <Text className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</Text>
-                    <Text className="text-gray-500 mb-8">Sign in to continue tracking your progress</Text>
+                    <Text className="text-3xl font-bold text-gray-900 mb-2">Create Account</Text>
+                    <Text className="text-gray-500 mb-8">Join us to start syncing your responsibilities</Text>
 
                     {/* Form */}
+                    <View className="mb-4">
+                        <Text className="text-gray-700 font-semibold mb-2 ml-1">Full Name</Text>
+                        <View className="flex-row items-center bg-gray-50 rounded-2xl border border-gray-100 p-1">
+                            <View className="p-3">
+                                <Ionicons name="person-outline" size={20} color="#94a3b8" />
+                            </View>
+                            <TextInput
+                                className="flex-1 p-3 text-gray-900"
+                                placeholder="John Doe"
+                                value={name}
+                                onChangeText={setName}
+                            />
+                        </View>
+                    </View>
+
                     <View className="mb-4">
                         <Text className="text-gray-700 font-semibold mb-2 ml-1">Email</Text>
                         <View className="flex-row items-center bg-gray-50 rounded-2xl border border-gray-100 p-1">
@@ -83,7 +102,7 @@ const LoginScreen = () => {
                         </View>
                     </View>
 
-                    <View className="mb-8">
+                    <View className="mb-4">
                         <Text className="text-gray-700 font-semibold mb-2 ml-1">Password</Text>
                         <View className="flex-row items-center bg-gray-50 rounded-2xl border border-gray-100 p-1">
                             <View className="p-3">
@@ -99,49 +118,40 @@ const LoginScreen = () => {
                         </View>
                     </View>
 
+                    <View className="mb-8">
+                        <Text className="text-gray-700 font-semibold mb-2 ml-1">Confirm Password</Text>
+                        <View className="flex-row items-center bg-gray-50 rounded-2xl border border-gray-100 p-1">
+                            <View className="p-3">
+                                <Ionicons name="lock-closed-outline" size={20} color="#94a3b8" />
+                            </View>
+                            <TextInput
+                                className="flex-1 p-3 text-gray-900"
+                                placeholder="••••••••"
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                secureTextEntry
+                            />
+                        </View>
+                    </View>
+
                     {/* Action Button */}
                     <TouchableOpacity
                         className={`p-5 rounded-2xl items-center shadow-xl ${loading ? 'bg-blue-400' : 'bg-blue-600'} shadow-blue-200`}
-                        onPress={handleLogin}
+                        onPress={handleRegister}
                         disabled={loading}
                     >
                         <Text className="text-white font-bold text-lg">
-                            {loading ? 'Processing...' : 'Sign In'}
+                            {loading ? 'Processing...' : 'Create Account'}
                         </Text>
                     </TouchableOpacity>
 
-                    {/* Divider */}
-                    <View className="flex-row items-center my-8">
-                        <View className="flex-1 h-[1px] bg-gray-100" />
-                        <Text className="mx-4 text-gray-400 font-medium">OR CONTINUE WITH</Text>
-                        <View className="flex-1 h-[1px] bg-gray-100" />
-                    </View>
-
-                    {/* SSO Buttons */}
-                    <View className="flex-row gap-4 mb-8">
-                        <TouchableOpacity
-                            onPress={() => handleSSO('google')}
-                            className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
-                        >
-                            <Ionicons name="logo-google" size={20} color="#ea4335" />
-                            <Text className="ml-2 font-semibold text-gray-700">Google</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleSSO('azure')}
-                            className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
-                        >
-                            <Ionicons name="logo-windows" size={20} color="#0078d4" />
-                            <Text className="ml-2 font-semibold text-gray-700">Microsoft</Text>
-                        </TouchableOpacity>
-                    </View>
-
                     {/* Toggle Mode */}
                     <TouchableOpacity
-                        className="items-center mb-8"
-                        onPress={() => navigation.navigate('Register')}
+                        className="items-center mt-8 mb-8"
+                        onPress={() => navigation.navigate('Login')}
                     >
                         <Text className="text-gray-500 font-medium">
-                            Don't have an account? <Text className="text-blue-600 font-bold">Sign Up</Text>
+                            Already have an account? <Text className="text-blue-600 font-bold">Sign In</Text>
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -150,4 +160,4 @@ const LoginScreen = () => {
     );
 };
 
-export default LoginScreen;
+export default RegisterScreen;

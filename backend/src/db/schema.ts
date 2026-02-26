@@ -6,12 +6,9 @@ export const taskStatusEnum = pgEnum('task_status', ['PENDING', 'ACTIVE', 'COMPL
 export const syncStateEnum = pgEnum('sync_state', ['IN_SYNC', 'NEEDS_UPDATE', 'BLOCKED', 'HELP_REQUESTED']);
 
 export const users = pgTable('users', {
-    id: uuid('id').primaryKey().defaultRandom(),
+    id: uuid('id').primaryKey(),
     name: text('name').notNull(),
     email: text('email').unique().notNull(),
-    passwordHash: text('password_hash'),
-    provider: text('provider'), // 'google', 'microsoft', or null for local
-    providerId: text('provider_id'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

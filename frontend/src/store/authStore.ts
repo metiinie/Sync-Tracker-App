@@ -1,32 +1,31 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Session, User } from '@supabase/supabase-js';
 
 interface AuthState {
+    session: Session | null;
+    user: User | null;
     token: string | null;
-    user: any | null;
-    setAuth: (token: string, user: any) => Promise<void>;
+    setSession: (session: Session | null) => Promise<void>;
     logout: () => Promise<void>;
-    loadAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-    token: null,
+    session: null,
     user: null,
-    setAuth: async (token, user) => {
-        await AsyncStorage.setItem('token', token);
-        await AsyncStorage.setItem('user', JSON.stringify(user));
-        set({ token, user });
+    token: null,
+    setSession: async (session) => {
+        if (session) {
+            set({
+                session,
+                user: session.user,
+                token: session.access_token
+            });
+        } else {
+            set({ session: null, user: null, token: null });
+        }
     },
     logout: async () => {
-        await AsyncStorage.removeItem('token');
-        await AsyncStorage.removeItem('user');
-        set({ token: null, user: null });
-    },
-    loadAuth: async () => {
-        const token = await AsyncStorage.getItem('token');
-        const user = await AsyncStorage.getItem('user');
-        if (token && user) {
-            set({ token, user: JSON.parse(user) });
-        }
+        set({ session: null, user: null, token: null });
     },
 }));
