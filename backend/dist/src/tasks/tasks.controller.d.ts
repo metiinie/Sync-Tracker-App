@@ -46,4 +46,100 @@ export declare class TasksController {
         lastUpdatedAt: Date;
     }>;
     findAll(req: any): Promise<any[]>;
+    findOne(id: string): Promise<{
+        id: string;
+        title: string;
+        description: string | null;
+        createdAt: Date;
+        assignedBy: string;
+        responsibleOwner: string;
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        milestones: {
+            id: string;
+            title: string;
+            createdAt: Date;
+            taskId: string;
+            isCompleted: string;
+            dueDate: Date | null;
+        }[];
+        timeLogs: {
+            id: string;
+            description: string | null;
+            taskId: string;
+            userId: string;
+            timestamp: Date;
+            durationMinutes: string;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                createdAt: Date;
+            };
+        }[];
+        assigner: {
+            id: string;
+            name: string;
+            email: string;
+            createdAt: Date;
+        };
+        owner: {
+            id: string;
+            name: string;
+            email: string;
+            createdAt: Date;
+        };
+        participants: {
+            id: string;
+            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            taskId: string;
+            userId: string;
+            role: "contributor" | "helper" | "reviewer" | "observer";
+            joinedAt: Date;
+            lastUpdatedAt: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                createdAt: Date;
+            };
+        }[];
+        logs: {
+            id: string;
+            taskId: string;
+            userId: string;
+            action: string;
+            timestamp: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                createdAt: Date;
+            };
+        }[];
+    } | undefined>;
+    addMilestone(id: string, title: string, req: any): Promise<{
+        id: string;
+        title: string;
+        createdAt: Date;
+        taskId: string;
+        isCompleted: string;
+        dueDate: Date | null;
+    }>;
+    toggleMilestone(mid: string, isCompleted: boolean, req: any): Promise<{
+        id: string;
+        taskId: string;
+        title: string;
+        isCompleted: string;
+        dueDate: Date | null;
+        createdAt: Date;
+    }>;
+    logTime(id: string, body: any, req: any): Promise<{
+        id: string;
+        description: string | null;
+        taskId: string;
+        userId: string;
+        timestamp: Date;
+        durationMinutes: string;
+    }>;
 }

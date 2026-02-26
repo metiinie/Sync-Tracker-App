@@ -12,21 +12,83 @@ export class TasksService {
         private syncGateway: SyncGateway,
     ) { }
 
-    async create(title: string, description: string, assignedBy: string, responsibleOwner: string) {
-        const [task] = await this.db.insert(schema.tasks).values({
+    async create(title: string, description: string, assignedBy: string, responsibleOwner: string, participants: { userId: string, role: string }[] = [], milestones: string[] = []) {
+        return await this.db.transaction(async (tx) => {
+            const [task] = await tx.insert(schema.tasks).values({
+                title,
+                description,
+                assignedBy,
+                responsibleOwner,
+                status: 'PENDING',
+            }).returning();
+
+            // Add additional participants if any
+            if (participants && participants.length > 0) {
+                await tx.insert(schema.taskParticipants).values(
+                    participants.map(p => ({
+                        taskId: task.id,
+                        userId: p.userId,
+                        role: p.role as any,
+                    }))
+                );
+            }
+
+            // Add milestones if any
+            if (milestones && milestones.length > 0) {
+                await tx.insert(schema.milestones).values(
+                    milestones.map(m => ({
+                        taskId: task.id,
+                        title: m,
+                    }))
+                );
+            }
+
+            // Log the creation
+            await tx.insert(schema.syncLogs).values({
+                taskId: task.id,
+                userId: assignedBy,
+                action: `Task created and assigned to ${responsibleOwner}`,
+            });
+
+            this.syncGateway.emitToTask(task.id, 'task:created', task);
+
+            return task;
+        });
+    }
+
+    async addMilestone(taskId: string, title: string, userId: string) {
+        const [milestone] = await this.db.insert(schema.milestones).values({
+            taskId,
             title,
-            description,
-            assignedBy,
-            responsibleOwner,
-            status: 'PENDING',
         }).returning();
 
-        // Log the creation
-        await this.logAction(task.id, assignedBy, `Task created and assigned to ${responsibleOwner}`);
+        await this.logAction(taskId, userId, `Milestone added: ${title}`);
+        this.syncGateway.emitToTask(taskId, 'milestone:created', milestone);
+        return milestone;
+    }
 
-        this.syncGateway.emitToTask(task.id, 'task:created', task);
+    async toggleMilestone(milestoneId: string, isCompleted: boolean, userId: string) {
+        const [milestone] = await this.db.update(schema.milestones)
+            .set({ isCompleted: isCompleted ? 'true' : 'false' })
+            .where(eq(schema.milestones.id, milestoneId))
+            .returning();
 
-        return task;
+        await this.logAction(milestone.taskId, userId, `Milestone ${milestone.title} marked as ${isCompleted ? 'completed' : 'incomplete'}`);
+        this.syncGateway.emitToTask(milestone.taskId, 'milestone:updated', milestone);
+        return milestone;
+    }
+
+    async logTime(taskId: string, userId: string, durationMinutes: string, description: string) {
+        const [log] = await this.db.insert(schema.timeLogs).values({
+            taskId,
+            userId,
+            durationMinutes,
+            description,
+        }).returning();
+
+        await this.logAction(taskId, userId, `Logged ${durationMinutes} mins: ${description}`);
+        this.syncGateway.emitToTask(taskId, 'timelog:created', log);
+        return log;
     }
 
     async accept(taskId: string, userId: string) {
@@ -140,7 +202,14 @@ export class TasksService {
                     with: {
                         user: true
                     }
-                }
+                },
+                milestones: true,
+                timeLogs: {
+                    with: {
+                        user: true
+                    }
+                },
+                logs: true,
             }
         });
 
@@ -155,7 +224,14 @@ export class TasksService {
                             with: {
                                 user: true
                             }
-                        }
+                        },
+                        milestones: true,
+                        timeLogs: {
+                            with: {
+                                user: true
+                            }
+                        },
+                        logs: true,
                     }
                 }
             }
@@ -171,6 +247,32 @@ export class TasksService {
         });
 
         return Array.from(taskMap.values());
+    }
+
+    async findOne(taskId: string) {
+        return this.db.query.tasks.findFirst({
+            where: eq(schema.tasks.id, taskId),
+            with: {
+                assigner: true,
+                owner: true,
+                participants: {
+                    with: {
+                        user: true
+                    }
+                },
+                milestones: true,
+                timeLogs: {
+                    with: {
+                        user: true
+                    }
+                },
+                logs: {
+                    with: {
+                        user: true
+                    }
+                },
+            }
+        });
     }
 
     private async logAction(taskId: string, userId: string, action: string) {

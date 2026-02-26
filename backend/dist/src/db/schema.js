@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncLogsRelations = exports.syncLogs = exports.taskParticipantsRelations = exports.taskParticipants = exports.tasksRelations = exports.tasks = exports.usersRelations = exports.users = exports.syncStateEnum = exports.taskStatusEnum = exports.userRoleEnum = void 0;
+exports.timeLogsRelations = exports.timeLogs = exports.milestonesRelations = exports.milestones = exports.syncLogsRelations = exports.syncLogs = exports.taskParticipantsRelations = exports.taskParticipants = exports.tasksRelations = exports.tasks = exports.usersRelations = exports.users = exports.syncStateEnum = exports.taskStatusEnum = exports.userRoleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 const drizzle_orm_1 = require("drizzle-orm");
 exports.userRoleEnum = (0, pg_core_1.pgEnum)('user_role', ['contributor', 'helper', 'reviewer', 'observer']);
@@ -40,6 +40,8 @@ exports.tasksRelations = (0, drizzle_orm_1.relations)(exports.tasks, ({ one, man
     }),
     participants: many(exports.taskParticipants),
     logs: many(exports.syncLogs),
+    milestones: many(exports.milestones),
+    timeLogs: many(exports.timeLogs),
 }));
 exports.taskParticipants = (0, pg_core_1.pgTable)('task_participants', {
     id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
@@ -74,6 +76,38 @@ exports.syncLogsRelations = (0, drizzle_orm_1.relations)(exports.syncLogs, ({ on
     }),
     user: one(exports.users, {
         fields: [exports.syncLogs.userId],
+        references: [exports.users.id],
+    }),
+}));
+exports.milestones = (0, pg_core_1.pgTable)('milestones', {
+    id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
+    taskId: (0, pg_core_1.uuid)('task_id').references(() => exports.tasks.id).notNull(),
+    title: (0, pg_core_1.text)('title').notNull(),
+    isCompleted: (0, pg_core_1.text)('is_completed').default('false').notNull(),
+    dueDate: (0, pg_core_1.timestamp)('due_date'),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
+});
+exports.milestonesRelations = (0, drizzle_orm_1.relations)(exports.milestones, ({ one }) => ({
+    task: one(exports.tasks, {
+        fields: [exports.milestones.taskId],
+        references: [exports.tasks.id],
+    }),
+}));
+exports.timeLogs = (0, pg_core_1.pgTable)('time_logs', {
+    id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
+    taskId: (0, pg_core_1.uuid)('task_id').references(() => exports.tasks.id).notNull(),
+    userId: (0, pg_core_1.uuid)('user_id').references(() => exports.users.id).notNull(),
+    durationMinutes: (0, pg_core_1.text)('duration_minutes').notNull(),
+    description: (0, pg_core_1.text)('description'),
+    timestamp: (0, pg_core_1.timestamp)('timestamp').defaultNow().notNull(),
+});
+exports.timeLogsRelations = (0, drizzle_orm_1.relations)(exports.timeLogs, ({ one }) => ({
+    task: one(exports.tasks, {
+        fields: [exports.timeLogs.taskId],
+        references: [exports.tasks.id],
+    }),
+    user: one(exports.users, {
+        fields: [exports.timeLogs.userId],
         references: [exports.users.id],
     }),
 }));

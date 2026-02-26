@@ -15,6 +15,7 @@ const db_module_1 = require("./db/db.module");
 const auth_module_1 = require("./auth/auth.module");
 const tasks_module_1 = require("./tasks/tasks.module");
 const sync_module_1 = require("./sync/sync.module");
+const users_module_1 = require("./users/users.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -27,6 +28,7 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             tasks_module_1.TasksModule,
             sync_module_1.SyncModule,
+            users_module_1.UsersModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [],

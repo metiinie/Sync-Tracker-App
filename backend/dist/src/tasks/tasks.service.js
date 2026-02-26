@@ -59,17 +59,65 @@ let TasksService = class TasksService {
         this.db = db;
         this.syncGateway = syncGateway;
     }
-    async create(title, description, assignedBy, responsibleOwner) {
-        const [task] = await this.db.insert(schema.tasks).values({
+    async create(title, description, assignedBy, responsibleOwner, participants = [], milestones = []) {
+        return await this.db.transaction(async (tx) => {
+            const [task] = await tx.insert(schema.tasks).values({
+                title,
+                description,
+                assignedBy,
+                responsibleOwner,
+                status: 'PENDING',
+            }).returning();
+            if (participants && participants.length > 0) {
+                await tx.insert(schema.taskParticipants).values(participants.map(p => ({
+                    taskId: task.id,
+                    userId: p.userId,
+                    role: p.role,
+                })));
+            }
+            if (milestones && milestones.length > 0) {
+                await tx.insert(schema.milestones).values(milestones.map(m => ({
+                    taskId: task.id,
+                    title: m,
+                })));
+            }
+            await tx.insert(schema.syncLogs).values({
+                taskId: task.id,
+                userId: assignedBy,
+                action: `Task created and assigned to ${responsibleOwner}`,
+            });
+            this.syncGateway.emitToTask(task.id, 'task:created', task);
+            return task;
+        });
+    }
+    async addMilestone(taskId, title, userId) {
+        const [milestone] = await this.db.insert(schema.milestones).values({
+            taskId,
             title,
-            description,
-            assignedBy,
-            responsibleOwner,
-            status: 'PENDING',
         }).returning();
-        await this.logAction(task.id, assignedBy, `Task created and assigned to ${responsibleOwner}`);
-        this.syncGateway.emitToTask(task.id, 'task:created', task);
-        return task;
+        await this.logAction(taskId, userId, `Milestone added: ${title}`);
+        this.syncGateway.emitToTask(taskId, 'milestone:created', milestone);
+        return milestone;
+    }
+    async toggleMilestone(milestoneId, isCompleted, userId) {
+        const [milestone] = await this.db.update(schema.milestones)
+            .set({ isCompleted: isCompleted ? 'true' : 'false' })
+            .where((0, drizzle_orm_1.eq)(schema.milestones.id, milestoneId))
+            .returning();
+        await this.logAction(milestone.taskId, userId, `Milestone ${milestone.title} marked as ${isCompleted ? 'completed' : 'incomplete'}`);
+        this.syncGateway.emitToTask(milestone.taskId, 'milestone:updated', milestone);
+        return milestone;
+    }
+    async logTime(taskId, userId, durationMinutes, description) {
+        const [log] = await this.db.insert(schema.timeLogs).values({
+            taskId,
+            userId,
+            durationMinutes,
+            description,
+        }).returning();
+        await this.logAction(taskId, userId, `Logged ${durationMinutes} mins: ${description}`);
+        this.syncGateway.emitToTask(taskId, 'timelog:created', log);
+        return log;
     }
     async accept(taskId, userId) {
         const task = await this.db.query.tasks.findFirst({
@@ -156,7 +204,14 @@ let TasksService = class TasksService {
                     with: {
                         user: true
                     }
-                }
+                },
+                milestones: true,
+                timeLogs: {
+                    with: {
+                        user: true
+                    }
+                },
+                logs: true,
             }
         });
         const participatedTasks = await this.db.query.taskParticipants.findMany({
@@ -170,7 +225,14 @@ let TasksService = class TasksService {
                             with: {
                                 user: true
                             }
-                        }
+                        },
+                        milestones: true,
+                        timeLogs: {
+                            with: {
+                                user: true
+                            }
+                        },
+                        logs: true,
                     }
                 }
             }
@@ -183,6 +245,31 @@ let TasksService = class TasksService {
             }
         });
         return Array.from(taskMap.values());
+    }
+    async findOne(taskId) {
+        return this.db.query.tasks.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
+            with: {
+                assigner: true,
+                owner: true,
+                participants: {
+                    with: {
+                        user: true
+                    }
+                },
+                milestones: true,
+                timeLogs: {
+                    with: {
+                        user: true
+                    }
+                },
+                logs: {
+                    with: {
+                        user: true
+                    }
+                },
+            }
+        });
     }
     async logAction(taskId, userId, action) {
         await this.db.insert(schema.syncLogs).values({

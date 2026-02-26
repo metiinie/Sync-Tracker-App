@@ -42,6 +42,8 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     }),
     participants: many(taskParticipants),
     logs: many(syncLogs),
+    milestones: many(milestones),
+    timeLogs: many(timeLogs),
 }));
 
 export const taskParticipants = pgTable('task_participants', {
@@ -80,6 +82,42 @@ export const syncLogsRelations = relations(syncLogs, ({ one }) => ({
     }),
     user: one(users, {
         fields: [syncLogs.userId],
+        references: [users.id],
+    }),
+}));
+
+export const milestones = pgTable('milestones', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    taskId: uuid('task_id').references(() => tasks.id).notNull(),
+    title: text('title').notNull(),
+    isCompleted: text('is_completed').default('false').notNull(),
+    dueDate: timestamp('due_date'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const milestonesRelations = relations(milestones, ({ one }) => ({
+    task: one(tasks, {
+        fields: [milestones.taskId],
+        references: [tasks.id],
+    }),
+}));
+
+export const timeLogs = pgTable('time_logs', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    taskId: uuid('task_id').references(() => tasks.id).notNull(),
+    userId: uuid('user_id').references(() => users.id).notNull(),
+    durationMinutes: text('duration_minutes').notNull(),
+    description: text('description'),
+    timestamp: timestamp('timestamp').defaultNow().notNull(),
+});
+
+export const timeLogsRelations = relations(timeLogs, ({ one }) => ({
+    task: one(tasks, {
+        fields: [timeLogs.taskId],
+        references: [tasks.id],
+    }),
+    user: one(users, {
+        fields: [timeLogs.userId],
         references: [users.id],
     }),
 }));

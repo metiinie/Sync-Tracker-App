@@ -5,7 +5,10 @@ export declare class TasksService {
     private db;
     private syncGateway;
     constructor(db: NodePgDatabase<typeof schema>, syncGateway: SyncGateway);
-    create(title: string, description: string, assignedBy: string, responsibleOwner: string): Promise<{
+    create(title: string, description: string, assignedBy: string, responsibleOwner: string, participants?: {
+        userId: string;
+        role: string;
+    }[], milestones?: string[]): Promise<{
         id: string;
         title: string;
         description: string | null;
@@ -14,6 +17,30 @@ export declare class TasksService {
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+    }>;
+    addMilestone(taskId: string, title: string, userId: string): Promise<{
+        id: string;
+        title: string;
+        createdAt: Date;
+        taskId: string;
+        isCompleted: string;
+        dueDate: Date | null;
+    }>;
+    toggleMilestone(milestoneId: string, isCompleted: boolean, userId: string): Promise<{
+        id: string;
+        taskId: string;
+        title: string;
+        isCompleted: string;
+        dueDate: Date | null;
+        createdAt: Date;
+    }>;
+    logTime(taskId: string, userId: string, durationMinutes: string, description: string): Promise<{
+        id: string;
+        description: string | null;
+        taskId: string;
+        userId: string;
+        durationMinutes: string;
+        timestamp: Date;
     }>;
     accept(taskId: string, userId: string): Promise<{
         id: string;
@@ -49,5 +76,77 @@ export declare class TasksService {
         lastUpdatedAt: Date;
     }>;
     findAllForUser(userId: string): Promise<any[]>;
+    findOne(taskId: string): Promise<{
+        id: string;
+        title: string;
+        description: string | null;
+        createdAt: Date;
+        assignedBy: string;
+        responsibleOwner: string;
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        milestones: {
+            id: string;
+            title: string;
+            createdAt: Date;
+            taskId: string;
+            isCompleted: string;
+            dueDate: Date | null;
+        }[];
+        timeLogs: {
+            id: string;
+            description: string | null;
+            taskId: string;
+            userId: string;
+            durationMinutes: string;
+            timestamp: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                createdAt: Date;
+            };
+        }[];
+        assigner: {
+            id: string;
+            name: string;
+            email: string;
+            createdAt: Date;
+        };
+        owner: {
+            id: string;
+            name: string;
+            email: string;
+            createdAt: Date;
+        };
+        participants: {
+            id: string;
+            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            taskId: string;
+            userId: string;
+            role: "contributor" | "helper" | "reviewer" | "observer";
+            joinedAt: Date;
+            lastUpdatedAt: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                createdAt: Date;
+            };
+        }[];
+        logs: {
+            id: string;
+            taskId: string;
+            userId: string;
+            timestamp: Date;
+            action: string;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                createdAt: Date;
+            };
+        }[];
+    } | undefined>;
     private logAction;
 }

@@ -22,7 +22,7 @@ let TasksController = class TasksController {
         this.tasksService = tasksService;
     }
     async create(body, req) {
-        return this.tasksService.create(body.title, body.description, req.user.userId, body.responsibleOwner);
+        return this.tasksService.create(body.title, body.description, req.user.userId, body.responsibleOwner, body.participants, body.milestones);
     }
     async accept(id, req) {
         return this.tasksService.accept(id, req.user.userId);
@@ -38,6 +38,18 @@ let TasksController = class TasksController {
     }
     async findAll(req) {
         return this.tasksService.findAllForUser(req.user.userId);
+    }
+    async findOne(id) {
+        return this.tasksService.findOne(id);
+    }
+    async addMilestone(id, title, req) {
+        return this.tasksService.addMilestone(id, title, req.user.userId);
+    }
+    async toggleMilestone(mid, isCompleted, req) {
+        return this.tasksService.toggleMilestone(mid, isCompleted, req.user.userId);
+    }
+    async logTime(id, body, req) {
+        return this.tasksService.logTime(id, req.user.userId, body.durationMinutes, body.description);
     }
 };
 exports.TasksController = TasksController;
@@ -91,6 +103,40 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Post)(':id/milestones'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('title')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "addMilestone", null);
+__decorate([
+    (0, common_1.Patch)('milestones/:mid/toggle'),
+    __param(0, (0, common_1.Param)('mid')),
+    __param(1, (0, common_1.Body)('isCompleted')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Boolean, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "toggleMilestone", null);
+__decorate([
+    (0, common_1.Post)(':id/time-logs'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "logTime", null);
 exports.TasksController = TasksController = __decorate([
     (0, common_1.Controller)('tasks'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

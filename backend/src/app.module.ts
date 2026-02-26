@@ -6,6 +6,7 @@ import { DbModule } from './db/db.module';
 import { AuthModule } from './auth/auth.module';
 import { TasksModule } from './tasks/tasks.module';
 import { SyncModule } from './sync/sync.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { SyncModule } from './sync/sync.module';
     AuthModule,
     TasksModule,
     SyncModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [],

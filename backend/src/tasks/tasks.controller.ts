@@ -9,7 +9,14 @@ export class TasksController {
 
     @Post()
     async create(@Body() body: any, @Request() req: any) {
-        return this.tasksService.create(body.title, body.description, req.user.userId, body.responsibleOwner);
+        return this.tasksService.create(
+            body.title,
+            body.description,
+            req.user.userId,
+            body.responsibleOwner,
+            body.participants,
+            body.milestones
+        );
     }
 
     @Patch(':id/accept')
@@ -35,5 +42,25 @@ export class TasksController {
     @Get()
     async findAll(@Request() req: any) {
         return this.tasksService.findAllForUser(req.user.userId);
+    }
+
+    @Get(':id')
+    async findOne(@Param('id') id: string) {
+        return this.tasksService.findOne(id);
+    }
+
+    @Post(':id/milestones')
+    async addMilestone(@Param('id') id: string, @Body('title') title: string, @Request() req: any) {
+        return this.tasksService.addMilestone(id, title, req.user.userId);
+    }
+
+    @Patch('milestones/:mid/toggle')
+    async toggleMilestone(@Param('mid') mid: string, @Body('isCompleted') isCompleted: boolean, @Request() req: any) {
+        return this.tasksService.toggleMilestone(mid, isCompleted, req.user.userId);
+    }
+
+    @Post(':id/time-logs')
+    async logTime(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+        return this.tasksService.logTime(id, req.user.userId, body.durationMinutes, body.description);
     }
 }
