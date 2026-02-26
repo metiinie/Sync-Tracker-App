@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
-import { LayoutGrid, CheckSquare, Bell, User } from 'lucide-react-native';
+import { LayoutGrid, CheckSquare, Bell, User, Users } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +36,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                     switch (route.name) {
                         case 'Dashboard': return <LayoutGrid size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
                         case 'Tasks': return <CheckSquare size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
+                        case 'Users': return <Users size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
                         case 'Notifications': return <Bell size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
                         case 'Profile': return <User size={size} color={color} strokeWidth={isFocused ? 2.5 : 2} />;
                         default: return null;

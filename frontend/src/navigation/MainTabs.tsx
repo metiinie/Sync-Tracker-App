@@ -6,6 +6,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AdminDashboard from '../screens/AdminDashboard';
 import AdminTasksScreen from '../screens/AdminTasksScreen';
+import AdminUsersScreen from '../screens/AdminUsersScreen';
 import CustomTabBar from '../components/CustomTabBar';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
@@ -38,6 +39,7 @@ const MainTabs = () => {
                 <>
                     <Tab.Screen name="Admin" component={AdminDashboard} />
                     <Tab.Screen name="All Tasks" component={AdminTasksScreen} />
+                    <Tab.Screen name="Users" component={AdminUsersScreen} />
                 </>
             )}
             <Tab.Screen name="Dashboard" component={HomeScreen} />
