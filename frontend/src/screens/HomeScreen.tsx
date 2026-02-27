@@ -9,15 +9,35 @@ import { Play, UserCheck, AlertOctagon, CheckCircle2, ChevronDown, Check, AlertC
 
 const HomeScreen = ({ navigation }: any) => {
     const [tasks, setTasks] = useState<any[]>([]);
+    const [stats, setStats] = useState<any>(null);
     const [refreshing, setRefreshing] = useState(false);
     const user = useAuthStore(state => state.user);
 
     const fetchTasks = async () => {
         try {
-            const response = await api.get('/tasks');
-            setTasks(response.data);
+            const [tasksRes, statsRes] = await Promise.all([
+                api.get('/tasks'),
+                api.get('/tasks/stats')
+            ]);
+            setTasks(tasksRes.data);
+            setStats(statsRes.data);
         } catch (error) {
-            console.error('Error fetching tasks:', error);
+            console.error('Error fetching dashboard data:', error);
+        }
+    };
+
+    const handleQuickAction = async (syncState: string) => {
+        // Find tasks where current user is responsible
+        const myTasks = tasks.filter(t => t.responsibleOwner === user?.id);
+        if (myTasks.length === 0) return;
+
+        try {
+            await Promise.all(myTasks.map(t =>
+                api.patch(`/tasks/${t.id}/sync`, { syncState })
+            ));
+            await fetchTasks();
+        } catch (error) {
+            console.error('Error applying quick action:', error);
         }
     };
 
@@ -35,33 +55,26 @@ const HomeScreen = ({ navigation }: any) => {
             setTasks(prevTasks => prevTasks.map(t =>
                 t.id === data.taskId ? { ...t, syncState: data.syncState } : t
             ));
-        });
-
-        tasks.forEach(t => {
-            socket.emit('joinTask', { taskId: t.id });
+            // Also refresh stats when sync updates
+            api.get('/tasks/stats').then(res => setStats(res.data)).catch(() => { });
         });
 
         return () => {
             socket.off('sync:update');
         };
-    }, [tasks.length]);
+    }, []);
 
     const dashboard = useMemo(() => {
         const userId = user?.id;
-        if (!userId) return null;
+        if (!userId || !tasks) return null;
 
         const myResponsibility = tasks.filter(t => t.responsibleOwner === userId);
-        const delegated = tasks.filter(t => t.assignedBy === userId && t.responsibleOwner !== userId);
 
-        // Critical Stats
-        const stats = {
-            responsible: myResponsibility.length,
-            assigned: delegated.length,
-            blocked: tasks.filter(t => (t.responsibleOwner === userId || t.assignedBy === userId) && t.syncState === 'BLOCKED').length
+        return {
+            myTasks: myResponsibility,
+            stats: stats || { responsible: 0, delegated: 0, blocked: 0 }
         };
-
-        return { myTasks: myResponsibility, stats };
-    }, [tasks, user]);
+    }, [tasks, user, stats]);
 
     if (!dashboard) return null;
 
@@ -106,7 +119,9 @@ const HomeScreen = ({ navigation }: any) => {
                 {/* Greeting */}
                 <View className="px-6 mb-6">
                     <Text className="text-gray-500 text-sm font-medium">Good morning,</Text>
-                    <Text className="text-xl font-bold text-gray-900">{user?.email?.split('@')[0] || 'User'}</Text>
+                    <Text className="text-xl font-bold text-gray-900">
+                        {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
+                    </Text>
                 </View>
 
                 {/* OVERVIEW STATS */}
@@ -122,8 +137,8 @@ const HomeScreen = ({ navigation }: any) => {
                             <View className="w-8 h-8 rounded-xl bg-blue-50 items-center justify-center mb-4">
                                 <Briefcase size={16} color="#3b82f6" />
                             </View>
-                            <Text className="text-2xl font-black text-gray-900 mb-1">{dashboard.stats.responsible}</Text>
-                            <Text className="text-xs text-gray-500 font-medium">Responsible For</Text>
+                            <Text className="text-2xl font-black text-gray-900 mb-1">{dashboard.stats.active + dashboard.stats.pending}</Text>
+                            <Text className="text-xs text-gray-500 font-medium">My Tasks</Text>
                         </View>
 
                         {/* Assigned By Me Stat Card */}
@@ -131,8 +146,8 @@ const HomeScreen = ({ navigation }: any) => {
                             <View className="w-8 h-8 rounded-xl bg-purple-50 items-center justify-center mb-4">
                                 <Play size={16} color="#a855f7" />
                             </View>
-                            <Text className="text-2xl font-black text-gray-900 mb-1">{dashboard.stats.assigned}</Text>
-                            <Text className="text-xs text-gray-500 font-medium">Assigned By Me</Text>
+                            <Text className="text-2xl font-black text-gray-900 mb-1">{dashboard.stats.delegated}</Text>
+                            <Text className="text-xs text-gray-500 font-medium">Delegated</Text>
                         </View>
 
                         {/* Blocked Stat Card */}
@@ -152,21 +167,33 @@ const HomeScreen = ({ navigation }: any) => {
                     <Text className="text-xs text-gray-500 mb-4">Update status for selected tasks</Text>
 
                     <View className="flex-row justify-between mb-3">
-                        <TouchableOpacity className="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl py-4 items-center mr-3">
+                        <TouchableOpacity
+                            onPress={() => handleQuickAction('IN_SYNC')}
+                            className="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl py-4 items-center mr-3"
+                        >
                             <CheckCircle2 size={24} color="#10b981" className="mb-2" />
                             <Text className="text-sm font-bold text-gray-700">Mark In Sync</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity className="flex-1 bg-blue-50 border border-blue-100 shadow-sm rounded-2xl py-4 items-center">
+                        <TouchableOpacity
+                            onPress={() => handleQuickAction('NEEDS_UPDATE')}
+                            className="flex-1 bg-blue-50 border border-blue-100 shadow-sm rounded-2xl py-4 items-center"
+                        >
                             <Clock size={24} color="#eab308" className="mb-2" />
                             <Text className="text-sm font-bold text-yellow-700">Needs Update</Text>
                         </TouchableOpacity>
                     </View>
                     <View className="flex-row justify-between">
-                        <TouchableOpacity className="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl py-4 items-center mr-3">
+                        <TouchableOpacity
+                            onPress={() => handleQuickAction('BLOCKED')}
+                            className="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl py-4 items-center mr-3"
+                        >
                             <AlertOctagon size={24} color="#ef4444" className="mb-2" />
                             <Text className="text-sm font-bold text-red-600">Blocked</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity className="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl py-4 items-center">
+                        <TouchableOpacity
+                            onPress={() => handleQuickAction('HELP_REQUESTED')}
+                            className="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl py-4 items-center"
+                        >
                             <HelpCircle size={24} color="#3b82f6" className="mb-2" />
                             <Text className="text-sm font-bold text-blue-600">Request Help</Text>
                         </TouchableOpacity>
