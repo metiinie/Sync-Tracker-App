@@ -336,7 +336,7 @@ export class AdminService {
     }
 
     async getGlobalAuditLogs(filters: { userId?: string; taskId?: string; action?: string; limit?: number }) {
-        const conditions = [];
+        const conditions: any[] = [];
         if (filters.userId) conditions.push(eq(schema.syncLogs.userId, filters.userId));
         if (filters.taskId) conditions.push(eq(schema.syncLogs.taskId, filters.taskId));
         if (filters.action) conditions.push(ilike(schema.syncLogs.action, `%${filters.action}%`));

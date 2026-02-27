@@ -19,9 +19,9 @@ export declare class AdminService {
         search?: string;
     }): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -113,9 +113,9 @@ export declare class AdminService {
     getUserDetails(userId: string): Promise<{
         tasksAsOwner: {
             id: string;
-            title: string;
-            description: string | null;
             createdAt: Date;
+            description: string | null;
+            title: string;
             assignedBy: string;
             responsibleOwner: string;
             status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -132,9 +132,9 @@ export declare class AdminService {
             joinedAt: Date;
             task: {
                 id: string;
-                title: string;
-                description: string | null;
                 createdAt: Date;
+                description: string | null;
+                title: string;
                 assignedBy: string;
                 responsibleOwner: string;
                 status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -182,9 +182,9 @@ export declare class AdminService {
     }>;
     getHighRiskTasks(): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -209,9 +209,9 @@ export declare class AdminService {
     }[]>;
     getTransferAlerts(): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -240,17 +240,6 @@ export declare class AdminService {
         userId: string;
         action: string;
         timestamp: Date;
-        task: {
-            id: string;
-            title: string;
-            description: string | null;
-            createdAt: Date;
-            assignedBy: string;
-            responsibleOwner: string;
-            status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
-            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
-            lastUpdatedAt: Date;
-        } | null;
         user: {
             id: string;
             name: string;
@@ -259,6 +248,17 @@ export declare class AdminService {
             isSuspended: boolean;
             createdAt: Date;
         };
+        task: {
+            id: string;
+            createdAt: Date;
+            description: string | null;
+            title: string;
+            assignedBy: string;
+            responsibleOwner: string;
+            status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            lastUpdatedAt: Date;
+        } | null;
     }[]>;
     getSettings(): Promise<{
         id: string;
@@ -285,13 +285,13 @@ export declare class AdminService {
         userId: string;
         action: string;
         timestamp: Date;
-        task: {
-            title: string;
-        } | null;
         user: {
             name: string;
             email: string;
         };
+        task: {
+            title: string;
+        } | null;
     }[]>;
     getSystemSnapshot(): Promise<{
         totalUsers: number;
