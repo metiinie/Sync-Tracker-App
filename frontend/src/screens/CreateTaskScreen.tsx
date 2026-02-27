@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Plus, X, User, Users, Flag, Trash2, CheckCircle2 } from 'lucide-react-native';
-import axios from 'axios';
+import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 const CreateTaskScreen = ({ navigation }: any) => {
     const { token } = useAuthStore();
@@ -23,9 +21,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const res = await axios.get(`${API_URL}/users`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const res = await api.get('/users');
                 setAllUsers(res.data);
             } catch (err) {
                 console.error('Failed to fetch users', err);
@@ -66,14 +62,12 @@ const CreateTaskScreen = ({ navigation }: any) => {
         }
 
         try {
-            await axios.post(`${API_URL}/tasks`, {
+            await api.post('/tasks', {
                 title,
                 description,
                 responsibleOwner: responsibleOwnerId,
                 participants,
                 milestones,
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
             });
             Alert.alert('Success', 'Responsibility assigned. Awaiting acceptance.');
             navigation.goBack();

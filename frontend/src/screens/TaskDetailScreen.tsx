@@ -4,11 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Layout, Share2, Info, GitBranch, Share, List, Clock, CheckCircle2, AlertCircle, HelpCircle, Plus, User, Users, Flag as FlagIcon, Shield, Slash, Unlock, Trash2, XCircle } from 'lucide-react-native';
 import { Modal } from 'react-native';
 import Svg, { Circle, Line, Text as SvgText, G } from 'react-native-svg';
-import axios from 'axios';
+import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const TaskDetailScreen = ({ route, navigation }: any) => {
@@ -21,9 +19,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
     const fetchTask = async () => {
         try {
-            const response = await axios.get(`${API_URL} /tasks/${taskId} `, {
-                headers: { Authorization: `Bearer ${token} ` }
-            });
+            const response = await api.get(`/tasks/${taskId}`);
             setTask(response.data);
         } catch (error) {
             console.error('Error fetching task details:', error);
@@ -63,9 +59,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const handleToggleMilestone = async (mid: string, current: string) => {
         try {
             const next = current === 'true' ? false : true;
-            await axios.patch(`${API_URL} /tasks/milestones / ${mid}/toggle`,
-                { isCompleted: next },
-                { headers: { Authorization: `Bearer ${token}` } }
+            await api.patch(`/tasks/milestones/${mid}/toggle`,
+                { isCompleted: next }
             );
         } catch (err) {
             Alert.alert('Error', 'Failed to update milestone');
@@ -75,10 +70,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const handleLogTime = async () => {
         if (!newTimeLog.duration) return;
         try {
-            await axios.post(`${API_URL}/tasks/${taskId}/time-logs`, {
+            await api.post(`/tasks/${taskId}/time-logs`, {
                 durationMinutes: newTimeLog.duration,
                 description: newTimeLog.description,
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            });
             setNewTimeLog({ duration: '', description: '' });
             fetchTask(); // Refresh to get logs
         } catch (err) {
@@ -88,9 +83,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
     const updateSyncState = async (state: string) => {
         try {
-            await axios.patch(`${API_URL}/tasks/${taskId}/sync`,
-                { syncState: state },
-                { headers: { Authorization: `Bearer ${token}` } }
+            await api.patch(`/tasks/${taskId}/sync`,
+                { syncState: state }
             );
         } catch (err) {
             Alert.alert('Error', 'Failed to update sync state');
@@ -191,9 +185,7 @@ const OverviewTab = ({ task, user, updateSyncState, handleToggleMilestone, newTi
 
     const handleAdminAction = async (endpoint: string, reason: string) => {
         try {
-            await axios.post(`${API_URL}/admin/tasks/${task.id}/${endpoint}`, { reason }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await api.post(`/admin/tasks/${task.id}/${endpoint}`, { reason });
             setActionConfig(null);
             fetchTask();
         } catch (err) {
@@ -363,9 +355,8 @@ const TreeViewTab = ({ task, fetchTask }: any) => {
 
     const handleRemoveParticipant = async (reason: string) => {
         try {
-            await axios.delete(`${API_URL}/admin/tasks/${task.id}/participants/${removeUser.id}`, {
-                data: { reason },
-                headers: { Authorization: `Bearer ${token}` }
+            await api.delete(`/admin/tasks/${task.id}/participants/${removeUser.id}`, {
+                data: { reason }
             });
             setRemoveUser(null);
             fetchTask();

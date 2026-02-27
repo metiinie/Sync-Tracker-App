@@ -2,12 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
-import { Search, Plus, Filter, CheckCircle2, AlertCircle, Clock, UserCheck, Users } from 'lucide-react-native';
+import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import TaskItem from '../components/TaskItem';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+import { Search, Plus, Filter, CheckCircle2, AlertCircle, Clock, UserCheck, Users } from 'lucide-react-native';
 
 const Filters = [
     { id: 'all', label: 'All', icon: Filter },
@@ -25,9 +22,7 @@ const TasksScreen = ({ navigation }: any) => {
     const { data: tasks = [], isLoading, refetch } = useQuery({
         queryKey: ['tasks'],
         queryFn: async () => {
-            const res = await axios.get(`${API_URL}/tasks`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get('/tasks');
             return res.data;
         },
         enabled: !!token,

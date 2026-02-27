@@ -2,11 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, CheckCircle2, UserPlus, AlertTriangle, ArrowRightLeft, Flag, Circle, Filter } from 'lucide-react-native';
-import axios from 'axios';
+import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 const NotificationsScreen = ({ navigation }: any) => {
     const { token } = useAuthStore();
@@ -17,9 +15,7 @@ const NotificationsScreen = ({ navigation }: any) => {
 
     const fetchNotifications = async () => {
         try {
-            const res = await axios.get(`${API_URL}/notifications`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get('/notifications');
             setNotifications(res.data);
         } catch (err) {
             console.error('Failed to fetch notifications', err);
@@ -49,9 +45,7 @@ const NotificationsScreen = ({ navigation }: any) => {
 
     const markAsRead = async (id: string, taskId: string | null) => {
         try {
-            await axios.patch(`${API_URL}/notifications/${id}/read`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await api.patch(`/notifications/${id}/read`, {});
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: 'true' } : n));
 
             if (taskId) {

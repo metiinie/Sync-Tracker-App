@@ -4,9 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../services/supabase';
 import { User, LogOut, Shield, AlertCircle, Clock, CheckCircle2, Flag, Settings as SettingsIcon } from 'lucide-react-native';
-import axios from 'axios';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+import api from '../services/api';
 
 const ProfileScreen = () => {
     const { user, token, setSession } = useAuthStore();
@@ -16,9 +14,7 @@ const ProfileScreen = () => {
 
     const fetchStats = async () => {
         try {
-            const res = await axios.get(`${API_URL}/users/stats`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get('/users/stats');
             setStats(res.data);
         } catch (err) {
             console.error('Failed to fetch stats', err);
