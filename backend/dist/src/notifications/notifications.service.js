@@ -65,7 +65,7 @@ let NotificationsService = class NotificationsService {
             taskId,
             type,
             content,
-            isRead: 'false',
+            isRead: false,
         }).returning();
         this.syncGateway.server.to(`user:${userId}`).emit('notification:new', notification);
         return notification;
@@ -82,7 +82,7 @@ let NotificationsService = class NotificationsService {
     }
     async markAsRead(notificationId, userId) {
         const [notification] = await this.db.update(schema.notifications)
-            .set({ isRead: 'true' })
+            .set({ isRead: true })
             .where((0, drizzle_orm_1.eq)(schema.notifications.id, notificationId))
             .returning();
         return notification;

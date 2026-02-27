@@ -23,13 +23,22 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
             secretOrKey: configService.getOrThrow('SUPABASE_JWT_SECRET'),
+            audience: 'authenticated',
         });
         this.configService = configService;
         this.authService = authService;
     }
     async validate(payload) {
-        const user = await this.authService.getOrCreateUser(payload);
-        return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
+        console.log('[Auth Guard] Validating JWT payload:', { sub: payload.sub, email: payload.email });
+        try {
+            const user = await this.authService.getOrCreateUser(payload);
+            console.log('[Auth Guard] Success for user:', user.email);
+            return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
+        }
+        catch (error) {
+            console.error('[Auth Guard] Validation error:', error.message);
+            throw error;
+        }
     }
 };
 exports.JwtStrategy = JwtStrategy;

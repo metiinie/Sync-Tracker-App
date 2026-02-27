@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, CheckCircle2, UserPlus, AlertTriangle, ArrowRightLeft, Flag, Circle, Filter } from 'lucide-react-native';
+import { Bell, CheckCircle2, UserPlus, AlertTriangle, ArrowRightLeft, Flag, Circle, Filter, BellOff } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
@@ -28,13 +28,20 @@ const NotificationsScreen = ({ navigation }: any) => {
     useEffect(() => {
         fetchNotifications();
 
-        const socket = getSocket();
-        socket.on('notification:new', (notification) => {
-            setNotifications(prev => [notification, ...prev]);
-        });
+        let socket: any;
+        const setupSocket = async () => {
+            socket = await getSocket();
+            socket.on('notification:new', (notification: any) => {
+                setNotifications(prev => [notification, ...prev]);
+            });
+        };
+
+        setupSocket();
 
         return () => {
-            socket.off('notification:new');
+            if (socket) {
+                socket.off('notification:new');
+            }
         };
     }, []);
 
@@ -46,7 +53,7 @@ const NotificationsScreen = ({ navigation }: any) => {
     const markAsRead = async (id: string, taskId: string | null) => {
         try {
             await api.patch(`/notifications/${id}/read`, {});
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: 'true' } : n));
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
 
             if (taskId) {
                 navigation.navigate('TaskDetail', { taskId });
@@ -57,7 +64,7 @@ const NotificationsScreen = ({ navigation }: any) => {
     };
 
     const filteredNotifications = useMemo(() => {
-        if (filter === 'UNREAD') return notifications.filter(n => n.isRead === 'false');
+        if (filter === 'UNREAD') return notifications.filter(n => !n.isRead);
         return notifications;
     }, [notifications, filter]);
 
@@ -104,7 +111,7 @@ const NotificationsScreen = ({ navigation }: any) => {
                     {filteredNotifications.length === 0 ? (
                         <View className="items-center justify-center py-20">
                             <View className="bg-gray-50 p-8 rounded-full mb-4">
-                                <Bell size={40} color="#e5e7eb" />
+                                <BellOff size={40} color="#e5e7eb" />
                             </View>
                             <Text className="text-gray-400 font-bold">No accountability signals found</Text>
                         </View>
@@ -113,21 +120,21 @@ const NotificationsScreen = ({ navigation }: any) => {
                             <TouchableOpacity
                                 key={n.id}
                                 onPress={() => markAsRead(n.id, n.taskId)}
-                                className={`flex-row p-5 rounded-3xl mb-4 border ${n.isRead === 'false' ? 'bg-white border-black border-2 shadow-sm' : 'bg-gray-50 border-gray-100'}`}
+                                className={`flex-row p-5 rounded-3xl mb-4 border ${!n.isRead ? 'bg-white border-black border-2 shadow-sm' : 'bg-gray-50 border-gray-100'}`}
                             >
-                                <View className={`w-12 h-12 rounded-2xl items-center justify-center ${n.isRead === 'false' ? 'bg-gray-900' : 'bg-gray-200'}`}>
+                                <View className={`w-12 h-12 rounded-2xl items-center justify-center ${!n.isRead ? 'bg-gray-900' : 'bg-gray-200'}`}>
                                     {getIcon(n.type)}
                                 </View>
                                 <View className="ml-4 flex-1">
                                     <View className="flex-row justify-between items-start mb-1">
-                                        <Text className={`text-[10px] font-black uppercase tracking-widest ${n.isRead === 'false' ? 'text-black' : 'text-gray-400'}`}>
+                                        <Text className={`text-[10px] font-black uppercase tracking-widest ${!n.isRead ? 'text-black' : 'text-gray-400'}`}>
                                             {n.type.replace('_', ' ')}
                                         </Text>
                                         <Text className="text-[10px] text-gray-400">
                                             {new Date(n.createdAt).toLocaleDateString()}
                                         </Text>
                                     </View>
-                                    <Text className={`text-sm leading-5 ${n.isRead === 'false' ? 'text-gray-900 font-bold' : 'text-gray-500 font-medium'}`}>
+                                    <Text className={`text-sm leading-5 ${!n.isRead ? 'text-gray-900 font-bold' : 'text-gray-500 font-medium'}`}>
                                         {n.content}
                                     </Text>
                                     {n.task && (
@@ -137,7 +144,7 @@ const NotificationsScreen = ({ navigation }: any) => {
                                         </View>
                                     )}
                                 </View>
-                                {n.isRead === 'false' && (
+                                {!n.isRead && (
                                     <View className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />
                                 )}
                             </TouchableOpacity>

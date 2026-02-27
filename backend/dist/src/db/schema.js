@@ -87,7 +87,7 @@ exports.milestones = (0, pg_core_1.pgTable)('milestones', {
     id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
     taskId: (0, pg_core_1.uuid)('task_id').references(() => exports.tasks.id).notNull(),
     title: (0, pg_core_1.text)('title').notNull(),
-    isCompleted: (0, pg_core_1.text)('is_completed').default('false').notNull(),
+    isCompleted: (0, pg_core_1.boolean)('is_completed').default(false).notNull(),
     dueDate: (0, pg_core_1.timestamp)('due_date'),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
 });
@@ -121,7 +121,7 @@ exports.notifications = (0, pg_core_1.pgTable)('notifications', {
     taskId: (0, pg_core_1.uuid)('task_id').references(() => exports.tasks.id),
     type: (0, pg_core_1.text)('type').notNull(),
     content: (0, pg_core_1.text)('content').notNull(),
-    isRead: (0, pg_core_1.text)('is_read').default('false').notNull(),
+    isRead: (0, pg_core_1.boolean)('is_read').default(false).notNull(),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
 });
 exports.notificationsRelations = (0, drizzle_orm_1.relations)(exports.notifications, ({ one }) => ({

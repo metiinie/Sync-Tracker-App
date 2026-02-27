@@ -26,14 +26,14 @@ export declare class TasksService {
         createdAt: Date;
         title: string;
         taskId: string;
-        isCompleted: string;
+        isCompleted: boolean;
         dueDate: Date | null;
     }>;
     toggleMilestone(milestoneId: string, isCompleted: boolean, userId: string): Promise<{
         id: string;
         taskId: string;
         title: string;
-        isCompleted: string;
+        isCompleted: boolean;
         dueDate: Date | null;
         createdAt: Date;
     }>;
@@ -144,7 +144,7 @@ export declare class TasksService {
             createdAt: Date;
             title: string;
             taskId: string;
-            isCompleted: string;
+            isCompleted: boolean;
             dueDate: Date | null;
         }[];
         timeLogs: {

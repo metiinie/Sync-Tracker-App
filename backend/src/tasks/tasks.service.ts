@@ -80,12 +80,14 @@ export class TasksService {
 
     async toggleMilestone(milestoneId: string, isCompleted: boolean, userId: string) {
         const [milestone] = await this.db.update(schema.milestones)
-            .set({ isCompleted: isCompleted ? 'true' : 'false' })
+            .set({ isCompleted })
             .where(eq(schema.milestones.id, milestoneId))
             .returning();
 
-        await this.logAction(milestone.taskId, userId, `Milestone ${milestone.title} marked as ${isCompleted ? 'completed' : 'incomplete'}`);
-        this.syncGateway.emitToTask(milestone.taskId, 'milestone:updated', milestone);
+        if (milestone) {
+            await this.logAction(milestone.taskId, userId, `Milestone ${milestone.title} marked as ${isCompleted ? 'completed' : 'incomplete'}`);
+            this.syncGateway.emitToTask(milestone.taskId, 'milestone:updated', milestone);
+        }
         return milestone;
     }
 

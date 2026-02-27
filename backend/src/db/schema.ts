@@ -94,7 +94,7 @@ export const milestones = pgTable('milestones', {
     id: uuid('id').primaryKey().defaultRandom(),
     taskId: uuid('task_id').references(() => tasks.id).notNull(),
     title: text('title').notNull(),
-    isCompleted: text('is_completed').default('false').notNull(),
+    isCompleted: boolean('is_completed').default(false).notNull(),
     dueDate: timestamp('due_date'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -132,7 +132,7 @@ export const notifications = pgTable('notifications', {
     taskId: uuid('task_id').references(() => tasks.id),
     type: text('type').notNull(), // ASSIGNED, PARTICIPANT_ADDED, HELP_REQUESTED, TRANSFER_INITIATED, MILESTONE_COMPLETED
     content: text('content').notNull(),
-    isRead: text('is_read').default('false').notNull(),
+    isRead: boolean('is_read').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

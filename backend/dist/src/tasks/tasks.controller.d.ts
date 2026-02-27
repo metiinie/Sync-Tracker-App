@@ -4,9 +4,9 @@ export declare class TasksController {
     constructor(tasksService: TasksService);
     create(body: any, req: any): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -65,38 +65,14 @@ export declare class TasksController {
     findAll(req: any): Promise<any[]>;
     findOne(id: string): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
-        milestones: {
-            id: string;
-            title: string;
-            createdAt: Date;
-            taskId: string;
-            isCompleted: string;
-            dueDate: Date | null;
-        }[];
-        timeLogs: {
-            id: string;
-            description: string | null;
-            taskId: string;
-            userId: string;
-            timestamp: Date;
-            durationMinutes: string;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                systemRole: "ADMIN" | "USER";
-                isSuspended: boolean;
-                createdAt: Date;
-            };
-        }[];
         assigner: {
             id: string;
             name: string;
@@ -145,20 +121,44 @@ export declare class TasksController {
                 createdAt: Date;
             };
         }[];
+        milestones: {
+            id: string;
+            createdAt: Date;
+            title: string;
+            taskId: string;
+            isCompleted: boolean;
+            dueDate: Date | null;
+        }[];
+        timeLogs: {
+            id: string;
+            description: string | null;
+            taskId: string;
+            userId: string;
+            timestamp: Date;
+            durationMinutes: string;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
     } | undefined>;
     addMilestone(id: string, title: string, req: any): Promise<{
         id: string;
-        title: string;
         createdAt: Date;
+        title: string;
         taskId: string;
-        isCompleted: string;
+        isCompleted: boolean;
         dueDate: Date | null;
     }>;
     toggleMilestone(mid: string, isCompleted: boolean, req: any): Promise<{
         id: string;
         taskId: string;
         title: string;
-        isCompleted: string;
+        isCompleted: boolean;
         dueDate: Date | null;
         createdAt: Date;
     }>;

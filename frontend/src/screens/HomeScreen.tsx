@@ -50,17 +50,23 @@ const HomeScreen = ({ navigation }: any) => {
     useEffect(() => {
         fetchTasks();
 
-        const socket = getSocket();
-        socket.on('sync:update', (data) => {
-            setTasks(prevTasks => prevTasks.map(t =>
-                t.id === data.taskId ? { ...t, syncState: data.syncState } : t
-            ));
-            // Also refresh stats when sync updates
-            api.get('/tasks/stats').then(res => setStats(res.data)).catch(() => { });
-        });
+        let socket: any;
+        // Wrap getSocket in an async IIFE within useEffect to handle the Promise.
+        (async () => {
+            socket = await getSocket();
+            socket.on('sync:update', (data: any) => {
+                setTasks(prevTasks => prevTasks.map(t =>
+                    t.id === data.taskId ? { ...t, syncState: data.syncState } : t
+                ));
+                // Also refresh stats when sync updates
+                api.get('/tasks/stats').then(res => setStats(res.data)).catch(() => { });
+            });
+        })();
 
         return () => {
-            socket.off('sync:update');
+            if (socket) {
+                socket.off('sync:update');
+            }
         };
     }, []);
 

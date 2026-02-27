@@ -568,16 +568,16 @@ export declare const milestones: import("drizzle-orm/pg-core").PgTableWithColumn
         isCompleted: import("drizzle-orm/pg-core").PgColumn<{
             name: "is_completed";
             tableName: "milestones";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
             notNull: true;
             hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
+            enumValues: undefined;
             baseColumn: never;
             identity: undefined;
             generated: undefined;
@@ -827,16 +827,16 @@ export declare const notifications: import("drizzle-orm/pg-core").PgTableWithCol
         isRead: import("drizzle-orm/pg-core").PgColumn<{
             name: "is_read";
             tableName: "notifications";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
             notNull: true;
             hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
+            enumValues: undefined;
             baseColumn: never;
             identity: undefined;
             generated: undefined;

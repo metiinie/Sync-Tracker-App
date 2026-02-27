@@ -25,18 +25,26 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
     useEffect(() => {
         fetchTask();
-        const socket = getSocket();
-        socket.emit('joinTask', { taskId });
+        let socket: any;
 
-        socket.on('sync:update', (data) => {
-            if (data.taskId === taskId) {
-                setTask((prev: any) => prev ? { ...prev, syncState: data.syncState } : prev);
+        (async () => {
+            socket = await getSocket();
+            if (socket) {
+                socket.emit('joinTask', { taskId });
+
+                socket.on('sync:update', (data: any) => {
+                    if (data.taskId === taskId) {
+                        setTask((prev: any) => prev ? { ...prev, syncState: data.syncState } : prev);
+                    }
+                });
             }
-        });
+        })();
 
         return () => {
-            socket.emit('leaveTask', { taskId });
-            socket.off('sync:update');
+            if (socket) {
+                socket.emit('leaveTask', { taskId });
+                socket.off('sync:update');
+            }
         };
     }, [taskId]);
 
