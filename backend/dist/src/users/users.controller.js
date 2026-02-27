@@ -24,9 +24,6 @@ let UsersController = class UsersController {
         this.usersService = usersService;
         this.tasksService = tasksService;
     }
-    async getStats(req) {
-        return this.tasksService.getUserStats(req.user.userId);
-    }
     async search(query) {
         return this.usersService.search(query || '');
     }
@@ -35,13 +32,6 @@ let UsersController = class UsersController {
     }
 };
 exports.UsersController = UsersController;
-__decorate([
-    (0, common_1.Get)('stats'),
-    __param(0, (0, common_1.Request)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], UsersController.prototype, "getStats", null);
 __decorate([
     (0, common_1.Get)('search'),
     __param(0, (0, common_1.Query)('q')),

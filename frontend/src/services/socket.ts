@@ -1,7 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/authStore';
 
-const SOCKET_URL = 'http://192.168.8.182:3000'; // Update with your actual Socket URL
+const API_BASE = 'http://192.168.8.182:3000'; // Match your API URL
+const SOCKET_URL = API_BASE;
 
 let socket: Socket | null = null;
 

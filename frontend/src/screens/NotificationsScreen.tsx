@@ -49,10 +49,7 @@ const NotificationsScreen = ({ navigation }: any) => {
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: 'true' } : n));
 
             if (taskId) {
-                navigation.navigate('Tasks', {
-                    screen: 'TaskDetail',
-                    params: { taskId }
-                });
+                navigation.navigate('TaskDetail', { taskId });
             }
         } catch (err) {
             console.error('Failed to mark as read', err);

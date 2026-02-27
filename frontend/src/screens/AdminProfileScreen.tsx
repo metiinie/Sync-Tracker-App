@@ -182,7 +182,7 @@ const AdminProfileScreen = ({ navigation }: any) => {
                                     <Text className="text-[10px] text-gray-400 font-medium ml-1">{item.user.name}</Text>
                                     <TaskItem
                                         task={item.task}
-                                        onPress={() => item.task && navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: item.task.id } })}
+                                        onPress={() => item.task && navigation.navigate('TaskDetail', { taskId: item.task.id })}
                                     />
                                 </View>
                             </View>

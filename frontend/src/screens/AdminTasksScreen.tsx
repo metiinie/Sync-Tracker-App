@@ -109,11 +109,11 @@ const AdminTasksScreen = ({ navigation }: any) => {
                     tasks.map((task: any) => (
                         <TouchableOpacity
                             key={task.id}
-                            onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: task.id } })}
+                            onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
                         >
                             <TaskItem
                                 task={task}
-                                onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: task.id } })}
+                                onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
                             />
                             {task.status === 'FROZEN' && (
                                 <View className="absolute top-2 right-2 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">

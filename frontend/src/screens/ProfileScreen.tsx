@@ -14,7 +14,7 @@ const ProfileScreen = () => {
 
     const fetchStats = async () => {
         try {
-            const res = await api.get('/users/stats');
+            const res = await api.get('/tasks/stats');
             setStats(res.data);
         } catch (err) {
             console.error('Failed to fetch stats', err);

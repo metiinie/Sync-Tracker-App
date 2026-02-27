@@ -149,7 +149,7 @@ const TasksScreen = ({ navigation }: any) => {
                                         staleDays: 3, // Mocked
                                         lastSync: '2h ago' // Mocked
                                     }}
-                                    onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: t.id } })}
+                                    onPress={() => navigation.navigate('TaskDetail', { taskId: t.id })}
                                 />
                             ))}
                         </>
@@ -307,7 +307,7 @@ const TasksScreen = ({ navigation }: any) => {
                                     participants: filteredTasks[0].participants || []
                                 }}
                                 type="CRITICAL"
-                                onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: filteredTasks[0].id } })}
+                                onPress={() => navigation.navigate('TaskDetail', { taskId: filteredTasks[0].id })}
                                 onAction={() => { }}
                             />
                             {filteredTasks[1] && (
@@ -320,7 +320,7 @@ const TasksScreen = ({ navigation }: any) => {
                                         participants: filteredTasks[1].participants || []
                                     }}
                                     type="DUE"
-                                    onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: filteredTasks[1].id } })}
+                                    onPress={() => navigation.navigate('TaskDetail', { taskId: filteredTasks[1].id })}
                                     onAction={() => { }}
                                 />
                             )}
@@ -357,7 +357,7 @@ const TasksScreen = ({ navigation }: any) => {
 
             {/* FAB */}
             <TouchableOpacity
-                onPress={() => navigation.navigate('Tasks', { screen: 'CreateTask' })}
+                onPress={() => navigation.navigate('CreateTask')}
                 className="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg shadow-blue-500/50 z-50"
             >
                 <Plus size={24} color="#fff" />

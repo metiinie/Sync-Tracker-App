@@ -211,7 +211,7 @@ const HomeScreen = ({ navigation }: any) => {
                     {dashboard.myTasks.length === 0 ? (
                         <View className="bg-white p-8 rounded-3xl border border-gray-100 items-center justify-center">
                             <Text className="text-gray-400 font-medium mb-4 text-center">You have no active tasks demanding your attention right now.</Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('Tasks', { screen: 'CreateTask' })} className="bg-blue-600 px-6 py-3 rounded-xl">
+                            <TouchableOpacity onPress={() => navigation.navigate('CreateTask')} className="bg-blue-600 px-6 py-3 rounded-xl">
                                 <Text className="text-white font-bold">Create Task</Text>
                             </TouchableOpacity>
                         </View>
@@ -220,7 +220,7 @@ const HomeScreen = ({ navigation }: any) => {
                             <TaskItem
                                 key={t.id}
                                 task={t}
-                                onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: t.id } })}
+                                onPress={() => navigation.navigate('TaskDetail', { taskId: t.id })}
                             />
                         ))
                     )}
@@ -228,7 +228,7 @@ const HomeScreen = ({ navigation }: any) => {
             </ScrollView>
 
             <TouchableOpacity
-                onPress={() => navigation.navigate('Tasks', { screen: 'CreateTask' })}
+                onPress={() => navigation.navigate('CreateTask')}
                 className="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg shadow-blue-500/50"
             >
                 <Plus size={24} color="#fff" />
