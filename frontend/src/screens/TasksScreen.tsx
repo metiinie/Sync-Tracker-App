@@ -50,10 +50,9 @@ const TasksScreen = ({ navigation }: any) => {
             <View className="flex-1">
                 {/* Header for Admin */}
                 <View className="px-6 py-4 bg-white border-b border-gray-100 flex-row items-center justify-between">
-                    <TouchableOpacity onPress={() => navigation.openDrawer()} className="flex-row items-center">
+                    <View className="flex-row items-center">
                         <Text className="text-xl font-black text-gray-900">{viewMode === 'audit' ? 'Task Audit' : viewMode === 'risk' ? 'Risk Overview' : 'Sync Velocity'}</Text>
-                        <ChevronDown size={20} color="#000" className="ml-1" />
-                    </TouchableOpacity>
+                    </View>
                     <View className="flex-row items-center">
                         <TouchableOpacity className="bg-blue-50 px-4 py-2 rounded-full flex-row items-center mr-3">
                             <Filter size={16} color="#3b82f6" />

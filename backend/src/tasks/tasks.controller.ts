@@ -39,6 +39,11 @@ export class TasksController {
         return this.tasksService.addParticipant(id, body.userId, body.role, req.user.userId);
     }
 
+    @Get('stats')
+    async getStats(@Request() req: any) {
+        return this.tasksService.getUserStats(req.user.userId);
+    }
+
     @Get()
     async findAll(@Request() req: any) {
         return this.tasksService.findAllForUser(req.user.userId);

@@ -39,48 +39,47 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading || showSplash) {
-    if (showSplash) {
-      return <SplashScreen onFinish={() => setShowSplash(false)} />;
-    }
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
-    );
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <NavigationContainer>
         <StatusBar style="auto" />
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {!token ? (
-            <>
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Register" component={RegisterScreen} />
-            </>
+        {loading || showSplash ? (
+          showSplash ? (
+            <SplashScreen onFinish={() => setShowSplash(false)} />
           ) : (
-            <>
-              <Stack.Screen name="Main" component={MainTabs} />
-              <Stack.Screen
-                name="TaskDetail"
-                component={TaskDetailScreen}
-                options={{ headerShown: true, title: 'Track Details', headerShadowVisible: false }}
-              />
-              <Stack.Screen
-                name="AdminUserDetail"
-                component={AdminUserDetailScreen}
-                options={{ headerShown: true, title: 'Identity Governance', headerShadowVisible: false }}
-              />
-              <Stack.Screen
-                name="CreateTask"
-                component={CreateTaskScreen}
-                options={{ headerShown: true, title: 'New Track', headerShadowVisible: false }}
-              />
-            </>
-          )}
-        </Stack.Navigator>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
+              <ActivityIndicator size="large" color="#2563eb" />
+            </View>
+          )
+        ) : (
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {!token ? (
+              <>
+                <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="Register" component={RegisterScreen} />
+              </>
+            ) : (
+              <>
+                <Stack.Screen name="Main" component={MainTabs} />
+                <Stack.Screen
+                  name="TaskDetail"
+                  component={TaskDetailScreen}
+                  options={{ headerShown: true, title: 'Track Details', headerShadowVisible: false }}
+                />
+                <Stack.Screen
+                  name="AdminUserDetail"
+                  component={AdminUserDetailScreen}
+                  options={{ headerShown: true, title: 'Identity Governance', headerShadowVisible: false }}
+                />
+                <Stack.Screen
+                  name="CreateTask"
+                  component={CreateTaskScreen}
+                  options={{ headerShown: true, title: 'New Track', headerShadowVisible: false }}
+                />
+              </>
+            )}
+          </Stack.Navigator>
+        )}
       </NavigationContainer>
     </QueryClientProvider>
   );
