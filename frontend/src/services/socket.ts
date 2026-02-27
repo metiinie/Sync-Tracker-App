@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/authStore';
 
-const SOCKET_URL = 'http://localhost:3000'; // Update with your actual Socket URL
+const SOCKET_URL = 'http://10.22.140.80:3000'; // Update with your actual Socket URL
 
 let socket: Socket | null = null;
 

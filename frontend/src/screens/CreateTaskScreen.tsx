@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Plus, X, User, Users, Flag, Trash2, CheckCircle2 } from 'lucide-react-native';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
@@ -236,7 +237,5 @@ const CreateTaskScreen = ({ navigation }: any) => {
     );
 };
 
-// Simple SafeAreaView mock if not imported
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default CreateTaskScreen;

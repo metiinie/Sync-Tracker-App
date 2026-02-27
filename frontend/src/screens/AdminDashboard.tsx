@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { AlertTriangle, Activity, RefreshCcw, HelpCircle, Clock, ShieldAlert, ChevronRight, User } from 'lucide-react-native';
@@ -100,7 +101,10 @@ const AdminDashboard = ({ navigation }: any) => {
                                 onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: task.id } })}
                                 className="mb-2"
                             >
-                                <TaskItem task={task} />
+                                <TaskItem
+                                    task={task}
+                                    onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: task.id } })}
+                                />
                                 <View className="absolute top-2 right-2 bg-red-600 px-2 py-0.5 rounded-full">
                                     <Text className="text-[8px] font-black text-white uppercase">Critical</Text>
                                 </View>

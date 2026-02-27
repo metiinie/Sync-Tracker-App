@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Switch, TouchableOpacity, SafeAreaView, ActivityIndicator, FlatList, TextInput, Modal } from 'react-native';
+import { View, Text, ScrollView, Switch, TouchableOpacity, ActivityIndicator, FlatList, TextInput, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, Shield, History, Activity, Database, ChevronRight, Filter, Search, Clock, User, Briefcase } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+import TaskItem from '../components/TaskItem';
 
-const AdminProfileScreen = () => {
+const AdminProfileScreen = ({ navigation }: any) => {
     const queryClient = useQueryClient();
     const { logout } = useAuthStore();
     const [auditFilters, setAuditFilters] = useState({ userId: '', action: '', visible: false });
@@ -106,13 +108,13 @@ const AdminProfileScreen = () => {
                     <SettingToggle
                         label="Allow Transfers"
                         value={settings.allowResponsibilityTransfer}
-                        onValueChange={(val) => updateSettingsMutation.mutate({ allowResponsibilityTransfer: val })}
+                        onValueChange={(val: boolean) => updateSettingsMutation.mutate({ allowResponsibilityTransfer: val })}
                         icon={Shield}
                     />
                     <SettingToggle
                         label="Helper Roles"
                         value={settings.enableHelperRole}
-                        onValueChange={(val) => updateSettingsMutation.mutate({ enableHelperRole: val })}
+                        onValueChange={(val: boolean) => updateSettingsMutation.mutate({ enableHelperRole: val })}
                         icon={Activity}
                     />
                 </View>
@@ -140,7 +142,7 @@ const AdminProfileScreen = () => {
 
             {/* Audit Logs Modal */}
             <Modal visible={auditFilters.visible} animationType="slide">
-                <SafeAreaView className="flex-1 bg-white">
+                <SafeAreaView className="flex-1 bg-white" edges={['top']}>
                     <View className="px-6 pt-6 flex-row justify-between items-center">
                         <Text className="text-2xl font-black text-gray-900">Global Audit</Text>
                         <TouchableOpacity onPress={() => setAuditFilters({ ...auditFilters, visible: false })}>
@@ -178,13 +180,10 @@ const AdminProfileScreen = () => {
                                 <View className="flex-row items-center">
                                     <User size={10} color="#94a3b8" />
                                     <Text className="text-[10px] text-gray-400 font-medium ml-1">{item.user.name}</Text>
-                                    {item.task && (
-                                        <>
-                                            <View className="w-1 h-1 bg-gray-200 rounded-full mx-2" />
-                                            <Briefcase size={10} color="#94a3b8" />
-                                            <Text className="text-[10px] text-gray-400 font-medium ml-1">{item.task.title}</Text>
-                                        </>
-                                    )}
+                                    <TaskItem
+                                        task={item.task}
+                                        onPress={() => item.task && navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: item.task.id } })}
+                                    />
                                 </View>
                             </View>
                         )}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator, TextInput, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, TextInput, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Layout, Share2, Info, GitBranch, Share, List, Clock, CheckCircle2, AlertCircle, HelpCircle, Plus, User, Users, Flag as FlagIcon, Shield, Slash, Unlock, Trash2, XCircle } from 'lucide-react-native';
 import { Modal } from 'react-native';
@@ -21,8 +21,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
     const fetchTask = async () => {
         try {
-            const response = await axios.get(`${API_URL}/tasks/${taskId}`, {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await axios.get(`${API_URL} /tasks/${taskId} `, {
+                headers: { Authorization: `Bearer ${token} ` }
             });
             setTask(response.data);
         } catch (error) {
@@ -63,7 +63,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const handleToggleMilestone = async (mid: string, current: string) => {
         try {
             const next = current === 'true' ? false : true;
-            await axios.patch(`${API_URL}/tasks/milestones/${mid}/toggle`,
+            await axios.patch(`${API_URL} /tasks/milestones / ${mid}/toggle`,
                 { isCompleted: next },
                 { headers: { Authorization: `Bearer ${token}` } }
             );

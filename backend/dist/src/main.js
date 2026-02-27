@@ -6,6 +6,7 @@ const common_1 = require("@nestjs/common");
 const redis_io_adapter_1 = require("./sync/redis-io.adapter");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.enableCors();
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(new common_1.ValidationPipe());
     const redisUrl = process.env.REDIS_URL;
