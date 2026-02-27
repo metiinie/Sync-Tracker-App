@@ -70,14 +70,6 @@ export declare class AdminController {
             userId: string;
             action: string;
             timestamp: Date;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                systemRole: "ADMIN" | "USER";
-                isSuspended: boolean;
-                createdAt: Date;
-            };
             task: {
                 id: string;
                 createdAt: Date;
@@ -89,6 +81,14 @@ export declare class AdminController {
                 syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
                 lastUpdatedAt: Date;
             } | null;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
+                createdAt: Date;
+            };
         }[];
     }>;
     getAllTasks(query: any): Promise<{
@@ -274,13 +274,13 @@ export declare class AdminController {
         userId: string;
         action: string;
         timestamp: Date;
+        task: {
+            title: string;
+        } | null;
         user: {
             name: string;
             email: string;
         };
-        task: {
-            title: string;
-        } | null;
     }[]>;
     getSnapshot(): Promise<{
         totalUsers: number;

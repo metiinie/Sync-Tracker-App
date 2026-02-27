@@ -4,21 +4,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import TaskItem from '../components/TaskItem';
-import { Search, Plus, ListFilter, Shield, Users, ArrowLeft } from 'lucide-react-native';
-
-const Filters = [
-    { id: 'all', label: 'All' },
-    { id: 'owned', label: 'In Sync' }, // Map 'owned' visually to 'In Sync' based on design
-    { id: 'assigned', label: 'Blocked' },
-    { id: 'participating', label: 'Needs Update' },
-    { id: 'pending', label: 'Help Requested' },
-];
+import { Search, Plus, ListFilter, ArrowLeft, Filter, Bell, User as UserIcon, MoreHorizontal, ChevronDown, Zap, TrendingUp } from 'lucide-react-native';
+import AdminAuditCard from '../components/AdminAuditCard';
+import FocusTaskCard from '../components/FocusTaskCard';
+import RiskGroupItem from '../components/RiskGroupItem';
 
 const TasksScreen = ({ navigation }: any) => {
-    const { token, user } = useAuthStore();
+    const { token, user, systemRole } = useAuthStore();
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('all');
+    const [viewMode, setViewMode] = useState<'audit' | 'risk' | 'velocity'>('audit'); // Admin modes
+
+    const isAdmin = systemRole === 'ADMIN';
 
     const { data: tasks = [], isLoading, refetch } = useQuery({
         queryKey: ['tasks'],
@@ -31,35 +28,13 @@ const TasksScreen = ({ navigation }: any) => {
 
     const filteredTasks = useMemo(() => {
         let result = tasks;
-
-        // Apply Search
         if (search) {
             result = result.filter((t: any) =>
-                t.title.toLowerCase().includes(search.toLowerCase()) ||
-                t.description?.toLowerCase().includes(search.toLowerCase())
+                t.title.toLowerCase().includes(search.toLowerCase())
             );
         }
-
-        // Apply Custom Filtering Logic mapped to the new labels
-        switch (activeFilter) {
-            case 'owned':
-                result = result.filter((t: any) => t.syncState === 'IN_SYNC' || !t.syncState);
-                break;
-            case 'assigned':
-                result = result.filter((t: any) => t.syncState === 'BLOCKED');
-                break;
-            case 'participating':
-                result = result.filter((t: any) => t.syncState === 'NEEDS_UPDATE');
-                break;
-            case 'pending':
-                result = result.filter((t: any) => t.syncState === 'HELP_REQUESTED');
-                break;
-            default:
-                break;
-        }
-
         return result;
-    }, [tasks, search, activeFilter]);
+    }, [tasks, search]);
 
     if (isLoading) {
         return (
@@ -69,97 +44,319 @@ const TasksScreen = ({ navigation }: any) => {
         );
     }
 
-    return (
-        <SafeAreaView className="flex-1 bg-gray-50">
-            {/* Header Area */}
-            <View className="px-6 pt-4 pb-4 bg-white border-b border-gray-100 z-10 shadow-sm">
-                <View className="flex-row items-center mb-6">
-                    <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4 p-2 -ml-2">
-                        <ArrowLeft size={24} color="#374151" />
+    // --- RENDER ADMIN VIEW ---
+    const renderAdminView = () => {
+        return (
+            <View className="flex-1">
+                {/* Header for Admin */}
+                <View className="px-6 py-4 bg-white border-b border-gray-100 flex-row items-center justify-between">
+                    <TouchableOpacity onPress={() => navigation.openDrawer()} className="flex-row items-center">
+                        <Text className="text-xl font-black text-gray-900">{viewMode === 'audit' ? 'Task Audit' : viewMode === 'risk' ? 'Risk Overview' : 'Sync Velocity'}</Text>
+                        <ChevronDown size={20} color="#000" className="ml-1" />
                     </TouchableOpacity>
-                    <Text className="text-xl font-black text-gray-900 flex-1">Global Search</Text>
+                    <View className="flex-row items-center">
+                        <TouchableOpacity className="bg-blue-50 px-4 py-2 rounded-full flex-row items-center mr-3">
+                            <Filter size={16} color="#3b82f6" />
+                            <Text className="text-blue-600 font-bold ml-2 text-xs">Filter</Text>
+                        </TouchableOpacity>
+                        <Search size={22} color="#374151" />
+                    </View>
                 </View>
 
-                {/* Search Bar */}
-                <View className="flex-row items-center bg-gray-100/80 rounded-2xl px-4 py-3 border border-gray-200/50 mb-5">
-                    <Search size={18} color="#9ca3af" />
-                    <TextInput
-                        className="flex-1 ml-3 text-gray-900 text-base py-0"
-                        placeholder="Search tasks, owners, or teams..."
-                        placeholderTextColor="#9ca3af"
-                        value={search}
-                        onChangeText={setSearch}
-                        autoCorrect={false}
-                    />
-                </View>
-
-                {/* Filter Chips Container */}
-                <View>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{ paddingRight: 20 }}
+                {/* Sub-navigation for Admin */}
+                <View className="px-6 py-3 bg-white flex-row">
+                    <TouchableOpacity
+                        onPress={() => setViewMode('audit')}
+                        className={`mr-6 pb-2 border-b-2 ${viewMode === 'audit' ? 'border-blue-600' : 'border-transparent'}`}
                     >
-                        {Filters.map((f) => {
-                            const isActive = activeFilter === f.id;
-                            return (
-                                <TouchableOpacity
-                                    key={f.id}
-                                    onPress={() => setActiveFilter(f.id)}
-                                    className={`px-5 py-2 rounded-full mr-2.5 border ${isActive
-                                            ? 'bg-blue-600 border-blue-600'
-                                            : 'bg-white border-gray-200 shadow-sm'
-                                        }`}
-                                    activeOpacity={0.7}
-                                >
-                                    <View className="flex-row items-center">
-                                        {f.label === 'In Sync' && <View className={`w-2 h-2 rounded-full mr-2 ${isActive ? 'bg-white' : 'bg-emerald-500'}`} />}
-                                        {f.label === 'Blocked' && <View className={`w-2 h-2 rounded-full mr-2 ${isActive ? 'bg-white' : 'bg-red-500'}`} />}
-                                        {f.label === 'Needs Update' && <View className={`w-2 h-2 rounded-full mr-2 ${isActive ? 'bg-white' : 'bg-yellow-500'}`} />}
-                                        {f.label === 'Help Requested' && <View className={`w-2 h-2 rounded-full mr-2 ${isActive ? 'bg-white' : 'bg-blue-500'}`} />}
+                        <Text className={`font-bold text-sm ${viewMode === 'audit' ? 'text-blue-600' : 'text-gray-400'}`}>Audit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setViewMode('risk')}
+                        className={`mr-6 pb-2 border-b-2 ${viewMode === 'risk' ? 'border-blue-600' : 'border-transparent'}`}
+                    >
+                        <Text className={`font-bold text-sm ${viewMode === 'risk' ? 'text-blue-600' : 'text-gray-400'}`}>Risk</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setViewMode('velocity')}
+                        className={`pb-2 border-b-2 ${viewMode === 'velocity' ? 'border-blue-600' : 'border-transparent'}`}
+                    >
+                        <Text className={`font-bold text-sm ${viewMode === 'velocity' ? 'text-blue-600' : 'text-gray-400'}`}>Velocity</Text>
+                    </TouchableOpacity>
+                </View>
 
-                                        <Text className={`font-bold text-xs ${isActive ? 'text-white' : 'text-gray-600'}`}>
-                                            {f.label}
-                                        </Text>
+                <ScrollView
+                    className="flex-1 px-6"
+                    contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
+                    refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
+                >
+                    {viewMode === 'audit' && (
+                        <>
+                            {/* Summary Cards */}
+                            <View className="flex-row mb-6">
+                                <View className="flex-1 bg-red-50/50 p-5 rounded-[28px] border border-red-50 mr-3">
+                                    <View className="flex-row justify-between items-start mb-4">
+                                        <View className="w-8 h-8 rounded-full bg-red-500 items-center justify-center">
+                                            <View className="w-4 h-0.5 bg-white rotate-45 absolute" />
+                                            <View className="w-4 h-0.5 bg-white -rotate-45" />
+                                        </View>
+                                        <View className="bg-red-100 px-2 py-0.5 rounded-lg">
+                                            <Text className="text-red-700 text-[10px] font-black">+12%</Text>
+                                        </View>
+                                    </View>
+                                    <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Total Blocked</Text>
+                                    <Text className="text-3xl font-black text-gray-900">12</Text>
+                                </View>
+
+                                <View className="flex-1 bg-orange-50/50 p-5 rounded-[28px] border border-orange-50">
+                                    <View className="flex-row justify-between items-start mb-4">
+                                        <View className="w-8 h-8 rounded-full border-2 border-orange-500 items-center justify-center">
+                                            <View className="w-3 h-3 border-b-2 border-orange-500 rounded-sm" />
+                                        </View>
+                                        <View className="bg-gray-100 px-2 py-0.5 rounded-lg">
+                                            <Text className="text-gray-500 text-[10px] font-black">0%</Text>
+                                        </View>
+                                    </View>
+                                    <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Total Stale</Text>
+                                    <Text className="text-3xl font-black text-gray-900">5</Text>
+                                </View>
+                            </View>
+
+                            {/* Quick Buttons */}
+                            <View className="flex-row mb-8">
+                                <TouchableOpacity className="flex-1 bg-[#0f172a] py-4 rounded-2xl flex-row items-center justify-center mr-3">
+                                    <Bell size={18} color="white" />
+                                    <Text className="text-white font-bold ml-2">Bulk Nudge</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity className="flex-1 bg-white border border-gray-200 py-4 rounded-2xl flex-row items-center justify-center">
+                                    <UserIcon size={18} color="#374151" />
+                                    <Text className="text-gray-900 font-bold ml-2">Reassign</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Bottlenecks List */}
+                            <View className="flex-row justify-between items-center mb-6">
+                                <Text className="text-xl font-bold text-gray-900">Critical Bottlenecks</Text>
+                                <TouchableOpacity><Text className="text-blue-600 font-bold text-sm">View All</Text></TouchableOpacity>
+                            </View>
+
+                            {filteredTasks.map((t: any) => (
+                                <AdminAuditCard
+                                    key={t.id}
+                                    task={{
+                                        ...t,
+                                        owner: { name: t.owner?.email?.split('@')[0] || 'Unknown' },
+                                        team: t.department || 'General',
+                                        staleDays: 3, // Mocked
+                                        lastSync: '2h ago' // Mocked
+                                    }}
+                                    onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: t.id } })}
+                                />
+                            ))}
+                        </>
+                    )}
+
+                    {viewMode === 'risk' && (
+                        <>
+                            <Text className="text-xl font-bold text-gray-900 mb-6">Critical Risk (3 Tasks)</Text>
+                            {filteredTasks.slice(0, 3).map((t: any) => (
+                                <RiskGroupItem
+                                    key={t.id}
+                                    task={{
+                                        ...t,
+                                        team: t.department || 'Product',
+                                        statusLabel: 'Stale 15D',
+                                        ownerName: t.owner?.email?.split('@')[0] || 'Unknown'
+                                    }}
+                                    riskColor="bg-red-500"
+                                    onPress={() => { }}
+                                />
+                            ))}
+
+                            <Text className="text-xl font-bold text-gray-900 mt-6 mb-6">High Risk (5 Tasks)</Text>
+                            {filteredTasks.slice(3, 5).map((t: any) => (
+                                <RiskGroupItem
+                                    key={t.id}
+                                    task={{
+                                        ...t,
+                                        team: t.department || 'Engineering',
+                                        statusLabel: 'Transfer Pending',
+                                        ownerName: t.owner?.email?.split('@')[0] || 'Unknown'
+                                    }}
+                                    riskColor="bg-orange-500"
+                                    onPress={() => { }}
+                                    onAction={() => { }}
+                                    actionLabel="Assign"
+                                />
+                            ))}
+                        </>
+                    )}
+
+                    {viewMode === 'velocity' && (
+                        <>
+                            {/* Velocity Stats */}
+                            <View className="flex-row mb-8">
+                                <View className="flex-1 mr-4">
+                                    <Text className="text-gray-400 text-[10px] font-black uppercase mb-1">Avg Resolve Time</Text>
+                                    <View className="flex-row items-end">
+                                        <Text className="text-2xl font-black text-gray-900">4.2h</Text>
+                                        <Text className="text-green-500 text-[10px] font-black ml-2 mb-1">^ 12%</Text>
+                                    </View>
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-gray-400 text-[10px] font-black uppercase mb-1">Sync Frequency</Text>
+                                    <View className="flex-row items-end">
+                                        <Text className="text-2xl font-black text-gray-900">Daily</Text>
+                                        <Text className="text-gray-400 text-[10px] font-black ml-2 mb-1">{"->"} Stable</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <Text className="text-xl font-bold text-gray-900 mb-6">Active Blocks</Text>
+                            {filteredTasks.map((t: any) => (
+                                <TouchableOpacity key={t.id} className="bg-white rounded-3xl p-6 border border-gray-100 mb-4 shadow-sm">
+                                    <View className="flex-row justify-between mb-4">
+                                        <View>
+                                            <Text className="text-lg font-bold text-gray-900 mb-1">{t.title}</Text>
+                                            <Text className="text-gray-400 text-xs font-medium">{t.department || 'General'}</Text>
+                                        </View>
+                                        <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center">
+                                            <TrendingUp size={20} color="#3b82f6" />
+                                        </View>
+                                    </View>
+
+                                    <View className="flex-row items-center justify-between border-t border-gray-50 pt-4">
+                                        <View>
+                                            <Text className="text-gray-400 text-[10px] font-black uppercase">Avg Resolve</Text>
+                                            <Text className="text-gray-900 font-bold">2.4h</Text>
+                                        </View>
+                                        <View>
+                                            <Text className="text-gray-400 text-[10px] font-black uppercase">Frequency</Text>
+                                            <Text className="text-gray-900 font-bold">2x / Day</Text>
+                                        </View>
+                                        <TouchableOpacity className="flex-row items-center">
+                                            <Text className="text-blue-600 font-black text-xs mr-1">Graph</Text>
+                                            <ChevronDown size={14} color="#3b82f6" style={{ transform: [{ rotate: '-90deg' }] }} />
+                                        </TouchableOpacity>
                                     </View>
                                 </TouchableOpacity>
-                            );
-                        })}
+                            ))}
+                        </>
+                    )}
+                </ScrollView>
+            </View>
+        );
+    };
+
+    // --- RENDER CUSTOMER VIEW ---
+    const renderCustomerView = () => {
+        return (
+            <View className="flex-1">
+                {/* Header for Customer */}
+                <View className="px-6 py-4 bg-white flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                        <TouchableOpacity>
+                            <View className="w-8 h-8 rounded-full bg-blue-100 p-1 items-center justify-center">
+                                <Zap size={18} color="#3b82f6" />
+                            </View>
+                        </TouchableOpacity>
+                        <Text className="text-2xl font-black text-gray-900 ml-3">Focus View</Text>
+                    </View>
+                    <View className="flex-row items-center">
+                        <Search size={22} color="#374151" className="mr-4" />
+                        <Filter size={22} color="#374151" />
+                    </View>
+                </View>
+
+                <View className="px-6 mt-2">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+                        {['All', 'Sync Due', 'Stale', 'Completed'].map((f, i) => (
+                            <TouchableOpacity
+                                key={f}
+                                onPress={() => setActiveFilter(f.toLowerCase())}
+                                className={`px-6 py-2.5 rounded-full mr-3 border ${activeFilter === f.toLowerCase() || (i === 0 && activeFilter === 'all')
+                                    ? 'bg-blue-600 border-blue-600'
+                                    : 'bg-white border-gray-100 shadow-sm'
+                                    }`}
+                            >
+                                <Text className={`font-bold text-sm ${activeFilter === f.toLowerCase() || (i === 0 && activeFilter === 'all') ? 'text-white' : 'text-gray-600'
+                                    }`}>{f}</Text>
+                            </TouchableOpacity>
+                        ))}
                     </ScrollView>
                 </View>
-            </View>
 
-            <ScrollView
-                className="flex-1 px-6 pt-6"
-                contentContainerStyle={{ paddingBottom: 120 }}
-                refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
-            >
-                <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
-                    Recent Tasks ({filteredTasks.length})
-                </Text>
-
-                {filteredTasks.length === 0 ? (
-                    <View className="py-20 items-center justify-center bg-white rounded-3xl border border-gray-100 mt-4">
-                        <ListFilter size={48} color="#e5e7eb" className="mb-4" />
-                        <Text className="text-gray-500 font-bold mb-2 text-center text-lg">No Results Found</Text>
-                        <Text className="text-gray-400 font-medium text-center px-10">Adjust your search or filter settings to find what you need.</Text>
+                <ScrollView
+                    className="flex-1 px-6"
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                >
+                    <View className="flex-row justify-between items-center mb-4">
+                        <Text className="text-xl font-bold text-gray-900">Needs Attention</Text>
+                        <View className="bg-red-50 px-2 py-0.5 rounded-md">
+                            <Text className="text-red-600 font-black text-[10px]">2 Critical</Text>
+                        </View>
                     </View>
-                ) : (
-                    filteredTasks.map((task: any) => {
-                        const myParticipation = task.participants?.find((p: any) => p.userId === user?.id);
-                        return (
-                            <TaskItem
-                                key={task.id}
-                                task={task}
-                                role={myParticipation?.role}
-                                onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: task.id } })}
-                            />
-                        );
-                    })
-                )}
-            </ScrollView>
 
-            {/* Floating Action Button */}
+                    {filteredTasks.length > 0 ? (
+                        <>
+                            <FocusTaskCard
+                                task={{
+                                    ...filteredTasks[0],
+                                    department: filteredTasks[0].department || 'Finance Dept',
+                                    meta: 'Audit Trail',
+                                    staleInfo: '2d',
+                                    participants: filteredTasks[0].participants || []
+                                }}
+                                type="CRITICAL"
+                                onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: filteredTasks[0].id } })}
+                                onAction={() => { }}
+                            />
+                            {filteredTasks[1] && (
+                                <FocusTaskCard
+                                    task={{
+                                        ...filteredTasks[1],
+                                        department: filteredTasks[1].department || 'Marketing',
+                                        meta: 'Campaign Q4',
+                                        dueIn: '45m',
+                                        participants: filteredTasks[1].participants || []
+                                    }}
+                                    type="DUE"
+                                    onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: filteredTasks[1].id } })}
+                                    onAction={() => { }}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <Text className="text-gray-400 italic font-medium px-4 py-8 text-center">No tasks need immediate attention.</Text>
+                    )}
+
+                    <Text className="text-xl font-bold text-gray-900 mt-6 mb-4">Upcoming Syncs</Text>
+
+                    {/* Mocked Upcoming Syncs as per Image 4 */}
+                    {[
+                        { title: 'Weekly Team Standup', team: 'Engineering • Core Platform', time: '2:00 PM', icon: <View className="w-8 h-8 rounded-full border-2 border-blue-600 mr-4" /> },
+                        { title: 'Client Feedback Review', team: 'Design • Mobile App Refresh', time: 'Tomorrow', icon: <View className="w-8 h-8 rounded-full border-2 border-blue-200 mr-4" /> },
+                        { title: 'Quarterly Planning', team: 'Leadership • Strategy', time: 'Fri, Oct 24', icon: <View className="w-8 h-8 rounded-full border-2 border-blue-100 mr-4" /> },
+                    ].map((sync, i) => (
+                        <TouchableOpacity key={i} className="flex-row items-center mb-6">
+                            {sync.icon}
+                            <View className="flex-1">
+                                <Text className="text-base font-bold text-gray-900">{sync.title}</Text>
+                                <Text className="text-gray-400 text-xs font-medium">{sync.team}</Text>
+                            </View>
+                            <Text className="text-gray-400 text-xs font-bold">{sync.time}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+        );
+    };
+
+    return (
+        <SafeAreaView className="flex-1 bg-gray-50">
+            {isAdmin ? renderAdminView() : renderCustomerView()}
+
+            {/* FAB */}
             <TouchableOpacity
                 onPress={() => navigation.navigate('Tasks', { screen: 'CreateTask' })}
                 className="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg shadow-blue-500/50 z-50"
@@ -171,3 +368,4 @@ const TasksScreen = ({ navigation }: any) => {
 };
 
 export default TasksScreen;
+

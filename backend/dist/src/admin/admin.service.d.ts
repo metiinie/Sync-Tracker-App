@@ -240,14 +240,6 @@ export declare class AdminService {
         userId: string;
         action: string;
         timestamp: Date;
-        user: {
-            id: string;
-            name: string;
-            email: string;
-            systemRole: "ADMIN" | "USER";
-            isSuspended: boolean;
-            createdAt: Date;
-        };
         task: {
             id: string;
             createdAt: Date;
@@ -259,6 +251,14 @@ export declare class AdminService {
             syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
             lastUpdatedAt: Date;
         } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+            systemRole: "ADMIN" | "USER";
+            isSuspended: boolean;
+            createdAt: Date;
+        };
     }[]>;
     getSettings(): Promise<{
         id: string;
@@ -285,13 +285,13 @@ export declare class AdminService {
         userId: string;
         action: string;
         timestamp: Date;
+        task: {
+            title: string;
+        } | null;
         user: {
             name: string;
             email: string;
         };
-        task: {
-            title: string;
-        } | null;
     }[]>;
     getSystemSnapshot(): Promise<{
         totalUsers: number;
