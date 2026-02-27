@@ -12,9 +12,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         JwtModule.registerAsync({
             imports: [ConfigModule],
             inject: [ConfigService],
-            useFactory: async (configService: ConfigService) => ({
-                secret: configService.get<string>('SUPABASE_JWT_SECRET'),
-            }),
+            useFactory: async (configService: ConfigService) => {
+                const secret = configService.get<string>('SUPABASE_JWT_SECRET');
+                return {
+                    secret: secret ? Buffer.from(secret, 'base64') : undefined,
+                };
+            },
         }),
     ],
     providers: [AuthService, JwtStrategy],

@@ -24,19 +24,26 @@ export const useAuthStore = create<AuthState>()(
             systemRole: null,
             hasHydrated: false,
             setSession: async (session) => {
+                const timestamp = new Date().toLocaleTimeString();
                 if (session) {
+                    console.log(`[${timestamp}] [Auth Store] Setting session for user: ${session.user.email}`);
                     set({
                         session,
                         user: session.user,
                         token: session.access_token
                     });
                 } else {
+                    console.log(`[${timestamp}] [Auth Store] Clearing session (Logout)`);
                     set({ session: null, user: null, token: null, systemRole: null });
                 }
             },
-            setSystemRole: (role) => set({ systemRole: role }),
+            setSystemRole: (role) => {
+                console.log(`[Auth Store] System role set to: ${role}`);
+                set({ systemRole: role });
+            },
             setHasHydrated: (state) => set({ hasHydrated: state }),
             logout: async () => {
+                console.log('[Auth Store] Manual logout triggered');
                 set({ session: null, user: null, token: null, systemRole: null });
             },
         }),
