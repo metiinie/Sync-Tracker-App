@@ -36,9 +36,6 @@ let TasksController = class TasksController {
     async addParticipant(id, body, req) {
         return this.tasksService.addParticipant(id, body.userId, body.role, req.user.userId);
     }
-    async getStats(req) {
-        return this.tasksService.getUserStats(req.user.userId);
-    }
     async findAll(req) {
         return this.tasksService.findAllForUser(req.user.userId);
     }
@@ -99,13 +96,6 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "addParticipant", null);
-__decorate([
-    (0, common_1.Get)('stats'),
-    __param(0, (0, common_1.Request)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], TasksController.prototype, "getStats", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),

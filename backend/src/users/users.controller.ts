@@ -11,6 +11,11 @@ export class UsersController {
         private readonly tasksService: TasksService,
     ) { }
 
+    @Get('stats')
+    async getStats(@Request() req: any) {
+        return this.tasksService.getUserStats(req.user.userId);
+    }
+
     @Get('search')
     async search(@Query('q') query: string) {
         return this.usersService.search(query || '');

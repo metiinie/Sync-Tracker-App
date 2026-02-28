@@ -9,7 +9,7 @@ export declare class NotificationsController {
         userId: string;
         type: string;
         content: string;
-        isRead: boolean;
+        isRead: string;
         task: {
             id: string;
             createdAt: Date;
@@ -28,7 +28,7 @@ export declare class NotificationsController {
         taskId: string | null;
         type: string;
         content: string;
-        isRead: boolean;
+        isRead: string;
         createdAt: Date;
     }>;
 }

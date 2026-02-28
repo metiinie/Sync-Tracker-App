@@ -142,17 +142,17 @@ async function seed() {
             {
                 taskId: task1Id,
                 title: 'Auth Endpoints Done',
-                isCompleted: true,
+                isCompleted: 'true',
             },
             {
                 taskId: task1Id,
                 title: 'Task Endpoints Done',
-                isCompleted: false,
+                isCompleted: 'false',
             },
             {
                 taskId: task2Id,
                 title: 'Color Palette Decided',
-                isCompleted: true,
+                isCompleted: 'true',
             },
         ]);
         console.log('Adding time logs...');
@@ -190,14 +190,12 @@ async function seed() {
                 taskId: task1Id,
                 type: 'ASSIGNED',
                 content: 'You have been assigned to: Implement Core API',
-                isRead: false,
             },
             {
                 userId: user2Id,
                 taskId: task2Id,
                 type: 'HELP_REQUESTED',
                 content: 'Help requested on: Design Mobile UI',
-                isRead: false,
             },
         ]);
         console.log('✅ Seeding completed successfully!');

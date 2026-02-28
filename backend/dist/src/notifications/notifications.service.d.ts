@@ -12,7 +12,7 @@ export declare class NotificationsService {
         userId: string;
         type: string;
         content: string;
-        isRead: boolean;
+        isRead: string;
     }>;
     findAllForUser(userId: string): Promise<{
         id: string;
@@ -21,7 +21,7 @@ export declare class NotificationsService {
         userId: string;
         type: string;
         content: string;
-        isRead: boolean;
+        isRead: string;
         task: {
             id: string;
             createdAt: Date;
@@ -40,7 +40,7 @@ export declare class NotificationsService {
         taskId: string | null;
         type: string;
         content: string;
-        isRead: boolean;
+        isRead: string;
         createdAt: Date;
     }>;
 }

@@ -48,20 +48,6 @@ export declare class TasksController {
         role: "contributor" | "helper" | "reviewer" | "observer";
         joinedAt: Date;
     }>;
-    getStats(req: any): Promise<{
-        active: number;
-        pending: number;
-        blocked: number;
-        helpRequested: number;
-        delegated: number;
-        totalTimeMins: number;
-        syncStates: {
-            IN_SYNC: number;
-            NEEDS_UPDATE: number;
-            BLOCKED: number;
-            HELP_REQUESTED: number;
-        };
-    }>;
     findAll(req: any): Promise<any[]>;
     findOne(id: string): Promise<{
         id: string;
@@ -126,7 +112,7 @@ export declare class TasksController {
             createdAt: Date;
             title: string;
             taskId: string;
-            isCompleted: boolean;
+            isCompleted: string;
             dueDate: Date | null;
         }[];
         timeLogs: {
@@ -151,14 +137,14 @@ export declare class TasksController {
         createdAt: Date;
         title: string;
         taskId: string;
-        isCompleted: boolean;
+        isCompleted: string;
         dueDate: Date | null;
     }>;
     toggleMilestone(mid: string, isCompleted: boolean, req: any): Promise<{
         id: string;
         taskId: string;
         title: string;
-        isCompleted: boolean;
+        isCompleted: string;
         dueDate: Date | null;
         createdAt: Date;
     }>;

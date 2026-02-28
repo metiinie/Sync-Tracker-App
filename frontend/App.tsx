@@ -19,10 +19,8 @@ import SplashScreen from './src/screens/SplashScreen';
 const Stack = createNativeStackNavigator();
 const queryClient = new QueryClient();
 
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-
 export default function App() {
-  const { token, setSession, hasHydrated } = useAuthStore();
+  const { token, setSession } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
 
@@ -35,15 +33,16 @@ export default function App() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('[Auth Change] Event:', _event, session ? '(Session Present)' : '(No Session)');
       setSession(session);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Wait for store hydration AND Supabase initial check
-  if (!hasHydrated || loading) {
+  if (loading || showSplash) {
+    if (showSplash) {
+      return <SplashScreen onFinish={() => setShowSplash(false)} />;
+    }
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
         <ActivityIndicator size="large" color="#2563eb" />
@@ -52,43 +51,37 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <NavigationContainer>
-          <StatusBar style="auto" />
-          {showSplash ? (
-            <SplashScreen onFinish={() => setShowSplash(false)} />
+    <QueryClientProvider client={queryClient}>
+      <NavigationContainer>
+        <StatusBar style="auto" />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {!token ? (
+            <>
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Register" component={RegisterScreen} />
+            </>
           ) : (
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              {!token ? (
-                <>
-                  <Stack.Screen name="Login" component={LoginScreen} />
-                  <Stack.Screen name="Register" component={RegisterScreen} />
-                </>
-              ) : (
-                <>
-                  <Stack.Screen name="Main" component={MainTabs} />
-                  <Stack.Screen
-                    name="TaskDetail"
-                    component={TaskDetailScreen}
-                    options={{ headerShown: true, title: 'Track Details', headerShadowVisible: false }}
-                  />
-                  <Stack.Screen
-                    name="AdminUserDetail"
-                    component={AdminUserDetailScreen}
-                    options={{ headerShown: true, title: 'Identity Governance', headerShadowVisible: false }}
-                  />
-                  <Stack.Screen
-                    name="CreateTask"
-                    component={CreateTaskScreen}
-                    options={{ headerShown: true, title: 'New Track', headerShadowVisible: false }}
-                  />
-                </>
-              )}
-            </Stack.Navigator>
+            <>
+              <Stack.Screen name="Main" component={MainTabs} />
+              <Stack.Screen
+                name="TaskDetail"
+                component={TaskDetailScreen}
+                options={{ headerShown: true, title: 'Track Details', headerShadowVisible: false }}
+              />
+              <Stack.Screen
+                name="AdminUserDetail"
+                component={AdminUserDetailScreen}
+                options={{ headerShown: true, title: 'Identity Governance', headerShadowVisible: false }}
+              />
+              <Stack.Screen
+                name="CreateTask"
+                component={CreateTaskScreen}
+                options={{ headerShown: true, title: 'New Track', headerShadowVisible: false }}
+              />
+            </>
           )}
-        </NavigationContainer>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </QueryClientProvider>
   );
 }

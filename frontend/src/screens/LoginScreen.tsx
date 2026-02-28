@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../services/supabase';
-import { Mail, Lock } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 const LoginScreen = () => {
@@ -66,11 +66,11 @@ const LoginScreen = () => {
                     <Text className="text-gray-500 mb-8">Sign in to continue tracking your progress</Text>
 
                     {/* Form */}
-                    <View className="mb-6">
+                    <View className="mb-4">
                         <Text className="text-gray-700 font-semibold mb-2 ml-1">Email</Text>
                         <View className="flex-row items-center bg-gray-50 rounded-2xl border border-gray-100 p-1">
                             <View className="p-3">
-                                <Mail size={20} color="#94a3b8" />
+                                <Ionicons name="mail-outline" size={20} color="#94a3b8" />
                             </View>
                             <TextInput
                                 className="flex-1 p-3 text-gray-900"
@@ -87,7 +87,7 @@ const LoginScreen = () => {
                         <Text className="text-gray-700 font-semibold mb-2 ml-1">Password</Text>
                         <View className="flex-row items-center bg-gray-50 rounded-2xl border border-gray-100 p-1">
                             <View className="p-3">
-                                <Lock size={20} color="#94a3b8" />
+                                <Ionicons name="lock-closed-outline" size={20} color="#94a3b8" />
                             </View>
                             <TextInput
                                 className="flex-1 p-3 text-gray-900"
@@ -123,12 +123,14 @@ const LoginScreen = () => {
                             onPress={() => handleSSO('google')}
                             className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
                         >
+                            <Ionicons name="logo-google" size={20} color="#ea4335" />
                             <Text className="ml-2 font-semibold text-gray-700">Google</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => handleSSO('linkedin_oidc')}
                             className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
                         >
+                            <Ionicons name="logo-linkedin" size={20} color="#0077b5" />
                             <Text className="ml-2 font-semibold text-gray-700">LinkedIn</Text>
                         </TouchableOpacity>
                     </View>

@@ -1,21 +1,13 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/authStore';
-import { supabase } from './supabase';
 
-const API_BASE = 'http://192.168.8.182:3000'; // Match your API URL
-const SOCKET_URL = API_BASE;
+const SOCKET_URL = 'http://10.22.140.80:3000'; // Update with your actual Socket URL
 
 let socket: Socket | null = null;
 
-export const getSocket = async () => {
+export const getSocket = () => {
     if (!socket) {
-        let token = useAuthStore.getState().token;
-
-        if (!token) {
-            const { data: { session } } = await supabase.auth.getSession();
-            token = session?.access_token || null;
-        }
-
+        const token = useAuthStore.getState().token;
         socket = io(SOCKET_URL, {
             auth: { token },
         });

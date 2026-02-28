@@ -98,12 +98,12 @@ const AdminDashboard = ({ navigation }: any) => {
                         highRiskTasks?.map((task: any) => (
                             <TouchableOpacity
                                 key={task.id}
-                                onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
+                                onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: task.id } })}
                                 className="mb-2"
                             >
                                 <TaskItem
                                     task={task}
-                                    onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
+                                    onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: task.id } })}
                                 />
                                 <View className="absolute top-2 right-2 bg-red-600 px-2 py-0.5 rounded-full">
                                     <Text className="text-[8px] font-black text-white uppercase">Critical</Text>
@@ -122,7 +122,7 @@ const AdminDashboard = ({ navigation }: any) => {
                         transferAlerts?.map((task: any) => (
                             <TouchableOpacity
                                 key={task.id}
-                                onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
+                                onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: task.id } })}
                                 className="bg-gray-50 p-4 rounded-3xl mb-2 flex-row items-center border border-gray-100"
                             >
                                 <View className="w-10 h-10 rounded-full bg-blue-100 items-center justify-center">

@@ -18,7 +18,7 @@ export class NotificationsService {
             taskId,
             type,
             content,
-            isRead: false,
+            isRead: 'false',
         }).returning();
 
         // Emit realtime notification to the specific user
@@ -40,7 +40,7 @@ export class NotificationsService {
 
     async markAsRead(notificationId: string, userId: string) {
         const [notification] = await this.db.update(schema.notifications)
-            .set({ isRead: true })
+            .set({ isRead: 'true' })
             .where(eq(schema.notifications.id, notificationId))
             .returning();
 

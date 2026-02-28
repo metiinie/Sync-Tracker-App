@@ -5,39 +5,19 @@ import api from '../services/api';
 import TaskItem from '../components/TaskItem';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
-import { Play, UserCheck, AlertOctagon, CheckCircle2, ChevronDown, Check, AlertCircle, Search, Settings, HelpCircle, Briefcase, Plus, Clock } from 'lucide-react-native';
+import { AlertCircle, Clock, Users, ChevronRight, Bell, Flag, Shield } from 'lucide-react-native';
 
 const HomeScreen = ({ navigation }: any) => {
     const [tasks, setTasks] = useState<any[]>([]);
-    const [stats, setStats] = useState<any>(null);
     const [refreshing, setRefreshing] = useState(false);
     const user = useAuthStore(state => state.user);
 
     const fetchTasks = async () => {
         try {
-            const [tasksRes, statsRes] = await Promise.all([
-                api.get('/tasks'),
-                api.get('/tasks/stats')
-            ]);
-            setTasks(tasksRes.data);
-            setStats(statsRes.data);
+            const response = await api.get('/tasks');
+            setTasks(response.data);
         } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-        }
-    };
-
-    const handleQuickAction = async (syncState: string) => {
-        // Find tasks where current user is responsible
-        const myTasks = tasks.filter(t => t.responsibleOwner === user?.id);
-        if (myTasks.length === 0) return;
-
-        try {
-            await Promise.all(myTasks.map(t =>
-                api.patch(`/tasks/${t.id}/sync`, { syncState })
-            ));
-            await fetchTasks();
-        } catch (error) {
-            console.error('Error applying quick action:', error);
+            console.error('Error fetching tasks:', error);
         }
     };
 
@@ -50,206 +30,184 @@ const HomeScreen = ({ navigation }: any) => {
     useEffect(() => {
         fetchTasks();
 
-        let socket: any;
-        // Wrap getSocket in an async IIFE within useEffect to handle the Promise.
-        (async () => {
-            socket = await getSocket();
-            socket.on('sync:update', (data: any) => {
-                setTasks(prevTasks => prevTasks.map(t =>
-                    t.id === data.taskId ? { ...t, syncState: data.syncState } : t
-                ));
-                // Also refresh stats when sync updates
-                api.get('/tasks/stats').then(res => setStats(res.data)).catch(() => { });
-            });
-        })();
+        const socket = getSocket();
+        socket.on('sync:update', (data) => {
+            setTasks(prevTasks => prevTasks.map(t =>
+                t.id === data.taskId ? { ...t, syncState: data.syncState } : t
+            ));
+        });
+
+        // Auto-join rooms for all tasks
+        tasks.forEach(t => {
+            socket.emit('joinTask', { taskId: t.id });
+        });
 
         return () => {
-            if (socket) {
-                socket.off('sync:update');
-            }
+            socket.off('sync:update');
         };
-    }, []);
+    }, [tasks.length]);
 
     const dashboard = useMemo(() => {
         const userId = user?.id;
-        if (!userId || !tasks) return null;
+        if (!userId) return null;
 
-        const myResponsibility = tasks.filter(t => t.responsibleOwner === userId);
-
-        return {
-            myTasks: myResponsibility,
-            stats: stats || { responsible: 0, delegated: 0, blocked: 0 }
+        const myResponsibility = {
+            blocked: tasks.filter(t => t.responsibleOwner === userId && t.syncState === 'BLOCKED'),
+            help: tasks.filter(t => t.responsibleOwner === userId && t.syncState === 'HELP_REQUESTED'),
+            needsUpdate: tasks.filter(t => t.responsibleOwner === userId && t.syncState === 'NEEDS_UPDATE'),
+            inSync: tasks.filter(t => t.responsibleOwner === userId && (t.syncState === 'IN_SYNC' || !t.syncState)),
         };
-    }, [tasks, user, stats]);
+
+        const delegated = tasks.filter(t => t.assignedBy === userId && t.responsibleOwner !== userId);
+        const participating = tasks.filter(t =>
+            t.participants?.some((p: any) => p.userId === userId) &&
+            t.responsibleOwner !== userId &&
+            t.assignedBy !== userId
+        );
+
+        // Critical Alerts
+        const alerts = [];
+        // 1. I am blocked
+        myResponsibility.blocked.forEach(t => alerts.push({ type: 'BLOCKED_ME', task: t }));
+        // 2. Help requested on my delegated tasks
+        delegated.filter(t => t.syncState === 'HELP_REQUESTED').forEach(t => alerts.push({ type: 'HELP_REQ_DELEGATED', task: t }));
+        // 3. Responsibility transfer pending
+        tasks.filter(t => t.responsibleOwner === userId && t.status === 'PENDING').forEach(t => alerts.push({ type: 'TRANSFER_PENDING', task: t }));
+
+        return { myResponsibility, delegated, participating, alerts };
+    }, [tasks, user]);
+
+    const renderSectionHeader = (title: string, subtitle?: string) => (
+        <View className="mb-4 mt-8">
+            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">{title}</Text>
+            {subtitle && <Text className="text-gray-900 font-bold text-lg">{subtitle}</Text>}
+        </View>
+    );
 
     if (!dashboard) return null;
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
-            {/* Minimal Header */}
-            <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
-                <View className="flex-row items-center">
-                    <Text className="text-xl font-black text-gray-900 tracking-tight">SyncTracker</Text>
-                </View>
-                {/* Placeholder Avatar */}
-                <View className="w-8 h-8 rounded-full bg-orange-100 border border-orange-200 items-center justify-center">
-                    <Text className="text-orange-800 font-bold text-xs">{(user?.email?.[0] || 'U').toUpperCase()}</Text>
-                </View>
+        <SafeAreaView className="flex-1 bg-white">
+            <View className="px-6 pt-4 pb-2">
+                <Text className="text-3xl font-black text-gray-900">Radar</Text>
+                <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">Execution Control Center</Text>
             </View>
 
             <ScrollView
-                className="flex-1"
+                className="flex-1 px-6"
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 contentContainerStyle={{ paddingBottom: 120 }}
             >
-                {/* Search Bar - Fake for Dashboard UI */}
-                <View className="px-6 mb-6 mt-4">
-                    <View className="flex-row items-center bg-gray-100/80 rounded-2xl px-4 py-3 border border-gray-200/50">
-                        <Search size={18} color="#9ca3af" />
-                        <Text className="flex-1 ml-3 text-gray-400 font-medium">Search tasks, teams, syncs...</Text>
-                    </View>
-                </View>
-
-                {/* Status Filter Placeholder */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6 px-6" contentContainerStyle={{ paddingRight: 40 }}>
-                    <View className="bg-gray-900 px-5 py-2 rounded-full mr-2">
-                        <Text className="text-white font-bold text-xs">All</Text>
-                    </View>
-                    {['In Sync', 'Blocked', 'Needs Update', 'Help'].map((f, i) => (
-                        <View key={i} className="bg-white border border-gray-200 px-4 py-2 rounded-full mr-2">
-                            <Text className="text-gray-600 font-medium text-xs">{f}</Text>
-                        </View>
-                    ))}
-                </ScrollView>
-
-                {/* Greeting */}
-                <View className="px-6 mb-6">
-                    <Text className="text-gray-500 text-sm font-medium">Good morning,</Text>
-                    <Text className="text-xl font-bold text-gray-900">
-                        {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
-                    </Text>
-                </View>
-
-                {/* OVERVIEW STATS */}
-                <View className="px-6 mb-8">
-                    <View className="flex-row justify-between items-end mb-4">
-                        <Text className="text-lg font-bold text-gray-900">Overview</Text>
-                        <Text className="text-blue-600 font-medium flex-row text-xs">View Report</Text>
-                    </View>
-
-                    <View className="flex-row justify-between">
-                        {/* Responsible For Stat Card */}
-                        <View className="bg-white flex-1 rounded-3xl p-4 shadow-sm border border-gray-100 mr-3">
-                            <View className="w-8 h-8 rounded-xl bg-blue-50 items-center justify-center mb-4">
-                                <Briefcase size={16} color="#3b82f6" />
-                            </View>
-                            <Text className="text-2xl font-black text-gray-900 mb-1">{dashboard.stats.active + dashboard.stats.pending}</Text>
-                            <Text className="text-xs text-gray-500 font-medium">My Tasks</Text>
-                        </View>
-
-                        {/* Assigned By Me Stat Card */}
-                        <View className="bg-white flex-1 rounded-3xl p-4 shadow-sm border border-gray-100 mr-3">
-                            <View className="w-8 h-8 rounded-xl bg-purple-50 items-center justify-center mb-4">
-                                <Play size={16} color="#a855f7" />
-                            </View>
-                            <Text className="text-2xl font-black text-gray-900 mb-1">{dashboard.stats.delegated}</Text>
-                            <Text className="text-xs text-gray-500 font-medium">Delegated</Text>
-                        </View>
-
-                        {/* Blocked Stat Card */}
-                        <View className="bg-white flex-1 rounded-3xl p-4 shadow-sm border border-gray-100">
-                            <View className="w-8 h-8 rounded-xl bg-red-50 items-center justify-center mb-4">
-                                <AlertOctagon size={16} color="#ef4444" />
-                            </View>
-                            <Text className="text-2xl font-black text-gray-900 mb-1">{dashboard.stats.blocked}</Text>
-                            <Text className="text-xs text-gray-500 font-medium">Blocked</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* QUICK ACTIONS */}
-                <View className="px-6 mb-8">
-                    <Text className="text-lg font-bold text-gray-900 mb-1">Quick Actions</Text>
-                    <Text className="text-xs text-gray-500 mb-4">Update status for selected tasks</Text>
-
-                    <View className="flex-row justify-between mb-3">
-                        <TouchableOpacity
-                            onPress={() => handleQuickAction('IN_SYNC')}
-                            className="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl py-4 items-center mr-3"
-                        >
-                            <CheckCircle2 size={24} color="#10b981" className="mb-2" />
-                            <Text className="text-sm font-bold text-gray-700">Mark In Sync</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleQuickAction('NEEDS_UPDATE')}
-                            className="flex-1 bg-blue-50 border border-blue-100 shadow-sm rounded-2xl py-4 items-center"
-                        >
-                            <Clock size={24} color="#eab308" className="mb-2" />
-                            <Text className="text-sm font-bold text-yellow-700">Needs Update</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <View className="flex-row justify-between">
-                        <TouchableOpacity
-                            onPress={() => handleQuickAction('BLOCKED')}
-                            className="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl py-4 items-center mr-3"
-                        >
-                            <AlertOctagon size={24} color="#ef4444" className="mb-2" />
-                            <Text className="text-sm font-bold text-red-600">Blocked</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleQuickAction('HELP_REQUESTED')}
-                            className="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl py-4 items-center"
-                        >
-                            <HelpCircle size={24} color="#3b82f6" className="mb-2" />
-                            <Text className="text-sm font-bold text-blue-600">Request Help</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* ACTIVE TASKS */}
-                <View className="px-6 mb-4">
-                    <View className="flex-row justify-between items-center mb-4">
-                        <Text className="text-lg font-bold text-gray-900">Active Tasks</Text>
-                        <FilterIcon />
-                    </View>
-
-                    {/* Task List */}
-                    {dashboard.myTasks.length === 0 ? (
-                        <View className="bg-white p-8 rounded-3xl border border-gray-100 items-center justify-center">
-                            <Text className="text-gray-400 font-medium mb-4 text-center">You have no active tasks demanding your attention right now.</Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('CreateTask')} className="bg-blue-600 px-6 py-3 rounded-xl">
-                                <Text className="text-white font-bold">Create Task</Text>
+                {/* D. CRITICAL ALERTS STRIP */}
+                {dashboard.alerts.length > 0 && (
+                    <View className="mt-4">
+                        {dashboard.alerts.map((alert, idx) => (
+                            <TouchableOpacity
+                                key={`alert-${idx}`}
+                                onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: alert.task.id } })}
+                                className="bg-black p-4 rounded-3xl mb-2 flex-row items-center"
+                            >
+                                <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
+                                    <Bell size={16} color="#fff" />
+                                </View>
+                                <View className="ml-3 flex-1">
+                                    <Text className="text-white text-xs font-black uppercase tracking-tighter">
+                                        {alert.type.replace(/_/g, ' ')}
+                                    </Text>
+                                    <Text className="text-white text-sm font-bold" numberOfLines={1}>
+                                        {alert.task.title}
+                                    </Text>
+                                </View>
+                                <ChevronRight size={16} color="#444" />
                             </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
+                {/* A. MY RESPONSIBILITY */}
+                {renderSectionHeader('Section A', 'My Responsibility')}
+
+                {/* Grouped by Status */}
+                {['blocked', 'help', 'needsUpdate', 'inSync'].map((key) => {
+                    const groupTasks = (dashboard.myResponsibility as any)[key];
+                    if (groupTasks.length === 0) return null;
+
+                    const labelMap: any = {
+                        blocked: '🔴 Blocked',
+                        help: '🔵 Help Requested',
+                        needsUpdate: '🟡 Needs Update',
+                        inSync: '🟢 In Sync'
+                    };
+
+                    return (
+                        <View key={key} className="mb-4">
+                            <Text className="text-[10px] font-black text-gray-400 mb-3 px-2 italic">{labelMap[key]}</Text>
+                            {groupTasks.map((t: any) => (
+                                <TaskItem
+                                    key={t.id}
+                                    task={t}
+                                    onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: t.id } })}
+                                />
+                            ))}
                         </View>
-                    ) : (
-                        dashboard.myTasks.map((t: any) => (
-                            <TaskItem
-                                key={t.id}
-                                task={t}
-                                onPress={() => navigation.navigate('TaskDetail', { taskId: t.id })}
-                            />
-                        ))
-                    )}
-                </View>
+                    );
+                })}
+
+                {/* B. DELEGATED BY ME */}
+                {dashboard.delegated.length > 0 && (
+                    <>
+                        {renderSectionHeader('Section B', 'Delegated By Me')}
+                        {dashboard.delegated.map(t => (
+                            <View key={t.id} className="relative">
+                                <TaskItem
+                                    task={t}
+                                    onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: t.id } })}
+                                />
+                                {t.syncState === 'BLOCKED' && (
+                                    <View className="absolute top-2 right-2 bg-red-500 px-2 py-0.5 rounded-full border-2 border-white">
+                                        <Text className="text-[8px] font-black text-white uppercase">Red Alert</Text>
+                                    </View>
+                                )}
+                            </View>
+                        ))}
+                    </>
+                )}
+
+                {/* C. PARTICIPATING IN */}
+                {dashboard.participating.length > 0 && (
+                    <>
+                        {renderSectionHeader('Section C', 'Participating In')}
+                        {dashboard.participating.map(t => {
+                            const myParticipation = t.participants.find((p: any) => p.userId === user?.id);
+                            return (
+                                <TaskItem
+                                    key={t.id}
+                                    task={t}
+                                    role={myParticipation?.role}
+                                    onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: t.id } })}
+                                />
+                            );
+                        })}
+                    </>
+                )}
+
+                {/* Empty State */}
+                {tasks.length === 0 && (
+                    <View className="items-center justify-center py-20">
+                        <Shield size={64} color="#e5e7eb" />
+                        <Text className="text-gray-400 font-bold mt-4 text-center px-10">No tasks on your radar. Create one to begin sync.</Text>
+                    </View>
+                )}
             </ScrollView>
 
             <TouchableOpacity
-                onPress={() => navigation.navigate('CreateTask')}
-                className="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg shadow-blue-500/50"
+                onPress={() => navigation.navigate('Tasks', { screen: 'CreateTask' })}
+                className="absolute bottom-10 right-8 w-16 h-16 bg-black rounded-full items-center justify-center shadow-2xl shadow-gray-500"
             >
-                <Plus size={24} color="#fff" />
+                <Text className="text-white text-3xl font-light">+</Text>
             </TouchableOpacity>
         </SafeAreaView>
     );
 };
-
-// Dumb filter icon placeholder
-const FilterIcon = () => (
-    <View className="flex-row space-x-1 items-center">
-        <View className="w-4 border-b-2 border-gray-400" />
-        <View className="w-2 border-b-2 border-gray-400" />
-        <View className="w-3 border-b-2 border-gray-400" />
-    </View>
-);
 
 export default HomeScreen;
