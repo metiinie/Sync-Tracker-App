@@ -1,24 +1,47 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import { Search, Plus, Filter, CheckCircle2, AlertCircle, Clock, UserCheck, Users } from 'lucide-react-native';
+import { getSocket } from '../services/socket';
+import { Search, Plus, Bell, X } from 'lucide-react-native';
+import TaskItem from '../components/TaskItem';
 
-const Filters = [
-    { id: 'all', label: 'All', icon: Filter },
-    { id: 'owned', label: 'Owned', icon: UserCheck },
-    { id: 'assigned', label: 'Assigned By Me', icon: CheckCircle2 },
-    { id: 'participating', label: 'Participating', icon: Users },
-    { id: 'pending', label: 'Pending Acceptance', icon: Clock },
+// ─── SEGMENT TABS ──────────────────────────────────
+const SEGMENTS = [
+    { id: 'all', label: 'All' },
+    { id: 'owned', label: 'Owned' },
+    { id: 'delegated', label: 'Delegated' },
+    { id: 'participating', label: 'Participating' },
 ];
+
+// ─── STATUS FILTER CHIPS ───────────────────────────
+const STATUS_FILTERS = [
+    { id: 'BLOCKED', label: 'Blocked', color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' },
+    { id: 'HELP_REQUESTED', label: 'Help Requested', color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
+    { id: 'NEEDS_UPDATE', label: 'Needs Update', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
+    { id: 'IN_SYNC', label: 'In Sync', color: '#10B981', bg: '#F0FDF4', border: '#BBF7D0' },
+    { id: 'PENDING', label: 'Pending Acceptance', color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
+];
+
+// ─── SYNC STATE SORT PRIORITY ──────────────────────
+const SYNC_PRIORITY: Record<string, number> = {
+    'BLOCKED': 0,
+    'HELP_REQUESTED': 1,
+    'NEEDS_UPDATE': 2,
+    'PENDING': 3,
+    'IN_SYNC': 4,
+};
 
 const TasksScreen = ({ navigation }: any) => {
     const { token, user } = useAuthStore();
+    const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
-    const [activeFilter, setActiveFilter] = useState('all');
+    const [activeSegment, setActiveSegment] = useState('all');
+    const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
 
+    // ─── DATA FETCHING ─────────────────────────────
     const { data: tasks = [], isLoading, refetch } = useQuery({
         queryKey: ['tasks'],
         queryFn: async () => {
@@ -28,123 +51,411 @@ const TasksScreen = ({ navigation }: any) => {
         enabled: !!token,
     });
 
-    const filteredTasks = useMemo(() => {
-        let result = tasks;
+    // ─── REAL-TIME SOCKET UPDATES ──────────────────
+    useEffect(() => {
+        const socket = getSocket();
 
-        // Apply Search
-        if (search) {
-            result = result.filter((t: any) =>
-                t.title.toLowerCase().includes(search.toLowerCase()) ||
-                t.description?.toLowerCase().includes(search.toLowerCase())
-            );
+        const handleSyncUpdate = (data: any) => {
+            queryClient.setQueryData(['tasks'], (old: any[] | undefined) => {
+                if (!old) return old;
+                return old.map(t =>
+                    t.id === data.taskId
+                        ? { ...t, syncState: data.syncState, lastUpdatedAt: new Date().toISOString() }
+                        : t
+                );
+            });
+        };
+
+        const handleBlocked = (data: any) => {
+            queryClient.setQueryData(['tasks'], (old: any[] | undefined) => {
+                if (!old) return old;
+                return old.map(t =>
+                    t.id === data.taskId
+                        ? { ...t, syncState: 'BLOCKED', lastUpdatedAt: new Date().toISOString() }
+                        : t
+                );
+            });
+        };
+
+        const handleHelpRequested = (data: any) => {
+            queryClient.setQueryData(['tasks'], (old: any[] | undefined) => {
+                if (!old) return old;
+                return old.map(t =>
+                    t.id === data.taskId
+                        ? { ...t, syncState: 'HELP_REQUESTED', lastUpdatedAt: new Date().toISOString() }
+                        : t
+                );
+            });
+        };
+
+        const handleRefetch = () => {
+            refetch();
+        };
+
+        socket.on('sync:update', handleSyncUpdate);
+        socket.on('task:blocked', handleBlocked);
+        socket.on('task:helpRequested', handleHelpRequested);
+        socket.on('task:assigned', handleRefetch);
+        socket.on('task:transferred', handleRefetch);
+        socket.on('milestone:completed', handleRefetch);
+
+        return () => {
+            socket.off('sync:update', handleSyncUpdate);
+            socket.off('task:blocked', handleBlocked);
+            socket.off('task:helpRequested', handleHelpRequested);
+            socket.off('task:assigned', handleRefetch);
+            socket.off('task:transferred', handleRefetch);
+            socket.off('milestone:completed', handleRefetch);
+        };
+    }, [queryClient, refetch]);
+
+    // Join task rooms
+    useEffect(() => {
+        const socket = getSocket();
+        tasks.forEach((t: any) => {
+            socket.emit('joinTask', { taskId: t.id });
+        });
+    }, [tasks.length]);
+
+    // ─── TOGGLE STATUS FILTER (Multi-select) ───────
+    const toggleStatus = useCallback((statusId: string) => {
+        setActiveStatuses(prev =>
+            prev.includes(statusId)
+                ? prev.filter(s => s !== statusId)
+                : [...prev, statusId]
+        );
+    }, []);
+
+    // ─── DETERMINE USER ROLE FOR A TASK ────────────
+    const getUserRole = useCallback((task: any): 'Owner' | 'Assigner' | 'Participant' | 'Transferring' => {
+        const userId = user?.id;
+        if (!userId) return 'Participant';
+
+        if (task.status === 'TRANSFERRING' || task.transferPending) {
+            if (task.responsibleOwner === userId || task.assignedBy === userId) {
+                return 'Transferring';
+            }
         }
+        if (task.responsibleOwner === userId) return 'Owner';
+        if (task.assignedBy === userId && task.responsibleOwner !== userId) return 'Assigner';
+        return 'Participant';
+    }, [user?.id]);
 
-        // Apply Category Filter
-        switch (activeFilter) {
+    // ─── FILTERED + SORTED TASKS ───────────────────
+    const filteredTasks = useMemo(() => {
+        const userId = user?.id;
+        if (!userId) return [];
+
+        let result = [...tasks];
+
+        // 1. Segment filter (role-based)
+        switch (activeSegment) {
             case 'owned':
-                result = result.filter((t: any) => t.responsibleOwner === user?.id && t.status !== 'PENDING');
+                result = result.filter((t: any) => t.responsibleOwner === userId);
                 break;
-            case 'assigned':
-                result = result.filter((t: any) => t.assignedBy === user?.id && t.responsibleOwner !== user?.id);
+            case 'delegated':
+                result = result.filter((t: any) => t.assignedBy === userId && t.responsibleOwner !== userId);
                 break;
             case 'participating':
                 result = result.filter((t: any) =>
-                    t.responsibleOwner !== user?.id &&
-                    t.assignedBy !== user?.id
+                    t.responsibleOwner !== userId &&
+                    t.assignedBy !== userId
                 );
                 break;
-            case 'pending':
-                result = result.filter((t: any) => t.responsibleOwner === user?.id && t.status === 'PENDING');
-                break;
-            default:
+            default: // 'all'
                 break;
         }
 
-        return result;
-    }, [tasks, search, activeFilter, user?.id]);
+        // 2. Status filter (sync state, multi-select)
+        if (activeStatuses.length > 0) {
+            result = result.filter((t: any) => {
+                const syncState = t.syncState || 'IN_SYNC';
+                const taskStatus = t.status;
+                return activeStatuses.some(s => {
+                    if (s === 'PENDING') return taskStatus === 'PENDING' || syncState === 'PENDING';
+                    return syncState === s;
+                });
+            });
+        }
 
+        // 3. Search filter
+        if (search.trim()) {
+            const q = search.toLowerCase().trim();
+            result = result.filter((t: any) =>
+                t.title?.toLowerCase().includes(q) ||
+                t.owner?.name?.toLowerCase().includes(q) ||
+                t.owner?.email?.toLowerCase().includes(q)
+            );
+        }
+
+        // 4. Sort by urgency (sync state priority), then by most recently updated
+        result.sort((a: any, b: any) => {
+            const aPriority = SYNC_PRIORITY[a.syncState] ?? 4;
+            const bPriority = SYNC_PRIORITY[b.syncState] ?? 4;
+            if (aPriority !== bPriority) return aPriority - bPriority;
+
+            // Within same priority: most recently updated first
+            const aTime = new Date(a.lastUpdatedAt || a.updatedAt || a.createdAt).getTime();
+            const bTime = new Date(b.lastUpdatedAt || b.updatedAt || b.createdAt).getTime();
+            return bTime - aTime;
+        });
+
+        return result;
+    }, [tasks, activeSegment, activeStatuses, search, user?.id]);
+
+    // ─── RENDER TASK CARD ──────────────────────────
+    const renderTask = useCallback(({ item }: { item: any }) => (
+        <TaskItem
+            task={item}
+            userRole={getUserRole(item)}
+            onPress={() => navigation.navigate('TaskDetail', { taskId: item.id })}
+        />
+    ), [getUserRole, navigation]);
+
+    const keyExtractor = useCallback((item: any) => item.id, []);
+
+    // ─── LOADING STATE ─────────────────────────────
     if (isLoading) {
         return (
-            <View className="flex-1 justify-center items-center bg-white">
-                <ActivityIndicator size="large" color="#000" />
-            </View>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#111827" />
+                    <Text style={{ marginTop: 12, fontSize: 14, color: '#9CA3AF', fontWeight: '500' }}>
+                        Loading tasks...
+                    </Text>
+                </View>
+            </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
-            <View className="px-6 pt-6 pb-2">
-                <Text className="text-3xl font-bold text-gray-900 mb-1">My Tasks</Text>
-                <Text className="text-gray-500 mb-6 font-medium">System Engine & Structure</Text>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
 
-                {/* Search Bar */}
-                <View className="flex-row items-center bg-gray-100 rounded-2xl px-4 py-3 mb-6 border border-gray-200/50">
-                    <Search size={20} color="#9ca3af" />
+            {/* ═══ HEADER ═══════════════════════════════ */}
+            <View style={{
+                paddingHorizontal: 24,
+                paddingTop: 8,
+                paddingBottom: 4,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+            }}>
+                <Text style={{
+                    fontSize: 28,
+                    fontWeight: '800',
+                    color: '#111827',
+                    letterSpacing: -0.5,
+                }}>
+                    Tasks
+                </Text>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('Team')}
+                    style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 14,
+                        backgroundColor: '#F3F4F6',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <Bell size={20} color="#374151" />
+                </TouchableOpacity>
+            </View>
+
+            {/* ═══ SEARCH BAR ═══════════════════════════ */}
+            <View style={{ paddingHorizontal: 24, marginTop: 12, marginBottom: 16 }}>
+                <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#F3F4F6',
+                    borderRadius: 14,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    borderWidth: 1,
+                    borderColor: '#E5E7EB',
+                }}>
+                    <Search size={18} color="#9CA3AF" />
                     <TextInput
-                        className="flex-1 ml-3 text-gray-900 text-base"
-                        placeholder="Search by title..."
-                        placeholderTextColor="#9ca3af"
+                        style={{
+                            flex: 1,
+                            marginLeft: 10,
+                            fontSize: 15,
+                            color: '#111827',
+                            fontWeight: '500',
+                            padding: 0,
+                        }}
+                        placeholder="Search tasks, owners, or IDs..."
+                        placeholderTextColor="#9CA3AF"
                         value={search}
                         onChangeText={setSearch}
                     />
+                    {search.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearch('')}>
+                            <X size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    )}
                 </View>
+            </View>
 
-                {/* Filter Chips */}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className="mb-4"
-                    contentContainerStyle={{ paddingRight: 20 }}
-                >
-                    {Filters.map((f) => {
-                        const Icon = f.icon;
-                        const isActive = activeFilter === f.id;
+            {/* ═══ SEGMENTED CONTROL ════════════════════ */}
+            <View style={{
+                paddingHorizontal: 24,
+                marginBottom: 14,
+            }}>
+                <View style={{
+                    flexDirection: 'row',
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#E5E7EB',
+                }}>
+                    {SEGMENTS.map(seg => {
+                        const isActive = activeSegment === seg.id;
                         return (
                             <TouchableOpacity
-                                key={f.id}
-                                onPress={() => setActiveFilter(f.id)}
-                                className={`flex-row items-center px-4 py-2.5 rounded-full mr-3 border ${isActive ? 'bg-black border-black' : 'bg-white border-gray-200'
-                                    }`}
+                                key={seg.id}
+                                onPress={() => setActiveSegment(seg.id)}
+                                style={{
+                                    flex: 1,
+                                    alignItems: 'center',
+                                    paddingVertical: 10,
+                                    borderBottomWidth: 2,
+                                    borderBottomColor: isActive ? '#3B82F6' : 'transparent',
+                                }}
                             >
-                                <Icon size={16} color={isActive ? '#fff' : '#6b7280'} />
-                                <Text className={`ml-2 font-semibold ${isActive ? 'text-white' : 'text-gray-600'}`}>
-                                    {f.label}
+                                <Text style={{
+                                    fontSize: 14,
+                                    fontWeight: isActive ? '700' : '500',
+                                    color: isActive ? '#3B82F6' : '#9CA3AF',
+                                }}>
+                                    {seg.label}
                                 </Text>
                             </TouchableOpacity>
                         );
                     })}
-                </ScrollView>
+                </View>
             </View>
 
-            <ScrollView
-                className="flex-1 px-6"
-                contentContainerStyle={{ paddingBottom: 100 }}
+            {/* ═══ STATUS FILTER CHIPS ═══════════════════ */}
+            <View style={{ paddingHorizontal: 24, marginBottom: 14 }}>
+                <FlatList
+                    horizontal
+                    data={STATUS_FILTERS}
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={{ gap: 8 }}
+                    renderItem={({ item: filter }) => {
+                        const isActive = activeStatuses.includes(filter.id);
+                        return (
+                            <TouchableOpacity
+                                onPress={() => toggleStatus(filter.id)}
+                                activeOpacity={0.7}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 8,
+                                    borderRadius: 20,
+                                    backgroundColor: isActive ? filter.bg : '#FFFFFF',
+                                    borderWidth: 1.5,
+                                    borderColor: isActive ? filter.color : '#E5E7EB',
+                                }}
+                            >
+                                {/* Color Dot */}
+                                <View style={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: filter.color,
+                                    marginRight: 6,
+                                }} />
+                                <Text style={{
+                                    fontSize: 13,
+                                    fontWeight: isActive ? '700' : '500',
+                                    color: isActive ? filter.color : '#6B7280',
+                                }}>
+                                    {filter.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    }}
+                />
+            </View>
+
+            {/* ═══ TASK LIST ════════════════════════════ */}
+            <FlatList
+                data={filteredTasks}
+                renderItem={renderTask}
+                keyExtractor={keyExtractor}
+                contentContainerStyle={{
+                    paddingHorizontal: 24,
+                    paddingBottom: 120,
+                    paddingTop: 4,
+                }}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl refreshing={isLoading} onRefresh={refetch} />
                 }
-            >
-                {filteredTasks.length === 0 ? (
-                    <View className="py-20 items-center justify-center">
-                        <AlertCircle size={48} color="#e5e7eb" className="mb-4" />
-                        <Text className="text-gray-400 font-medium">No tasks found</Text>
+                ListEmptyComponent={
+                    <View style={{
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingVertical: 80,
+                    }}>
+                        <View style={{
+                            width: 72,
+                            height: 72,
+                            borderRadius: 36,
+                            backgroundColor: '#F3F4F6',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: 16,
+                        }}>
+                            <Search size={32} color="#D1D5DB" />
+                        </View>
+                        <Text style={{
+                            fontSize: 16,
+                            fontWeight: '700',
+                            color: '#9CA3AF',
+                            marginBottom: 4,
+                        }}>
+                            No tasks found
+                        </Text>
+                        <Text style={{
+                            fontSize: 13,
+                            color: '#D1D5DB',
+                            fontWeight: '500',
+                            textAlign: 'center',
+                            paddingHorizontal: 40,
+                        }}>
+                            {search ? 'Try adjusting your search or filters' : 'Create a task to get started'}
+                        </Text>
                     </View>
-                ) : (
-                    filteredTasks.map((task: any) => (
-                        <TaskItem
-                            key={task.id}
-                            task={task}
-                            onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
-                        />
-                    ))
-                )}
-            </ScrollView>
+                }
+            />
 
-            {/* Floating Action Button */}
+            {/* ═══ FAB (Create Task) ════════════════════ */}
             <TouchableOpacity
                 onPress={() => navigation.navigate('CreateTask')}
-                className="absolute bottom-28 right-6 w-16 h-16 bg-black rounded-full items-center justify-center shadow-xl shadow-black/40"
+                activeOpacity={0.85}
+                style={{
+                    position: 'absolute',
+                    bottom: 100,
+                    right: 24,
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: '#3B82F6',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#3B82F6',
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.35,
+                    shadowRadius: 12,
+                    elevation: 10,
+                }}
             >
-                <Plus size={32} color="#fff" />
+                <Plus size={28} color="#FFFFFF" strokeWidth={2.5} />
             </TouchableOpacity>
         </SafeAreaView>
     );

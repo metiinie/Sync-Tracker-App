@@ -1,71 +1,331 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { Users, AlertTriangle, ArrowRightLeft } from 'lucide-react-native';
+import { timeAgo } from '../utils/timeAgo';
 
 interface TaskItemProps {
     task: any;
     onPress: () => void;
-    role?: string;
+    userRole?: 'Owner' | 'Assigner' | 'Participant' | 'Transferring';
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, role }) => {
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-            case 'ACTIVE': return 'bg-blue-100 text-blue-800';
-            case 'COMPLETED': return 'bg-green-100 text-green-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
+// ─── SYNC STATE CONFIG ────────────────────────────────
+const getSyncConfig = (syncState: string) => {
+    switch (syncState) {
+        case 'BLOCKED':
+            return { color: '#EF4444', bg: '#FEF2F2', label: 'Blocked', icon: '⚠️' };
+        case 'HELP_REQUESTED':
+            return { color: '#3B82F6', bg: '#EFF6FF', label: 'Help Requested', icon: '🤚' };
+        case 'NEEDS_UPDATE':
+            return { color: '#F59E0B', bg: '#FFFBEB', label: 'Needs Update', icon: '🔄' };
+        case 'IN_SYNC':
+            return { color: '#10B981', bg: '#F0FDF4', label: 'In Sync', icon: '✓' };
+        case 'PENDING':
+            return { color: '#8B5CF6', bg: '#F5F3FF', label: 'Pending', icon: '⏳' };
+        default:
+            return { color: '#10B981', bg: '#F0FDF4', label: 'In Sync', icon: '✓' };
+    }
+};
 
-    const getSyncColor = (sync: string) => {
-        switch (sync) {
-            case 'IN_SYNC': return 'bg-green-500';
-            case 'NEEDS_UPDATE': return 'bg-yellow-500';
-            case 'BLOCKED': return 'bg-red-500';
-            case 'HELP_REQUESTED': return 'bg-blue-500';
-            default: return 'bg-gray-500';
-        }
-    };
+// ─── ROLE BADGE CONFIG ────────────────────────────────
+const getRoleConfig = (role: string) => {
+    switch (role) {
+        case 'Owner':
+            return { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' };
+        case 'Assigner':
+            return { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' };
+        case 'Participant':
+            return { bg: '#F0FDF4', color: '#059669', border: '#BBF7D0' };
+        case 'Transferring':
+            return { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' };
+        default:
+            return { bg: '#F3F4F6', color: '#6B7280', border: '#E5E7EB' };
+    }
+};
 
+// ─── OWNER INITIALS ─────────────────────────────────
+const getInitials = (name: string) => {
+    if (!name) return '??';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+};
+
+const getAvatarColor = (name: string) => {
+    if (!name) return '#9CA3AF';
+    const colors = ['#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#14B8A6'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+};
+
+const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
+    const [expanded, setExpanded] = useState(false);
+
+    const syncConfig = getSyncConfig(task.syncState);
+    const role = userRole || 'Owner';
+    const roleConfig = getRoleConfig(role);
+    const ownerName = task.owner?.name || task.owner?.email?.split('@')[0] || 'Unassigned';
+    const assignerName = task.assigner?.name || task.assigner?.email?.split('@')[0] || 'System';
     const participantCount = task.participants?.length || 0;
+    const completedMilestones = task.milestones?.filter((m: any) => m.completed)?.length || task.completedMilestones || 0;
+    const totalMilestones = task.milestones?.length || task.totalMilestones || 0;
+    const isHelpRequested = task.syncState === 'HELP_REQUESTED';
+    const isTransferPending = task.status === 'TRANSFERRING' || task.transferPending;
+    const updatedTime = timeAgo(task.lastUpdatedAt || task.updatedAt || task.createdAt);
+
+    const handlePress = () => {
+        if (expanded) {
+            onPress();
+        } else {
+            setExpanded(true);
+        }
+    };
+
+    const handleCollapse = () => {
+        setExpanded(false);
+    };
 
     return (
         <TouchableOpacity
-            onPress={onPress}
-            className="bg-white p-4 rounded-xl shadow-sm mb-3 border border-gray-100"
+            onPress={handlePress}
+            activeOpacity={0.7}
+            style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 10,
+                borderWidth: 1,
+                borderColor: '#F0F0F0',
+                borderLeftWidth: 4,
+                borderLeftColor: syncConfig.color,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.04,
+                shadowRadius: 8,
+                elevation: 2,
+            }}
         >
-            <View className="flex-row justify-between items-start mb-2">
-                <View className="flex-1 mr-2">
-                    <Text className="text-lg font-bold text-gray-900" numberOfLines={1}>{task.title}</Text>
-                    {role && (
-                        <View className="bg-gray-100 self-start px-2 py-0.5 rounded-md mt-1">
-                            <Text className="text-[10px] font-bold text-gray-500 uppercase">{role}</Text>
-                        </View>
+            {/* ─── TOP ROW: Role Badge + Icons + Timestamp ─── */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {/* Role Badge */}
+                    <View style={{
+                        backgroundColor: roleConfig.bg,
+                        borderRadius: 6,
+                        paddingHorizontal: 10,
+                        paddingVertical: 3,
+                        borderWidth: 1,
+                        borderColor: roleConfig.border,
+                    }}>
+                        <Text style={{
+                            fontSize: 10,
+                            fontWeight: '800',
+                            color: roleConfig.color,
+                            letterSpacing: 0.8,
+                            textTransform: 'uppercase',
+                        }}>
+                            {role === 'Assigner' ? 'ASSIGNER' : role === 'Participant' ? 'PARTICIPANT' : role === 'Transferring' ? 'TRANSFERRING' : 'OWNER'}
+                        </Text>
+                    </View>
+
+                    {/* Sync State Dot */}
+                    <View style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 9,
+                        backgroundColor: syncConfig.bg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        <View style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: syncConfig.color,
+                        }} />
+                    </View>
+
+                    {/* Help Requested Icon */}
+                    {isHelpRequested && (
+                        <AlertTriangle size={14} color="#F59E0B" />
+                    )}
+
+                    {/* Transfer Pending Icon */}
+                    {isTransferPending && (
+                        <ArrowRightLeft size={14} color="#8B5CF6" />
                     )}
                 </View>
-                <View className={`px-2 py-1 rounded-full ${getStatusColor(task.status).split(' ')[0]}`}>
-                    <Text className={`text-[10px] font-bold ${getStatusColor(task.status).split(' ')[1]}`}>
-                        {task.status}
-                    </Text>
-                </View>
+
+                {/* Timestamp */}
+                <Text style={{
+                    fontSize: 12,
+                    color: '#9CA3AF',
+                    fontWeight: '500',
+                    fontStyle: 'italic',
+                }}>
+                    Updated {updatedTime}
+                </Text>
             </View>
 
-            <View className="flex-row items-center mb-3">
-                <View className={`w-2.5 h-2.5 rounded-full mr-2 ${getSyncColor(task.syncState)}`} />
-                <Text className="text-xs font-medium text-gray-700">{task.syncState?.replace('_', ' ') || 'IN SYNC'}</Text>
-                {participantCount > 0 && (
-                    <Text className="text-xs text-gray-400 ml-2">• {participantCount} participants</Text>
+            {/* ─── TITLE ─── */}
+            <Text
+                style={{
+                    fontSize: 15,
+                    fontWeight: '700',
+                    color: '#111827',
+                    marginBottom: 12,
+                    lineHeight: 20,
+                }}
+                numberOfLines={2}
+            >
+                {task.title}
+            </Text>
+
+            {/* ─── BOTTOM ROW: Owner + Participants + Milestone ─── */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                {/* Owner */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    {/* Avatar */}
+                    <View style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: ownerName !== 'Unassigned' ? getAvatarColor(ownerName) : '#E5E7EB',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 8,
+                    }}>
+                        <Text style={{
+                            fontSize: 10,
+                            fontWeight: '700',
+                            color: ownerName !== 'Unassigned' ? '#FFFFFF' : '#9CA3AF',
+                        }}>
+                            {getInitials(ownerName)}
+                        </Text>
+                    </View>
+                    <Text style={{
+                        fontSize: 13,
+                        color: '#6B7280',
+                        fontWeight: '500',
+                    }} numberOfLines={1}>
+                        {ownerName}
+                    </Text>
+                </View>
+
+                {/* Participant Count */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+                    <Users size={14} color="#9CA3AF" />
+                    <Text style={{
+                        fontSize: 12,
+                        color: '#9CA3AF',
+                        fontWeight: '600',
+                        marginLeft: 4,
+                    }}>
+                        {participantCount}
+                    </Text>
+                </View>
+
+                {/* Milestone Progress */}
+                {totalMilestones > 0 && (
+                    <View style={{
+                        backgroundColor: completedMilestones === totalMilestones ? '#F0FDF4' : '#F9FAFB',
+                        borderRadius: 8,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderWidth: 1,
+                        borderColor: completedMilestones === totalMilestones ? '#BBF7D0' : '#E5E7EB',
+                    }}>
+                        <Text style={{
+                            fontSize: 12,
+                            fontWeight: '700',
+                            color: completedMilestones === totalMilestones ? '#059669' : '#374151',
+                        }}>
+                            {completedMilestones}/{totalMilestones}
+                        </Text>
+                    </View>
                 )}
             </View>
 
-            <View className="flex-row items-center justify-between border-t border-gray-50 pt-3">
-                <Text className="text-[11px] text-gray-400">
-                    By: {task.assigner?.name || 'System'}
-                </Text>
-                <Text className="text-[11px] text-gray-500 font-medium">
-                    Owner: {task.owner?.name || 'Unassigned'}
-                </Text>
-            </View>
+            {/* ─── EXPANDABLE PREVIEW ─── */}
+            {expanded && (
+                <View style={{
+                    marginTop: 12,
+                    paddingTop: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: '#F3F4F6',
+                }}>
+                    {/* Assigned By */}
+                    <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+                        <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>
+                            Assigned by:{' '}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#374151', fontWeight: '600' }}>
+                            {assignerName}
+                        </Text>
+                    </View>
+
+                    {/* Description */}
+                    {task.description && (
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: '#6B7280',
+                                lineHeight: 18,
+                                marginBottom: 6,
+                            }}
+                            numberOfLines={2}
+                        >
+                            {task.description}
+                        </Text>
+                    )}
+
+                    {/* Last Log */}
+                    {task.lastLog && (
+                        <View style={{
+                            backgroundColor: '#F9FAFB',
+                            borderRadius: 8,
+                            padding: 10,
+                            marginTop: 4,
+                        }}>
+                            <Text style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }} numberOfLines={1}>
+                                📝 {task.lastLog}
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Tap to open detail hint */}
+                    <TouchableOpacity
+                        onPress={onPress}
+                        style={{
+                            marginTop: 8,
+                            alignSelf: 'flex-end',
+                        }}
+                    >
+                        <Text style={{
+                            fontSize: 12,
+                            color: '#3B82F6',
+                            fontWeight: '600',
+                        }}>
+                            Open Full Details →
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Collapse button */}
+                    <TouchableOpacity
+                        onPress={handleCollapse}
+                        style={{ marginTop: 4, alignSelf: 'center' }}
+                    >
+                        <Text style={{ fontSize: 11, color: '#D1D5DB', fontWeight: '500' }}>
+                            Tap to collapse
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            )}
         </TouchableOpacity>
     );
 };
