@@ -1,23 +1,82 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, TextInput, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import {
+    View, Text, ScrollView, TouchableOpacity, RefreshControl,
+    TextInput, ActivityIndicator, Dimensions, Modal, KeyboardAvoidingView, Platform, StatusBar
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Layout, Share2, Info, GitBranch, Share, List, Clock, CheckCircle2, AlertCircle, HelpCircle, Plus, User, Users, Flag as FlagIcon } from 'lucide-react-native';
+import {
+    ChevronLeft, Network, Clock, FileText, CheckCircle2,
+    AlertCircle, HelpCircle, User, Users, Plus, X, ArrowRightLeft,
+    ChevronDown, ChevronUp, History, Eye
+} from 'lucide-react-native';
 
 import Svg, { Circle, Line, Text as SvgText, G } from 'react-native-svg';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { timeAgo } from '../utils/timeAgo';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// ─── SYNC STATE CONFIG ────────────────────────────────
+const getSyncConfig = (state: string) => {
+    switch (state) {
+        case 'IN_SYNC': return { color: '#10B981', bg: '#F0FDF4', border: '#BBF7D0', label: 'IN SYNC' };
+        case 'NEEDS_UPDATE': return { color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', label: 'NEEDS UPDATE' };
+        case 'BLOCKED': return { color: '#EF4444', bg: '#FEF2F2', border: '#FECACA', label: 'BLOCKED' };
+        case 'HELP_REQUESTED': return { color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE', label: 'HELP REQUESTED' };
+        case 'PENDING': return { color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE', label: 'PENDING' };
+        default: return { color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB', label: 'UNKNOWN' };
+    }
+};
+
+const getRoleConfig = (role: string) => {
+    switch (role) {
+        case 'Originator': return { bg: '#F3F4F6', color: '#4B5563' };
+        case 'Owner': return { bg: '#3B82F6', color: '#FFFFFF' };
+        case 'Contributor': return { bg: '#F3F4F6', color: '#4B5563' };
+        case 'Helper': return { bg: '#EFF6FF', color: '#3B82F6' };
+        default: return { bg: '#F3F4F6', color: '#4B5563' };
+    }
+};
+
+const getInitials = (name: string) => {
+    if (!name) return '??';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+};
+
+const getAvatarColor = (name: string) => {
+    if (!name) return '#9CA3AF';
+    const colors = ['#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#14B8A6'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+};
 
 const TaskDetailScreen = ({ route, navigation }: any) => {
     const { taskId } = route.params;
-    const { token, user } = useAuthStore();
+    const { user } = useAuthStore();
     const [task, setTask] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('Overview'); // Overview, Tree, Graph, Logs
-    const [newTimeLog, setNewTimeLog] = useState({ duration: '', description: '' });
+    const [refreshing, setRefreshing] = useState(false);
+    const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
+    const [visionTab, setVisionTab] = useState<'graph' | 'tree'>('graph');
 
-    const fetchTask = async () => {
+    // Modals
+    const [showVisionModal, setShowVisionModal] = useState(false);
+    const [showSyncModal, setShowSyncModal] = useState(false);
+    const [showTimeModal, setShowTimeModal] = useState(false);
+    const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+
+    // Form states
+    const [syncParams, setSyncParams] = useState({ state: '', note: '' });
+    const [timeLog, setTimeLog] = useState({ hours: '', minutes: '', note: '' });
+    const [newMilestone, setNewMilestone] = useState('');
+
+    const fetchTask = async (showRefresh = false) => {
+        if (showRefresh) setRefreshing(true);
         try {
             const response = await api.get(`/tasks/${taskId}`);
             setTask(response.data);
@@ -25,6 +84,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
             console.error('Error fetching task details:', error);
         } finally {
             setLoading(false);
+            if (showRefresh) setRefreshing(false);
         }
     };
 
@@ -33,392 +93,862 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
         const socket = getSocket();
         socket.emit('joinTask', { taskId });
 
-        socket.on('sync:update', (data) => {
-            if (data.taskId === taskId) {
-                setTask((prev: any) => prev ? { ...prev, syncState: data.syncState } : prev);
-            }
-        });
-
-        socket.on('milestone:updated', (newMilestone) => {
-            setTask((prev: any) => {
-                if (!prev) return prev;
-                const updatedMilestones = prev.milestones.map((m: any) =>
-                    m.id === newMilestone.id ? newMilestone : m
-                );
-                return { ...prev, milestones: updatedMilestones };
-            });
-        });
+        const handleUpdate = () => fetchTask(); // For simplicity, re-fetch heavily on changes to ensure relations log correctly
+        socket.on('sync:update', handleUpdate);
+        socket.on('milestone:updated', handleUpdate);
+        socket.on('task:transfer', handleUpdate);
+        socket.on('task:assigned', handleUpdate);
 
         return () => {
             socket.emit('leaveTask', { taskId });
-            socket.off('sync:update');
-            socket.off('milestone:updated');
+            socket.off('sync:update', handleUpdate);
+            socket.off('milestone:updated', handleUpdate);
+            socket.off('task:transfer', handleUpdate);
+            socket.off('task:assigned', handleUpdate);
         };
     }, [taskId]);
 
-    const handleToggleMilestone = async (mid: string, current: string) => {
+    // ─── ACTIONS ───────────────────────────────────────────
+    const handleUpdateSync = async () => {
+        if (!syncParams.state) return;
+        if ((syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && !syncParams.note.trim()) {
+            return; // Note is required
+        }
         try {
-            const next = current === 'true' ? false : true;
-            await api.patch(`/tasks/milestones/${mid}/toggle`,
-                { isCompleted: next }
-            );
+            await api.patch(`/tasks/${taskId}/sync`, { syncState: syncParams.state });
+            if (syncParams.note.trim()) {
+                await api.post(`/tasks/${taskId}/time-logs`, {
+                    durationMinutes: 0,
+                    description: `[${syncParams.state}] ${syncParams.note}`
+                });
+            }
+            setShowSyncModal(false);
+            setSyncParams({ state: '', note: '' });
+            fetchTask();
         } catch (err) {
-            Alert.alert('Error', 'Failed to update milestone');
+            console.log(err);
         }
     };
 
     const handleLogTime = async () => {
-        if (!newTimeLog.duration) return;
+        const h = parseInt(timeLog.hours || '0', 10);
+        const m = parseInt(timeLog.minutes || '0', 10);
+        const totalMinutes = (h * 60) + m;
+        if (totalMinutes <= 0) return;
+
         try {
             await api.post(`/tasks/${taskId}/time-logs`, {
-                durationMinutes: newTimeLog.duration,
-                description: newTimeLog.description,
+                durationMinutes: totalMinutes,
+                description: timeLog.note,
             });
-            setNewTimeLog({ duration: '', description: '' });
-            fetchTask(); // Refresh to get logs
+            setShowTimeModal(false);
+            setTimeLog({ hours: '', minutes: '', note: '' });
+            fetchTask();
         } catch (err) {
-            Alert.alert('Error', 'Failed to log time');
+            console.log(err);
         }
     };
 
-    const updateSyncState = async (state: string) => {
+    const handleToggleMilestone = async (mid: string, current: string) => {
         try {
-            await api.patch(`/tasks/${taskId}/sync`,
-                { syncState: state }
-            );
+            const next = current === 'true' ? false : true;
+            await api.patch(`/tasks/milestones/${mid}/toggle`, { isCompleted: next });
+            fetchTask();
         } catch (err) {
-            Alert.alert('Error', 'Failed to update sync state');
+            console.log(err);
         }
     };
+
+    const handleAddMilestone = async () => {
+        if (!newMilestone.trim()) return;
+        try {
+            await api.post(`/tasks/${taskId}/milestones`, { title: newMilestone });
+            setShowMilestoneModal(false);
+            setNewMilestone('');
+            fetchTask();
+        } catch (err) {
+            console.log(err);
+        }
+    };
+
+    const handleAcceptResponsibility = async () => {
+        try {
+            await api.patch(`/tasks/${taskId}/accept`);
+            fetchTask();
+        } catch (err) {
+            console.log(err);
+        }
+    };
+
+    // ─── COMPUTED DATA ─────────────────────────────────────
+    const isOwner = task?.responsibleOwner === user?.id;
+    const isAssigner = task?.assignedBy === user?.id;
+    const isParticipant = task?.participants?.some((p: any) => p.userId === user?.id);
+    const syncConfig = task ? getSyncConfig(task.syncState) : getSyncConfig('UNKNOWN');
+
+    // Time calculations
+    const totalMinutesLogged = useMemo(() => {
+        if (!task?.timeLogs) return 0;
+        return task.timeLogs.reduce((acc: number, log: any) => acc + (log.durationMinutes || 0), 0);
+    }, [task?.timeLogs]);
+
+    const usersTimeBreakdown = useMemo(() => {
+        if (!task?.timeLogs) return [];
+        const breakdown: Record<string, { duration: number, name: string }> = {};
+        task.timeLogs.forEach((log: any) => {
+            const uid = log.user?.id || 'unknown';
+            if (!breakdown[uid]) {
+                breakdown[uid] = { duration: 0, name: log.user?.name || 'System' };
+            }
+            breakdown[uid].duration += (log.durationMinutes || 0);
+        });
+        return Object.values(breakdown).filter(v => v.duration > 0).sort((a, b) => b.duration - a.duration);
+    }, [task?.timeLogs]);
+
+    const formatDuration = (mins: number) => {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        if (h > 0) return `${h}h ${m}m`;
+        return `${m}m`;
+    };
+
+    // Participants list for tree
+    const treeParticipants = useMemo(() => {
+        if (!task) return [];
+        const result = [];
+        // Originator
+        if (task.assigner) result.push({ user: task.assigner, role: 'Originator', authority: 'Originator' });
+        // Responsible
+        if (task.owner) result.push({ user: task.owner, role: 'Responsible', authority: 'OWNER', syncState: task.syncState });
+        // Participants
+        if (task.participants) {
+            task.participants.forEach((p: any) => result.push({
+                user: p.user,
+                role: p.role,
+                authority: p.role === 'contributor' ? 'Contributor' : 'Helper',
+                syncState: p.syncState || 'IN_SYNC'
+            }));
+        }
+        return result;
+    }, [task]);
+
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-white">
-                <ActivityIndicator size="large" color="#000" />
-            </View>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#111827" />
+                </View>
+            </SafeAreaView>
         );
     }
 
     if (!task) return null;
 
+    const ownerName = task.owner?.name || 'Unassigned';
+    const assignerName = task.assigner?.name || 'System';
+
     return (
-        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-            {/* Header */}
-            <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-100">
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <ChevronLeft size={24} color="#000" />
-                </TouchableOpacity>
-                <Text className="text-lg font-bold">Track Engine</Text>
-                <TouchableOpacity>
-                    <Share2 size={20} color="#000" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+
+            {/* 1️⃣ STICKY HEADER */}
+            <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingHorizontal: 20,
+                paddingVertical: 12,
+                backgroundColor: '#FFFFFF',
+                borderBottomWidth: 1,
+                borderBottomColor: '#F3F4F6',
+                zIndex: 10,
+            }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 10 }}>
+                        <ChevronLeft size={24} color="#374151" />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }} numberOfLines={1}>
+                            {task.title}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                            <View style={{
+                                backgroundColor: syncConfig.bg,
+                                paddingHorizontal: 6,
+                                paddingVertical: 2,
+                                borderRadius: 4,
+                                marginRight: 6,
+                            }}>
+                                <Text style={{ fontSize: 9, fontWeight: '800', color: syncConfig.color }}>
+                                    {syncConfig.label}
+                                </Text>
+                            </View>
+                            <Text style={{ fontSize: 11, color: '#9CA3AF', fontWeight: '500' }}>
+                                ID: ST-{task.id.substring(0, 4)}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+                <TouchableOpacity
+                    onPress={() => setShowVisionModal(true)}
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: '#F3F4F6',
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 12,
+                    }}
+                >
+                    <Eye size={16} color="#374151" />
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginLeft: 6 }}>
+                        Vision
+                    </Text>
                 </TouchableOpacity>
             </View>
 
-            {/* Tab Bar Container */}
-            <View className="px-6 py-4">
-                <View className="flex-row bg-gray-100 rounded-2xl p-1">
-                    {['Overview', 'Tree', 'Graph', 'Logs'].map((tab) => (
+            {/* 3️⃣ PRIMARY ACTION BAR (Horizontal Scroll Chips) */}
+            <View style={{ borderBottomWidth: 1, borderBottomColor: '#F3F4F6', backgroundColor: '#FFFFFF' }}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12, gap: 12 }}
+                >
+                    <TouchableOpacity
+                        onPress={() => setShowSyncModal(true)}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: '#F3F4F6',
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1,
+                            borderColor: '#E5E7EB'
+                        }}
+                    >
+                        <ArrowRightLeft size={14} color="#374151" />
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginLeft: 6 }}>
+                            Update Sync
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => setShowTimeModal(true)}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: '#F3F4F6',
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1,
+                            borderColor: '#E5E7EB'
+                        }}
+                    >
+                        <Clock size={14} color="#374151" />
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginLeft: 6 }}>
+                            Log Time
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Request Help - Auto sets state to HELP_REQUESTED */}
+                    <TouchableOpacity
+                        onPress={() => {
+                            setSyncParams({ state: 'HELP_REQUESTED', note: '' });
+                            setShowSyncModal(true);
+                        }}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: '#EFF6FF',
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1,
+                            borderColor: '#BFDBFE'
+                        }}
+                    >
+                        <HelpCircle size={14} color="#3B82F6" />
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#3B82F6', marginLeft: 6 }}>
+                            Request Help
+                        </Text>
+                    </TouchableOpacity>
+
+                    {(isOwner) && (
                         <TouchableOpacity
-                            key={tab}
-                            onPress={() => setActiveTab(tab)}
-                            className={`flex-1 py-3 rounded-[14px] items-center ${activeTab === tab ? 'bg-white shadow-sm' : ''
-                                }`}
+                            onPress={() => {
+                                // For MVP we will just alert, proper transfer req future implementation
+                                alert('Transfer flow opened');
+                            }}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: '#F3F4F6',
+                                paddingHorizontal: 16,
+                                paddingVertical: 10,
+                                borderRadius: 20,
+                                borderWidth: 1,
+                                borderColor: '#E5E7EB'
+                            }}
                         >
-                            <Text className={`text-xs font-bold ${activeTab === tab ? 'text-black' : 'text-gray-400'}`}>
-                                {tab}
+                            <User size={14} color="#374151" />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginLeft: 6 }}>
+                                Transfer Resp.
                             </Text>
                         </TouchableOpacity>
-                    ))}
-                </View>
+                    )}
+                </ScrollView>
             </View>
 
-            {/* Content Area */}
-            <View className="flex-1">
-                {activeTab === 'Overview' && <OverviewTab task={task} user={user} updateSyncState={updateSyncState} handleToggleMilestone={handleToggleMilestone} newTimeLog={newTimeLog} setNewTimeLog={setNewTimeLog} handleLogTime={handleLogTime} fetchTask={fetchTask} />}
-                {activeTab === 'Tree' && <TreeViewTab task={task} fetchTask={fetchTask} />}
-                {activeTab === 'Graph' && <GraphViewTab task={task} />}
-                {activeTab === 'Logs' && <LogsTab task={task} />}
-            </View>
-        </SafeAreaView>
-    );
-};
+            {/* MAIN SCROLL VIEW */}
+            <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchTask(true)} />}
+            >
+                {/* 2️⃣ RESPONSIBILITY SUMMARY BAR */}
+                <View style={{ padding: 20 }}>
+                    <View style={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: '#F3F4F6',
+                        padding: 16,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.03,
+                        shadowRadius: 8,
+                        elevation: 1,
+                    }}>
+                        {/* Assigned By */}
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
+                                ASSIGNED BY
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: getAvatarColor(assignerName), alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFF' }}>{getInitials(assignerName)}</Text>
+                                </View>
+                                <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151', marginLeft: 8 }}>{assignerName}</Text>
+                            </View>
+                        </View>
 
-// --- SUBSCREENS ---
+                        {/* Responsible Owner */}
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
+                                RESPONSIBLE OWNER
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: getAvatarColor(ownerName), alignItems: 'center', justifyContent: 'center' }}>
+                                        <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFF' }}>{getInitials(ownerName)}</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 14, fontWeight: '500', color: '#111827', marginLeft: 8 }}>{ownerName}</Text>
+                                </View>
+                                {task.status === 'PENDING' ? (
+                                    <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444' }}>PENDING</Text>
+                                    </View>
+                                ) : (
+                                    <View style={{ backgroundColor: '#F0FDF4', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#10B981' }}>ACCEPTED</Text>
+                                    </View>
+                                )}
+                            </View>
+                            {task.status === 'PENDING' && isOwner && (
+                                <TouchableOpacity
+                                    onPress={handleAcceptResponsibility}
+                                    style={{ marginTop: 12, backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 12, alignItems: 'center' }}
+                                >
+                                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Accept Responsibility</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
 
-const OverviewTab = ({ task, user, updateSyncState, handleToggleMilestone, newTimeLog, setNewTimeLog, handleLogTime, fetchTask }: any) => {
-    return (
-        <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 40 }}>
-            <View className="mb-8">
-                <View className="flex-row items-center mb-1">
-                    <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Responsibility</Text>
-                    <View className={`ml-3 px-2 py-0.5 rounded-full ${task.status === 'ACTIVE' ? 'bg-green-100' : 'bg-gray-100'}`}>
-                        <Text className={`text-[10px] font-bold ${task.status === 'ACTIVE' ? 'text-green-700' : 'text-gray-500'}`}>{task.status}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 16 }}>
+                            {/* Participants */}
+                            <View>
+                                <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
+                                    PARTICIPANTS
+                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <View style={{ flexDirection: 'row', marginLeft: 4 }}>
+                                        {task.participants?.slice(0, 3).map((p: any, i: number) => (
+                                            <View key={i} style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#E5E7EB', borderWidth: 2, borderColor: '#FFF', marginLeft: -8, alignItems: 'center', justifyContent: 'center' }}>
+                                                <Text style={{ fontSize: 8, fontWeight: '700', color: '#6B7280' }}>{getInitials(p.user?.name)}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                    <Text style={{ fontSize: 13, fontWeight: '500', color: '#6B7280', marginLeft: 8 }}>
+                                        {task.participants?.length || 0} Active
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {/* Refresh Time */}
+                            <View>
+                                <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8, textAlign: 'right' }}>
+                                    STATUS REFRESH
+                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                    <History size={14} color="#9CA3AF" />
+                                    <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151', marginLeft: 4 }}>
+                                        {timeAgo(task.lastUpdatedAt || task.updatedAt)}
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
                     </View>
                 </View>
-                <Text className="text-2xl font-black text-gray-900 mb-2">{task.title}</Text>
-                <Text className="text-gray-500 leading-6 text-base">{task.description}</Text>
-            </View>
 
-            {/* Sync Controls */}
-            <View className="mb-8">
-                <Text className="text-sm font-bold text-gray-900 mb-4">Update My Sync State</Text>
-                <View className="flex-row flex-wrap justify-between">
-                    {[
-                        { id: 'IN_SYNC', label: 'In Sync', color: '#10b981', icon: CheckCircle2 },
-                        { id: 'NEEDS_UPDATE', label: 'Needs Update', color: '#f59e0b', icon: Clock },
-                        { id: 'BLOCKED', label: 'Blocked', color: '#ef4444', icon: AlertCircle },
-                        { id: 'HELP_REQUESTED', label: 'Help!', color: '#3b82f6', icon: HelpCircle },
-                    ].map((s) => {
-                        const Icon = s.icon;
-                        const isSelected = task.syncState === s.id;
-                        return (
-                            <TouchableOpacity
-                                key={s.id}
-                                onPress={() => updateSyncState(s.id)}
-                                className={`w-[48%] flex-row items-center p-4 rounded-2xl mb-3 border ${isSelected ? 'bg-white border-black border-2' : 'bg-gray-50 border-gray-100'
-                                    }`}
-                            >
-                                <Icon size={18} color={s.color} />
-                                <Text className="ml-2 font-bold text-gray-900 text-xs">{s.label}</Text>
+                {/* 4️⃣ TASK OVERVIEW (Expandable) */}
+                <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+                    <TouchableOpacity
+                        onPress={() => setIsOverviewExpanded(!isOverviewExpanded)}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            backgroundColor: '#F9FAFB',
+                            padding: 16,
+                            borderRadius: 12,
+                        }}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <FileText size={18} color="#6B7280" />
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#374151', marginLeft: 12 }}>
+                                Task Overview
+                            </Text>
+                        </View>
+                        {isOverviewExpanded ? <ChevronUp size={20} color="#9CA3AF" /> : <ChevronDown size={20} color="#9CA3AF" />}
+                    </TouchableOpacity>
+
+                    {isOverviewExpanded && (
+                        <View style={{ padding: 16, backgroundColor: '#F9FAFB', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, marginTop: -8 }}>
+                            <Text style={{ fontSize: 14, color: '#4B5563', lineHeight: 22 }}>
+                                {task.description || 'No description provided.'}
+                            </Text>
+                            <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
+                                <Text style={{ fontSize: 12, color: '#9CA3AF' }}>Created: {new Date(task.createdAt).toLocaleDateString()}</Text>
+                            </View>
+                        </View>
+                    )}
+                </View>
+
+                {/* 5️⃣ RESPONSIBILITY HIERARCHY MOVED TO VISION MODAL */}
+                {/* 7️⃣ PROJECT MILESTONES */}
+                <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>PROJECT MILESTONES</Text>
+
+                    {task.milestones?.length === 0 ? (
+                        <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>No milestones defined.</Text>
+                    ) : (
+                        task.milestones?.map((m: any, i: number) => {
+                            const isCompleted = m.isCompleted === 'true';
+                            return (
+                                <View key={m.id} style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    marginBottom: 12,
+                                }}>
+                                    <TouchableOpacity
+                                        onPress={() => handleToggleMilestone(m.id, m.isCompleted)}
+                                        style={{
+                                            width: 20, height: 20, borderRadius: 10,
+                                            borderWidth: 2, borderColor: isCompleted ? '#10B981' : '#D1D5DB',
+                                            alignItems: 'center', justifyContent: 'center',
+                                            backgroundColor: isCompleted ? '#10B981' : 'transparent',
+                                            marginRight: 12,
+                                        }}
+                                    >
+                                        {isCompleted && <CheckCircle2 size={12} color="#FFF" />}
+                                    </TouchableOpacity>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isCompleted ? '#111827' : '#374151' }}>
+                                            {m.title}
+                                        </Text>
+                                        <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                                            {isCompleted ? 'Completed' : 'Awaiting completion'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            );
+                        })
+                    )}
+                    {(isOwner || isAssigner) && (
+                        <TouchableOpacity
+                            onPress={() => setShowMilestoneModal(true)}
+                            style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}
+                        >
+                            <Plus size={16} color="#3B82F6" />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#3B82F6', marginLeft: 6 }}>Add Milestone</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {/* 8️⃣ TIME ALLOCATION */}
+                <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>TIME ALLOCATION</Text>
+
+                    <View style={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: '#F3F4F6',
+                        padding: 16,
+                        marginBottom: 16,
+                    }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <View>
+                                <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>
+                                    {formatDuration(totalMinutesLogged)}
+                                </Text>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 1, marginTop: 2 }}>
+                                    TOTAL TIME LOGGED
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* Breakdown */}
+                        {usersTimeBreakdown.map((ub, i) => (
+                            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: getAvatarColor(ub.name), marginRight: 8 }} />
+                                    <Text style={{ fontSize: 13, color: '#374151', fontWeight: '500' }}>{ub.name}</Text>
+                                </View>
+                                <Text style={{ fontSize: 13, color: '#111827', fontWeight: '600' }}>{formatDuration(ub.duration)}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+
+                {/* 9️⃣ SYSTEM AUDIT LOG */}
+                <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>SYSTEM AUDIT LOG</Text>
+
+                    {task.logs?.length === 0 ? (
+                        <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>No logs yet.</Text>
+                    ) : (
+                        task.logs?.slice().sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((log: any, index: number) => {
+                            const isBlockCall = log.action.includes('BLOCKED');
+                            const isHelpCall = log.action.includes('HELP_REQUESTED');
+                            const iconColor = isBlockCall ? '#EF4444' : isHelpCall ? '#3B82F6' : '#10B981';
+
+                            return (
+                                <View key={log.id} style={{ flexDirection: 'row', marginBottom: 20 }}>
+                                    <View style={{ width: 16, alignItems: 'center' }}>
+                                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: iconColor, marginTop: 4, zIndex: 10 }} />
+                                        {index !== task.logs.length - 1 && (
+                                            <View style={{ width: 2, flex: 1, backgroundColor: '#F3F4F6', marginTop: 2, marginBottom: -24 }} />
+                                        )}
+                                    </View>
+                                    <View style={{ marginLeft: 16, flex: 1 }}>
+                                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>
+                                            {log.user?.name || 'System'}{' '}
+                                            <Text style={{ fontWeight: '400', color: '#4B5563' }}>
+                                                {log.action}
+                                            </Text>
+                                        </Text>
+                                        <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                                            {timeAgo(log.timestamp)}
+                                        </Text>
+                                    </View>
+                                </View>
+                            );
+                        })
+                    )}
+                </View>
+
+            </ScrollView>
+
+            {/* ─── MODALS ─────────────────────────────────────────── */}
+
+            {/* SYNC UPDATE MODAL */}
+            <Modal visible={showSyncModal} transparent animationType="slide">
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+                    <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Update Sync State</Text>
+
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 16 }}>
+                            {[
+                                { id: 'IN_SYNC', label: 'In Sync', color: '#10B981', bg: '#F0FDF4' },
+                                { id: 'NEEDS_UPDATE', label: 'Needs Update', color: '#F59E0B', bg: '#FFFBEB' },
+                                { id: 'BLOCKED', label: 'Blocked', color: '#EF4444', bg: '#FEF2F2' },
+                                { id: 'HELP_REQUESTED', label: 'Help Requested', color: '#3B82F6', bg: '#EFF6FF' },
+                            ].map(s => {
+                                const isSelected = syncParams.state === s.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={s.id}
+                                        onPress={() => setSyncParams({ ...syncParams, state: s.id })}
+                                        style={{
+                                            width: '48%',
+                                            padding: 12,
+                                            borderRadius: 12,
+                                            backgroundColor: isSelected ? s.bg : '#F9FAFB',
+                                            borderWidth: 2,
+                                            borderColor: isSelected ? s.color : '#F3F4F6',
+                                            marginBottom: 8,
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? s.color : '#4B5563' }}>
+                                            {s.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        {(syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && (
+                            <TextInput
+                                style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', minHeight: 80, textAlignVertical: 'top', marginBottom: 16 }}
+                                placeholder="Why? (Required)"
+                                placeholderTextColor="#9CA3AF"
+                                multiline
+                                value={syncParams.note}
+                                onChangeText={t => setSyncParams({ ...syncParams, note: t })}
+                            />
+                        )}
+
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity onPress={() => setShowSyncModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
                             </TouchableOpacity>
-                        );
-                    })}
-                </View>
-            </View>
-
-            {/* Participants */}
-            <View className="mb-8">
-                <Text className="text-sm font-bold text-gray-900 mb-4">Stakeholders</Text>
-                <View className="flex-row items-center mb-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <View className="w-10 h-10 bg-black rounded-full items-center justify-center">
-                        <User size={20} color="#fff" />
-                    </View>
-                    <View className="ml-3 flex-1">
-                        <Text className="font-bold text-gray-900">{task.owner?.name}</Text>
-                        <Text className="text-gray-400 text-xs">Responsible Owner</Text>
-                    </View>
-                    <View className="px-3 py-1 bg-green-100 rounded-full">
-                        <Text className="text-green-700 text-[10px] font-black italic">LEAD</Text>
-                    </View>
-                </View>
-                {task.participants?.map((p: any) => (
-                    <View key={p.id} className="flex-row items-center mb-3 px-4 py-3 bg-white rounded-2xl border border-gray-100">
-                        <View className="w-8 h-8 bg-gray-200 rounded-full items-center justify-center">
-                            <Users size={16} color="#4b5563" />
+                            <TouchableOpacity onPress={handleUpdateSync} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center', opacity: (!syncParams.state || ((syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && !syncParams.note.trim())) ? 0.5 : 1 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Commit</Text>
+                            </TouchableOpacity>
                         </View>
-                        <View className="ml-3 flex-1">
-                            <Text className="font-semibold text-gray-700">{p.user?.name}</Text>
-                        </View>
-                        <Text className="text-gray-400 text-[10px] font-bold uppercase">{p.role}</Text>
                     </View>
-                ))}
-            </View>
+                </KeyboardAvoidingView>
+            </Modal>
 
-            {/* Milestones */}
-            <View className="mb-8">
-                <Text className="text-sm font-bold text-gray-900 mb-4">Milestones</Text>
-                {task.milestones?.length === 0 && <Text className="text-gray-400 italic mb-4">No milestones defined</Text>}
-                {task.milestones?.map((m: any) => (
-                    <TouchableOpacity
-                        key={m.id}
-                        onPress={() => handleToggleMilestone(m.id, m.isCompleted)}
-                        className="flex-row items-center mb-3 p-4 bg-gray-50 rounded-2xl border border-gray-100"
-                    >
-                        <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${m.isCompleted === 'true' ? 'bg-black border-black' : 'border-gray-300'}`}>
-                            {m.isCompleted === 'true' && <CheckCircle2 size={14} color="#fff" />}
+            {/* LOG TIME MODAL */}
+            <Modal visible={showTimeModal} transparent animationType="slide">
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+                    <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Log Time</Text>
+                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                            <TextInput
+                                style={{ flex: 1, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: '#111827', textAlign: 'center' }}
+                                placeholder="Hours"
+                                placeholderTextColor="#9CA3AF"
+                                keyboardType="numeric"
+                                value={timeLog.hours}
+                                onChangeText={t => setTimeLog({ ...timeLog, hours: t })}
+                            />
+                            <TextInput
+                                style={{ flex: 1, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: '#111827', textAlign: 'center' }}
+                                placeholder="Mins"
+                                placeholderTextColor="#9CA3AF"
+                                keyboardType="numeric"
+                                value={timeLog.minutes}
+                                onChangeText={t => setTimeLog({ ...timeLog, minutes: t })}
+                            />
                         </View>
-                        <Text className={`ml-3 flex-1 font-medium ${m.isCompleted === 'true' ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
-                            {m.title}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-
-            {/* Time Logging */}
-            <View className="mb-8">
-                <Text className="text-sm font-bold text-gray-900 mb-4">Log Execution Time</Text>
-                <View className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                    <View className="flex-row mb-3">
                         <TextInput
-                            className="flex-1 bg-white p-3 rounded-xl border border-gray-100 text-sm"
-                            placeholder="Mins (e.g., 45)"
-                            keyboardType="numeric"
-                            value={newTimeLog.duration}
-                            onChangeText={(t) => setNewTimeLog({ ...newTimeLog, duration: t })}
+                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                            placeholder="What did you work on? (Optional)"
+                            placeholderTextColor="#9CA3AF"
+                            value={timeLog.note}
+                            onChangeText={t => setTimeLog({ ...timeLog, note: t })}
                         />
-                        <View className="w-4" />
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity onPress={() => setShowTimeModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleLogTime} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Log Time</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+
+            {/* ADD MILESTONE MODAL */}
+            <Modal visible={showMilestoneModal} transparent animationType="fade">
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20 }}>
+                    <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 24 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Add Milestone</Text>
                         <TextInput
-                            className="flex-[2] bg-white p-3 rounded-xl border border-gray-100 text-sm"
-                            placeholder="Description..."
-                            value={newTimeLog.description}
-                            onChangeText={(t) => setNewTimeLog({ ...newTimeLog, description: t })}
+                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                            placeholder="Milestone title..."
+                            placeholderTextColor="#9CA3AF"
+                            value={newMilestone}
+                            onChangeText={setNewMilestone}
+                            autoFocus
                         />
-                    </View>
-                    <TouchableOpacity
-                        onPress={handleLogTime}
-                        className="bg-black py-3 rounded-xl items-center"
-                    >
-                        <Text className="text-white font-bold text-sm">Commit Time</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-
-        </ScrollView>
-    );
-};
-
-const TreeViewTab = ({ task, fetchTask }: any) => {
-    return (
-        <ScrollView className="flex-1 px-6 pt-4">
-            <View className="flex-row items-center mb-6">
-                <View className="w-1.5 h-10 bg-black rounded-full" />
-                <View className="ml-4">
-                    <Text className="text-lg font-black text-gray-900">Relational Hierarchy</Text>
-                    <Text className="text-gray-400 text-xs">Structural view of roles and status</Text>
-                </View>
-            </View>
-
-            <View className="bg-gray-50 p-6 rounded-3xl border border-gray-100">
-                {/* Level 1: Task */}
-                <View className="flex-row items-center mb-6">
-                    <View className="w-8 h-8 bg-black rounded-lg items-center justify-center rotate-45">
-                        <View className="-rotate-45">
-                            <Layout size={16} color="#fff" />
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity onPress={() => setShowMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleAddMilestone} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#3B82F6', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Add</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
-                    <Text className="ml-4 font-black text-gray-900">{task.title}</Text>
-                </View>
+                </KeyboardAvoidingView>
+            </Modal>
 
-                {/* Level 2: Owner */}
-                <View className="flex-row ml-10 mb-6 items-center">
-                    <View className="w-0.5 h-12 bg-gray-200 absolute -left-4 -top-8" />
-                    <View className="w-4 h-0.5 bg-gray-200 absolute -left-4 top-4" />
-                    <View className="w-3 h-3 rounded-full bg-blue-500 mr-4 shadow-sm shadow-blue-200" />
-                    <View>
-                        <Text className="font-bold text-gray-800">{task.owner?.name}</Text>
-                        <Text className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Responsible Owner</Text>
-                    </View>
-                </View>
+            {/* FULLSCREEN VISION MODAL */}
+            <Modal visible={showVisionModal} animationType="slide">
+                <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', zIndex: 10 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Vision</Text>
 
-                {/* Level 3: Participants */}
-                {task.participants?.map((p: any, i: number) => (
-                    <View key={p.id} className="flex-row ml-20 mb-6 items-center">
-                        <View className="w-0.5 h-16 bg-gray-200 absolute -left-4 -top-12" />
-                        <View className="w-4 h-0.5 bg-gray-200 absolute -left-4 top-4" />
-                        <View className="w-3 h-3 rounded-full bg-gray-300 mr-4" />
-                        <View className="flex-1">
-                            <Text className="font-semibold text-gray-600">{p.user?.name}</Text>
-                            <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{p.role}</Text>
+                        <View style={{ flexDirection: 'row', backgroundColor: '#F3F4F6', padding: 4, borderRadius: 8 }}>
+                            <TouchableOpacity
+                                onPress={() => setVisionTab('graph')}
+                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'graph' ? '#FFF' : 'transparent', shadowOpacity: visionTab === 'graph' ? 0.05 : 0 }}
+                            >
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'graph' ? '#111827' : '#6B7280' }}>Graph</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setVisionTab('tree')}
+                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'tree' ? '#FFF' : 'transparent', shadowOpacity: visionTab === 'tree' ? 0.05 : 0 }}
+                            >
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'tree' ? '#111827' : '#6B7280' }}>Tree</Text>
+                            </TouchableOpacity>
                         </View>
 
+                        <TouchableOpacity onPress={() => setShowVisionModal(false)} style={{ backgroundColor: '#F3F4F6', padding: 8, borderRadius: 20 }}>
+                            <X size={20} color="#374151" />
+                        </TouchableOpacity>
                     </View>
-                ))}
-            </View>
-        </ScrollView>
-    );
-};
 
-const GraphViewTab = ({ task }: any) => {
-    // Basic SVG Graph Layout
-    const center = SCREEN_WIDTH / 2;
-    const padding = 60;
+                    {visionTab === 'graph' ? (
+                        <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#F9FAFB', paddingTop: 20 }}>
+                            <Svg height="100%" width="100%">
+                                {/* Lines from Center to Owner */}
+                                <Line x1={SCREEN_WIDTH / 2} y1={80} x2={SCREEN_WIDTH / 2} y2={180} stroke="#E5E7EB" strokeWidth="2" strokeDasharray="5,5" />
 
-    const ownerPos = { x: center, y: 150 };
-    const participants = task.participants || [];
+                                {/* Lines from Owner to Participants */}
+                                {task.participants?.map((p: any, i: number) => {
+                                    const total = task.participants.length;
+                                    const radius = 120;
+                                    const angle = (Math.PI / (total + 1)) * (i + 1);
+                                    const pos = {
+                                        x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
+                                        y: 180 + radius * Math.sin(Math.PI + angle)
+                                    };
+                                    return <Line key={`l-${i}`} x1={SCREEN_WIDTH / 2} y1={180} x2={pos.x} y2={pos.y} stroke="#E2E8F0" strokeWidth="1.5" />;
+                                })}
 
-    // Position participants in semi-circles
-    const getPos = (index: number, total: number, radius: number, yOffset: number) => {
-        if (total === 1) return { x: center, y: yOffset + radius };
-        const angle = (Math.PI / (total + 1)) * (index + 1);
-        return {
-            x: center + radius * Math.cos(Math.PI + angle),
-            y: yOffset + radius * Math.sin(Math.PI + angle)
-        };
-    };
+                                {/* Center Node: Task */}
+                                <G>
+                                    <Circle cx={SCREEN_WIDTH / 2} cy={80} r="30" fill="#111827" />
+                                    <SvgText x={SCREEN_WIDTH / 2} y={85} fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">TASK</SvgText>
+                                </G>
 
-    const getSyncColor = (state: string) => {
-        switch (state) {
-            case 'IN_SYNC': return '#10b981';
-            case 'NEEDS_UPDATE': return '#f59e0b';
-            case 'BLOCKED': return '#ef4444';
-            case 'HELP_REQUESTED': return '#3b82f6';
-            default: return '#9ca3af';
-        }
-    };
+                                {/* Owner Node */}
+                                <G>
+                                    <Circle cx={SCREEN_WIDTH / 2} cy={180} r="36" fill={getSyncConfig(task.syncState).color} />
+                                    <Circle cx={SCREEN_WIDTH / 2} cy={180} r="30" fill="#fff" />
+                                    <SvgText x={SCREEN_WIDTH / 2} y={185} fill="#111827" fontSize="10" textAnchor="middle" fontWeight="bold">
+                                        {getInitials(ownerName)}
+                                    </SvgText>
+                                    <SvgText x={SCREEN_WIDTH / 2} y={230} fill="#4B5563" fontSize="11" textAnchor="middle" fontWeight="600">
+                                        {ownerName}
+                                    </SvgText>
+                                    <SvgText x={SCREEN_WIDTH / 2} y={245} fill="#9CA3AF" fontSize="9" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
+                                        OWNER
+                                    </SvgText>
+                                </G>
 
-    return (
-        <View className="flex-1 items-center bg-gray-50 pt-10">
-            <Svg height="100%" width="100%">
-                {/* Lines from Center to Owner */}
-                <Line x1={center} y1={50} x2={ownerPos.x} y2={ownerPos.y} stroke="#e5e7eb" strokeWidth="2" strokeDasharray="5,5" />
-
-                {/* Lines from Owner to Participants */}
-                {participants.map((p: any, i: number) => {
-                    const pos = getPos(i, participants.length, 120, ownerPos.y);
-                    return <Line key={`l-${i}`} x1={ownerPos.x} y1={ownerPos.y} x2={pos.x} y2={pos.y} stroke="#e2e8f0" strokeWidth="1.5" />;
-                })}
-
-                {/* Center Node: Task */}
-                <G>
-                    <Circle cx={center} cy={50} r="30" fill="#000" />
-                    <SvgText x={center} y={55} fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">TASK</SvgText>
-                </G>
-
-                {/* Owner Node */}
-                <G>
-                    <Circle cx={ownerPos.x} cy={ownerPos.y} r="35" fill={getSyncColor(task.syncState)} />
-                    <Circle cx={ownerPos.x} cy={ownerPos.y} r="28" fill="#fff" />
-                    <SvgText x={ownerPos.x} y={ownerPos.y + 5} fill="#000" fontSize="8" textAnchor="middle" fontWeight="bold">OWNER</SvgText>
-                    <SvgText x={ownerPos.x} y={ownerPos.y + 50} fill="#4b5563" fontSize="10" textAnchor="middle" fontWeight="bold">{task.owner?.name}</SvgText>
-                </G>
-
-                {/* Participant Nodes */}
-                {participants.map((p: any, i: number) => {
-                    const pos = getPos(i, participants.length, 120, ownerPos.y);
-                    return (
-                        <G key={`p-${i}`}>
-                            <Circle cx={pos.x} cy={pos.y} r="20" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="2" />
-                            <SvgText x={pos.x} y={pos.y + 4} fill="#64748b" fontSize="8" textAnchor="middle">{p.user?.name.split(' ')[0]}</SvgText>
-                            <SvgText x={pos.x} y={pos.y + 35} fill="#94a3b8" fontSize="7" textAnchor="middle" fontWeight="bold">{p.role.toUpperCase()}</SvgText>
-                        </G>
-                    );
-                })}
-            </Svg>
-
-            <View className="absolute bottom-10 bg-white/80 px-4 py-2 rounded-full border border-gray-100">
-                <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Animated Engine Visualization</Text>
-            </View>
-        </View>
-    );
-};
-
-const LogsTab = ({ task }: any) => {
-    return (
-        <ScrollView className="flex-1 px-6 pt-6">
-            <View className="mb-8">
-                <Text className="text-xl font-black text-gray-900 mb-2">Immutable Audit Feed</Text>
-                <Text className="text-gray-400 text-sm">Every responsibility shift is tracked</Text>
-            </View>
-
-            {task.logs?.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((log: any, i: number) => (
-                <View key={log.id} className="flex-row mb-6">
-                    <View className="items-center">
-                        <View className={`w-3 h-3 rounded-full ${i === 0 ? 'bg-black' : 'bg-gray-200'} z-10`} />
-                        {i !== task.logs.length - 1 && <View className="w-0.5 flex-1 bg-gray-100 -mt-0.5" />}
-                    </View>
-                    <View className="ml-4 flex-1 pb-6">
-                        <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                            {new Date(log.timestamp).toLocaleString()}
-                        </Text>
-                        <View className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                            <Text className="text-gray-800 font-bold mb-1">{log.user?.name || 'System'}</Text>
-                            <Text className="text-gray-600 text-sm">{log.action}</Text>
+                                {/* Participant Nodes */}
+                                {task.participants?.map((p: any, i: number) => {
+                                    const total = task.participants.length;
+                                    const radius = 120;
+                                    const angle = (Math.PI / (total + 1)) * (i + 1);
+                                    const pos = {
+                                        x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
+                                        y: 180 + radius * Math.sin(Math.PI + angle)
+                                    };
+                                    const roleColor = getRoleConfig(p.role === 'contributor' ? 'Contributor' : 'Helper').color;
+                                    return (
+                                        <G key={`p-${i}`}>
+                                            <Circle cx={pos.x} cy={pos.y} r="22" fill="#F8FAFC" stroke={getSyncConfig(p.syncState || 'IN_SYNC').color} strokeWidth="2.5" />
+                                            <SvgText x={pos.x} y={pos.y + 4} fill="#64748B" fontSize="9" textAnchor="middle" fontWeight="700">
+                                                {getInitials(p.user?.name)}
+                                            </SvgText>
+                                            <SvgText x={pos.x} y={pos.y + 35} fill="#9CA3AF" fontSize="8" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
+                                                {p.role.toUpperCase()}
+                                            </SvgText>
+                                        </G>
+                                    );
+                                })}
+                            </Svg>
                         </View>
-                    </View>
-                </View>
-            ))}
-        </ScrollView>
+                    ) : (
+                        <ScrollView style={{ flex: 1, backgroundColor: '#FAFAFA' }} contentContainerStyle={{ padding: 20 }}>
+                            <View style={{ borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFF' }}>
+                                {/* Header Row */}
+                                <View style={{ flexDirection: 'row', backgroundColor: '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                                    <Text style={{ flex: 2, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>STAKEHOLDER</Text>
+                                    <Text style={{ flex: 1.5, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>ROLE AUTHORITY</Text>
+                                    <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, textAlign: 'right' }}>STATUS</Text>
+                                </View>
+
+                                {/* Hierarchy Rows */}
+                                {treeParticipants.map((p, i) => {
+                                    const roleCfg = getRoleConfig(p.authority);
+                                    const syncCfg = getSyncConfig(p.syncState || 'IN_SYNC');
+                                    const isNodeBlocked = p.syncState === 'BLOCKED';
+
+                                    return (
+                                        <View key={i} style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            paddingVertical: 14,
+                                            paddingHorizontal: 16,
+                                            borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
+                                            borderBottomColor: '#F3F4F6',
+                                            backgroundColor: isNodeBlocked ? '#FEF2F2' : '#FFFFFF',
+                                        }}>
+                                            {/* Stakeholder */}
+                                            <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}>
+                                                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
+                                                </View>
+                                                <View>
+                                                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
+                                                        {p.user?.name}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            {/* Role Authority */}
+                                            <View style={{ flex: 1.5, justifyContent: 'center' }}>
+                                                <View style={{
+                                                    alignSelf: 'flex-start',
+                                                    backgroundColor: roleCfg.bg,
+                                                    paddingHorizontal: 8,
+                                                    paddingVertical: 4,
+                                                    borderRadius: 6,
+                                                }}>
+                                                    <Text style={{ fontSize: 10, fontWeight: '800', color: roleCfg.color, textTransform: 'uppercase' }}>
+                                                        {p.authority}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            {/* Status */}
+                                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncCfg.color }} />
+                                            </View>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        </ScrollView>
+                    )}
+                </SafeAreaView>
+            </Modal>
+
+        </SafeAreaView>
     );
 };
 
