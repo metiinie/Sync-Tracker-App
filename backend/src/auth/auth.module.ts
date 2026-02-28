@@ -14,14 +14,14 @@ import { ExecutionContext } from '@nestjs/common'; // Added for ExecutionContext
             imports: [ConfigModule],
             inject: [ConfigService],
             useFactory: async (configService: ConfigService) => {
-                const secret = configService.getOrThrow<string>('SUPABASE_JWT_SECRET');
-                const secretOrKey = secret.includes('+') || secret.includes('/') || secret.endsWith('=')
-                    ? Buffer.from(secret, 'base64')
-                    : secret;
+                // For ES256 with JwtModule, we'd traditionally need the public key string.
+                // However, since we primarily use JwtStrategy for REST, 
+                // we'll keep this simple and rely on JwtStrategy for verification.
+                // This part is mainly for when JwtService.verify() is called.
                 return {
-                    secret: secretOrKey,
-                    // Temporarily ignore expiration for debugging as per instruction
-                    ignoreExpiration: true,
+                    verifyOptions: {
+                        algorithms: ['ES256'],
+                    },
                 };
             },
         }),

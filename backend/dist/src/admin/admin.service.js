@@ -281,6 +281,40 @@ let AdminService = class AdminService {
             limit: 10,
         });
     }
+    async getTasks() {
+        return this.db.query.tasks.findMany({
+            with: {
+                assigner: true,
+                owner: true,
+                participants: {
+                    with: {
+                        user: true
+                    }
+                },
+                milestones: true,
+                timeLogs: true,
+                syncLogs: true,
+            },
+            orderBy: (tasks, { desc }) => [desc(tasks.createdAt)],
+        });
+    }
+    async getTask(id) {
+        return this.db.query.tasks.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.tasks.id, id),
+            with: {
+                assigner: true,
+                owner: true,
+                participants: {
+                    with: {
+                        user: true
+                    }
+                },
+                milestones: true,
+                timeLogs: true,
+                syncLogs: true,
+            }
+        });
+    }
     async getActivityPulse() {
         return await this.db.query.syncLogs.findMany({
             where: (0, drizzle_orm_1.or)((0, drizzle_orm_1.sql) `${schema.syncLogs.action} ILIKE '%help%'`, (0, drizzle_orm_1.sql) `${schema.syncLogs.action} ILIKE '%transfer%'`, (0, drizzle_orm_1.sql) `${schema.syncLogs.action} ILIKE '%blocked%'`),

@@ -92,21 +92,6 @@ export declare class TasksController {
                 createdAt: Date;
             };
         }[];
-        logs: {
-            id: string;
-            taskId: string | null;
-            userId: string;
-            action: string;
-            timestamp: Date;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                systemRole: "ADMIN" | "USER";
-                isSuspended: boolean;
-                createdAt: Date;
-            };
-        }[];
         milestones: {
             id: string;
             createdAt: Date;

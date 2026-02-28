@@ -13,25 +13,40 @@ exports.WsJwtGuard = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const config_1 = require("@nestjs/config");
+const jwks_rsa_1 = require("jwks-rsa");
 let WsJwtGuard = class WsJwtGuard {
     jwtService;
     configService;
+    client;
     constructor(jwtService, configService) {
         this.jwtService = jwtService;
         this.configService = configService;
+        const supabaseUrl = this.configService.getOrThrow('SUPABASE_URL');
+        this.client = new jwks_rsa_1.JwksClient({
+            jwksUri: `${supabaseUrl}/auth/v1/.well-known/jwks.json`,
+            cache: true,
+            rateLimit: true,
+            jwksRequestsPerMinute: 5,
+        });
     }
+    getKey = async (header) => {
+        const key = await this.client.getSigningKey(header.kid);
+        return key.getPublicKey();
+    };
     async canActivate(context) {
         try {
             const client = context.switchToWs().getClient();
             const token = client.handshake?.auth?.token || client.handshake?.headers?.authorization?.split(' ')[1];
             if (!token)
                 return false;
-            const secret = this.configService.getOrThrow('SUPABASE_JWT_SECRET');
-            const secretOrKey = secret.includes('+') || secret.includes('/') || secret.endsWith('=')
-                ? Buffer.from(secret, 'base64')
-                : secret;
+            const decoded = this.jwtService.decode(token, { complete: true });
+            if (!decoded || typeof decoded === 'string' || !decoded.header) {
+                return false;
+            }
+            const publicKey = await this.getKey(decoded.header);
             const payload = await this.jwtService.verifyAsync(token, {
-                secret: secretOrKey,
+                secret: publicKey,
+                algorithms: ['ES256'],
             });
             client.user = payload;
             return true;

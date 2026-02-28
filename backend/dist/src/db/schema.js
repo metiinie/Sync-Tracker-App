@@ -43,7 +43,7 @@ exports.tasksRelations = (0, drizzle_orm_1.relations)(exports.tasks, ({ one, man
         relationName: 'responsibleOwner',
     }),
     participants: many(exports.taskParticipants),
-    logs: many(exports.syncLogs),
+    syncLogs: many(exports.syncLogs),
     milestones: many(exports.milestones),
     timeLogs: many(exports.timeLogs),
 }));

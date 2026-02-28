@@ -69,12 +69,27 @@ let AuthService = class AuthService {
             }
             return existing;
         }
-        const [user] = await this.db.insert(schema.users).values({
-            id: userId,
-            name,
-            email,
-        }).returning();
-        return user;
+        try {
+            const [user] = await this.db.insert(schema.users).values({
+                id: userId,
+                name,
+                email,
+            })
+                .onConflictDoUpdate({
+                target: schema.users.id,
+                set: { name, email },
+            })
+                .returning();
+            return user;
+        }
+        catch (error) {
+            const fallbackUser = await this.db.query.users.findFirst({
+                where: (0, drizzle_orm_1.eq)(schema.users.id, userId),
+            });
+            if (fallbackUser)
+                return fallbackUser;
+            throw error;
+        }
     }
 };
 exports.AuthService = AuthService;

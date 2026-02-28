@@ -25,8 +25,14 @@ export class TasksService {
                 status: 'PENDING',
             }).returning();
 
-            // Create assignment notification
-            await this.notificationsService.create(responsibleOwner, task.id, 'ASSIGNED', `You have been assigned as the responsible owner for "${title}"`);
+            // Create assignment notification directly in tx
+            await tx.insert(schema.notifications).values({
+                userId: responsibleOwner,
+                taskId: task.id,
+                type: 'ASSIGNED',
+                content: `You have been assigned as the responsible owner for "${title}"`,
+                isRead: 'false',
+            });
 
             // Add additional participants if any
             if (participants && participants.length > 0) {
@@ -38,10 +44,16 @@ export class TasksService {
                     }))
                 );
 
-                // Create participant notifications
-                for (const p of participants) {
-                    await this.notificationsService.create(p.userId, task.id, 'PARTICIPANT_ADDED', `You have been added as a ${p.role} to "${title}"`);
-                }
+                // Create participant notifications directly in tx
+                await tx.insert(schema.notifications).values(
+                    participants.map(p => ({
+                        userId: p.userId,
+                        taskId: task.id,
+                        type: 'PARTICIPANT_ADDED',
+                        content: `You have been added as a ${p.role} to "${title}"`,
+                        isRead: 'false',
+                    }))
+                );
             }
 
             // Add milestones if any
@@ -62,6 +74,13 @@ export class TasksService {
             });
 
             this.syncGateway.emitToTask(task.id, 'task:created', task);
+
+            // Emit realtime notification to the specific user (best effort outside transaction)
+            this.syncGateway.server.to(`user:${responsibleOwner}`).emit('notification:new', {
+                userId: responsibleOwner,
+                taskId: task.id,
+                type: 'ASSIGNED',
+            });
 
             return task;
         });
@@ -240,7 +259,8 @@ export class TasksService {
                         user: true
                     }
                 },
-                logs: true,
+                // The relation name in schema.ts is 'syncLogs' or there is no relation
+                // 'logs' is not defined on tasksRelations
             }
         });
 
@@ -262,7 +282,6 @@ export class TasksService {
                                 user: true
                             }
                         },
-                        logs: true,
                     }
                 }
             }
@@ -293,11 +312,6 @@ export class TasksService {
                 },
                 milestones: true,
                 timeLogs: {
-                    with: {
-                        user: true
-                    }
-                },
-                logs: {
                     with: {
                         user: true
                     }

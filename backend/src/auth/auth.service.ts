@@ -28,12 +28,25 @@ export class AuthService {
             return existing;
         }
 
-        const [user] = await this.db.insert(schema.users).values({
-            id: userId,
-            name,
-            email,
-        }).returning();
-
-        return user;
+        try {
+            const [user] = await this.db.insert(schema.users).values({
+                id: userId,
+                name,
+                email,
+            })
+                .onConflictDoUpdate({
+                    target: schema.users.id,
+                    set: { name, email }, // Optionally update name/email
+                })
+                .returning();
+            return user;
+        } catch (error) {
+            // Fallback in case onConflict isn't supported or fails unexpectedly
+            const fallbackUser = await this.db.query.users.findFirst({
+                where: eq(schema.users.id, userId),
+            });
+            if (fallbackUser) return fallbackUser;
+            throw error;
+        }
     }
 }

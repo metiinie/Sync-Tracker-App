@@ -302,6 +302,42 @@ export class AdminService {
         });
     }
 
+    async getTasks() {
+        return this.db.query.tasks.findMany({
+            with: {
+                assigner: true,
+                owner: true,
+                participants: {
+                    with: {
+                        user: true
+                    }
+                },
+                milestones: true,
+                timeLogs: true,
+                syncLogs: true,
+            },
+            orderBy: (tasks, { desc }) => [desc(tasks.createdAt)],
+        });
+    }
+
+    async getTask(id: string) {
+        return this.db.query.tasks.findFirst({
+            where: eq(schema.tasks.id, id),
+            with: {
+                assigner: true,
+                owner: true,
+                participants: {
+                    with: {
+                        user: true
+                    }
+                },
+                milestones: true,
+                timeLogs: true,
+                syncLogs: true,
+            }
+        });
+    }
+
     async getActivityPulse() {
         // Live feed of: Help requests, Transfers, Blocked events
         // We'll search sync_logs for specific keywords.

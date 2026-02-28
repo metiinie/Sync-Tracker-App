@@ -280,7 +280,7 @@ export declare const tasksRelations: import("drizzle-orm").Relations<"tasks", {
     assigner: import("drizzle-orm").One<"users", true>;
     owner: import("drizzle-orm").One<"users", true>;
     participants: import("drizzle-orm").Many<"task_participants">;
-    logs: import("drizzle-orm").Many<"sync_logs">;
+    syncLogs: import("drizzle-orm").Many<"sync_logs">;
     milestones: import("drizzle-orm").Many<"milestones">;
     timeLogs: import("drizzle-orm").Many<"time_logs">;
 }>;

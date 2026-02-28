@@ -15,27 +15,31 @@ const passport_1 = require("@nestjs/passport");
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const auth_service_1 = require("./auth.service");
+const jwks_rsa_1 = require("jwks-rsa");
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     configService;
     authService;
     constructor(configService, authService) {
-        const secret = configService.getOrThrow('SUPABASE_JWT_SECRET');
-        const secretOrKey = secret.includes('+') || secret.includes('/') || secret.endsWith('=')
-            ? Buffer.from(secret, 'base64')
-            : secret;
+        const supabaseUrl = configService.getOrThrow('SUPABASE_URL');
+        const jwksUri = `${supabaseUrl}/auth/v1/.well-known/jwks.json`;
+        console.log('JwtStrategy: Initializing with JWKS URI:', jwksUri);
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
-            ignoreExpiration: true,
-            secretOrKey: secretOrKey,
+            ignoreExpiration: false,
+            secretOrKeyProvider: (0, jwks_rsa_1.passportJwtSecret)({
+                cache: true,
+                rateLimit: true,
+                jwksRequestsPerMinute: 5,
+                jwksUri: jwksUri,
+            }),
+            algorithms: ['ES256'],
         });
         this.configService = configService;
         this.authService = authService;
     }
     async validate(payload) {
-        console.log('JWT Strategy Validate - Payload:', JSON.stringify(payload, null, 2));
         try {
             const user = await this.authService.getOrCreateUser(payload);
-            console.log('JWT Strategy Validate - User found/created:', user.id);
             return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
         }
         catch (error) {

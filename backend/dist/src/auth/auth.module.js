@@ -25,13 +25,10 @@ exports.AuthModule = AuthModule = __decorate([
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
                 useFactory: async (configService) => {
-                    const secret = configService.getOrThrow('SUPABASE_JWT_SECRET');
-                    const secretOrKey = secret.includes('+') || secret.includes('/') || secret.endsWith('=')
-                        ? Buffer.from(secret, 'base64')
-                        : secret;
                     return {
-                        secret: secretOrKey,
-                        ignoreExpiration: true,
+                        verifyOptions: {
+                            algorithms: ['ES256'],
+                        },
                     };
                 },
             }),

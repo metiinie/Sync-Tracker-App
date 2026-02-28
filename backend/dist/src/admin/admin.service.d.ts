@@ -234,6 +234,140 @@ export declare class AdminService {
             createdAt: Date;
         };
     }[]>;
+    getTasks(): Promise<{
+        id: string;
+        createdAt: Date;
+        description: string | null;
+        title: string;
+        assignedBy: string;
+        responsibleOwner: string;
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
+        assigner: {
+            id: string;
+            name: string;
+            email: string;
+            systemRole: "ADMIN" | "USER";
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+        owner: {
+            id: string;
+            name: string;
+            email: string;
+            systemRole: "ADMIN" | "USER";
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+        participants: {
+            id: string;
+            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            lastUpdatedAt: Date;
+            taskId: string;
+            userId: string;
+            role: "contributor" | "helper" | "reviewer" | "observer";
+            joinedAt: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
+        syncLogs: {
+            id: string;
+            taskId: string | null;
+            userId: string;
+            action: string;
+            timestamp: Date;
+        }[];
+        milestones: {
+            id: string;
+            createdAt: Date;
+            title: string;
+            taskId: string;
+            isCompleted: string;
+            dueDate: Date | null;
+        }[];
+        timeLogs: {
+            id: string;
+            description: string | null;
+            taskId: string;
+            userId: string;
+            timestamp: Date;
+            durationMinutes: string;
+        }[];
+    }[]>;
+    getTask(id: string): Promise<{
+        id: string;
+        createdAt: Date;
+        description: string | null;
+        title: string;
+        assignedBy: string;
+        responsibleOwner: string;
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
+        assigner: {
+            id: string;
+            name: string;
+            email: string;
+            systemRole: "ADMIN" | "USER";
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+        owner: {
+            id: string;
+            name: string;
+            email: string;
+            systemRole: "ADMIN" | "USER";
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+        participants: {
+            id: string;
+            syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+            lastUpdatedAt: Date;
+            taskId: string;
+            userId: string;
+            role: "contributor" | "helper" | "reviewer" | "observer";
+            joinedAt: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                systemRole: "ADMIN" | "USER";
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
+        syncLogs: {
+            id: string;
+            taskId: string | null;
+            userId: string;
+            action: string;
+            timestamp: Date;
+        }[];
+        milestones: {
+            id: string;
+            createdAt: Date;
+            title: string;
+            taskId: string;
+            isCompleted: string;
+            dueDate: Date | null;
+        }[];
+        timeLogs: {
+            id: string;
+            description: string | null;
+            taskId: string;
+            userId: string;
+            timestamp: Date;
+            durationMinutes: string;
+        }[];
+    } | undefined>;
     getActivityPulse(): Promise<{
         id: string;
         taskId: string | null;

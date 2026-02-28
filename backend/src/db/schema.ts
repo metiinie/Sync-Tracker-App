@@ -45,7 +45,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
         relationName: 'responsibleOwner',
     }),
     participants: many(taskParticipants),
-    logs: many(syncLogs),
+    syncLogs: many(syncLogs),
     milestones: many(milestones),
     timeLogs: many(timeLogs),
 }));

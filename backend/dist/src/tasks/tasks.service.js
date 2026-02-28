@@ -71,16 +71,26 @@ let TasksService = class TasksService {
                 responsibleOwner,
                 status: 'PENDING',
             }).returning();
-            await this.notificationsService.create(responsibleOwner, task.id, 'ASSIGNED', `You have been assigned as the responsible owner for "${title}"`);
+            await tx.insert(schema.notifications).values({
+                userId: responsibleOwner,
+                taskId: task.id,
+                type: 'ASSIGNED',
+                content: `You have been assigned as the responsible owner for "${title}"`,
+                isRead: 'false',
+            });
             if (participants && participants.length > 0) {
                 await tx.insert(schema.taskParticipants).values(participants.map(p => ({
                     taskId: task.id,
                     userId: p.userId,
                     role: p.role,
                 })));
-                for (const p of participants) {
-                    await this.notificationsService.create(p.userId, task.id, 'PARTICIPANT_ADDED', `You have been added as a ${p.role} to "${title}"`);
-                }
+                await tx.insert(schema.notifications).values(participants.map(p => ({
+                    userId: p.userId,
+                    taskId: task.id,
+                    type: 'PARTICIPANT_ADDED',
+                    content: `You have been added as a ${p.role} to "${title}"`,
+                    isRead: 'false',
+                })));
             }
             if (milestones && milestones.length > 0) {
                 await tx.insert(schema.milestones).values(milestones.map(m => ({
@@ -94,6 +104,11 @@ let TasksService = class TasksService {
                 action: `Task created and assigned to ${responsibleOwner}`,
             });
             this.syncGateway.emitToTask(task.id, 'task:created', task);
+            this.syncGateway.server.to(`user:${responsibleOwner}`).emit('notification:new', {
+                userId: responsibleOwner,
+                taskId: task.id,
+                type: 'ASSIGNED',
+            });
             return task;
         });
     }
@@ -233,7 +248,6 @@ let TasksService = class TasksService {
                         user: true
                     }
                 },
-                logs: true,
             }
         });
         const participatedTasks = await this.db.query.taskParticipants.findMany({
@@ -254,7 +268,6 @@ let TasksService = class TasksService {
                                 user: true
                             }
                         },
-                        logs: true,
                     }
                 }
             }
@@ -281,11 +294,6 @@ let TasksService = class TasksService {
                 },
                 milestones: true,
                 timeLogs: {
-                    with: {
-                        user: true
-                    }
-                },
-                logs: {
                     with: {
                         user: true
                     }
