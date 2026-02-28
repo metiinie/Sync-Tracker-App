@@ -8,6 +8,13 @@
       "when": 1772182375759,
       "tag": "0000_goofy_human_robot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772298688797,
+      "tag": "0001_flat_steve_rogers",
+      "breakpoints": true
     }
   ]
 }

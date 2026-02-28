@@ -16,9 +16,9 @@ const MainTabs = () => {
                 headerShown: false,
             }}
         >
-            <Tab.Screen name="Dashboard" component={HomeScreen} />
+            <Tab.Screen name="Radar" component={HomeScreen} />
             <Tab.Screen name="Tasks" component={TasksScreen} />
-            <Tab.Screen name="Notifications" component={NotificationsScreen} />
+            <Tab.Screen name="Team" component={NotificationsScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
     );
