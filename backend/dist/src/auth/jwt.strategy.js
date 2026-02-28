@@ -19,17 +19,29 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
     configService;
     authService;
     constructor(configService, authService) {
+        const secret = configService.getOrThrow('SUPABASE_JWT_SECRET');
+        const secretOrKey = secret.includes('+') || secret.includes('/') || secret.endsWith('=')
+            ? Buffer.from(secret, 'base64')
+            : secret;
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: configService.getOrThrow('SUPABASE_JWT_SECRET'),
+            secretOrKey: secretOrKey,
         });
         this.configService = configService;
         this.authService = authService;
     }
     async validate(payload) {
-        const user = await this.authService.getOrCreateUser(payload);
-        return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
+        console.log('JWT Payload received:', JSON.stringify(payload, null, 2));
+        try {
+            const user = await this.authService.getOrCreateUser(payload);
+            console.log('User validated/synced:', user.id);
+            return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
+        }
+        catch (error) {
+            console.error('Error in JWT validation:', error);
+            throw error;
+        }
     }
 };
 exports.JwtStrategy = JwtStrategy;

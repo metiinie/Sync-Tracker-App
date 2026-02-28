@@ -10,16 +10,28 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         private configService: ConfigService,
         private authService: AuthService,
     ) {
+        const secret = configService.getOrThrow<string>('SUPABASE_JWT_SECRET');
+        // Handle base64 secrets if present (common in Supabase setup)
+        const secretOrKey = secret.includes('+') || secret.includes('/') || secret.endsWith('=')
+            ? Buffer.from(secret, 'base64')
+            : secret;
+
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: configService.getOrThrow<string>('SUPABASE_JWT_SECRET'),
+            secretOrKey: secretOrKey,
         });
     }
 
     async validate(payload: any) {
-        // Automatically sync Supabase user to local DB
-        const user = await this.authService.getOrCreateUser(payload);
-        return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
+        console.log('JWT Payload received:', JSON.stringify(payload, null, 2));
+        try {
+            const user = await this.authService.getOrCreateUser(payload);
+            console.log('User validated/synced:', user.id);
+            return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
+        } catch (error) {
+            console.error('Error in JWT validation:', error);
+            throw error;
+        }
     }
 }
