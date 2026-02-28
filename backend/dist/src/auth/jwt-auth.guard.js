@@ -10,6 +10,17 @@ exports.JwtAuthGuard = void 0;
 const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
+    handleRequest(err, user, info) {
+        if (err || !user) {
+            console.error('JWT Auth Guard Failure:', {
+                error: err?.message,
+                info: info?.message,
+                stack: info?.stack
+            });
+            throw err || new common_1.UnauthorizedException(info?.message || 'Unauthorized');
+        }
+        return user;
+    }
 };
 exports.JwtAuthGuard = JwtAuthGuard;
 exports.JwtAuthGuard = JwtAuthGuard = __decorate([

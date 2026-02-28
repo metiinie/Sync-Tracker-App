@@ -24,9 +24,16 @@ exports.AuthModule = AuthModule = __decorate([
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
-                useFactory: async (configService) => ({
-                    secret: configService.get('SUPABASE_JWT_SECRET'),
-                }),
+                useFactory: async (configService) => {
+                    const secret = configService.getOrThrow('SUPABASE_JWT_SECRET');
+                    const secretOrKey = secret.includes('+') || secret.includes('/') || secret.endsWith('=')
+                        ? Buffer.from(secret, 'base64')
+                        : secret;
+                    return {
+                        secret: secretOrKey,
+                        ignoreExpiration: true,
+                    };
+                },
             }),
         ],
         providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy],

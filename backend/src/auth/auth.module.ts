@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ExecutionContext } from '@nestjs/common'; // Added for ExecutionContext type
 
 @Module({
     imports: [
@@ -12,9 +13,17 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         JwtModule.registerAsync({
             imports: [ConfigModule],
             inject: [ConfigService],
-            useFactory: async (configService: ConfigService) => ({
-                secret: configService.get<string>('SUPABASE_JWT_SECRET'),
-            }),
+            useFactory: async (configService: ConfigService) => {
+                const secret = configService.getOrThrow<string>('SUPABASE_JWT_SECRET');
+                const secretOrKey = secret.includes('+') || secret.includes('/') || secret.endsWith('=')
+                    ? Buffer.from(secret, 'base64')
+                    : secret;
+                return {
+                    secret: secretOrKey,
+                    // Temporarily ignore expiration for debugging as per instruction
+                    ignoreExpiration: true,
+                };
+            },
         }),
     ],
     providers: [AuthService, JwtStrategy],

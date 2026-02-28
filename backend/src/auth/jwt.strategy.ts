@@ -18,19 +18,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-            ignoreExpiration: false,
+            ignoreExpiration: true, // Temporarily ignore for debugging
             secretOrKey: secretOrKey,
         });
     }
 
     async validate(payload: any) {
-        console.log('JWT Payload received:', JSON.stringify(payload, null, 2));
+        console.log('JWT Strategy Validate - Payload:', JSON.stringify(payload, null, 2));
         try {
             const user = await this.authService.getOrCreateUser(payload);
-            console.log('User validated/synced:', user.id);
+            console.log('JWT Strategy Validate - User found/created:', user.id);
             return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
         } catch (error) {
-            console.error('Error in JWT validation:', error);
+            console.error('JWT Strategy Validate - Error:', error);
             throw error;
         }
     }
