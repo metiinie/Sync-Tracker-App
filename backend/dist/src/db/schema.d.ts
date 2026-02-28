@@ -1,5 +1,4 @@
 export declare const userRoleEnum: import("drizzle-orm/pg-core").PgEnum<["contributor", "helper", "reviewer", "observer"]>;
-export declare const systemRoleEnum: import("drizzle-orm/pg-core").PgEnum<["ADMIN", "USER"]>;
 export declare const taskStatusEnum: import("drizzle-orm/pg-core").PgEnum<["PENDING", "ACTIVE", "COMPLETED", "CANCELLED", "FROZEN"]>;
 export declare const syncStateEnum: import("drizzle-orm/pg-core").PgEnum<["IN_SYNC", "NEEDS_UPDATE", "BLOCKED", "HELP_REQUESTED"]>;
 export declare const users: import("drizzle-orm/pg-core").PgTableWithColumns<{
@@ -53,23 +52,6 @@ export declare const users: import("drizzle-orm/pg-core").PgTableWithColumns<{
             isAutoincrement: false;
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        systemRole: import("drizzle-orm/pg-core").PgColumn<{
-            name: "system_role";
-            tableName: "users";
-            dataType: "string";
-            columnType: "PgEnumColumn";
-            data: "ADMIN" | "USER";
-            driverParam: string;
-            notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: ["ADMIN", "USER"];
             baseColumn: never;
             identity: undefined;
             generated: undefined;

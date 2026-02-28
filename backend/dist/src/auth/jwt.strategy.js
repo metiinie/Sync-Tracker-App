@@ -40,7 +40,11 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
     async validate(payload) {
         try {
             const user = await this.authService.getOrCreateUser(payload);
-            return { userId: user.id, email: user.email, name: user.name, systemRole: user.systemRole };
+            return {
+                userId: user.id,
+                email: user.email,
+                name: user.name,
+            };
         }
         catch (error) {
             console.error('JWT Strategy Validate - Error:', error);

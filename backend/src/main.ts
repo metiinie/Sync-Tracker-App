@@ -20,7 +20,10 @@ async function bootstrap() {
       app.useWebSocketAdapter(redisIoAdapter);
       console.log('Successfully connected to Redis for WebSockets');
     } catch (error) {
-      console.error('Failed to connect to Redis, falling back to default adapter:', error);
+      console.error(
+        'Failed to connect to Redis, falling back to default adapter:',
+        error,
+      );
     }
   }
 

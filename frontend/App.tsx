@@ -12,7 +12,6 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import MainTabs from './src/navigation/MainTabs';
 import TaskDetailScreen from './src/screens/TaskDetailScreen';
-import AdminUserDetailScreen from './src/screens/AdminUserDetailScreen';
 import CreateTaskScreen from './src/screens/CreateTaskScreen';
 import SplashScreen from './src/screens/SplashScreen';
 
@@ -67,11 +66,6 @@ export default function App() {
                 name="TaskDetail"
                 component={TaskDetailScreen}
                 options={{ headerShown: true, title: 'Track Details', headerShadowVisible: false }}
-              />
-              <Stack.Screen
-                name="AdminUserDetail"
-                component={AdminUserDetailScreen}
-                options={{ headerShown: true, title: 'Identity Governance', headerShadowVisible: false }}
               />
               <Stack.Screen
                 name="CreateTask"

@@ -36,7 +36,8 @@ let WsJwtGuard = class WsJwtGuard {
     async canActivate(context) {
         try {
             const client = context.switchToWs().getClient();
-            const token = client.handshake?.auth?.token || client.handshake?.headers?.authorization?.split(' ')[1];
+            const token = client.handshake?.auth?.token ||
+                client.handshake?.headers?.authorization?.split(' ')[1];
             if (!token)
                 return false;
             const decoded = this.jwtService.decode(token, { complete: true });
@@ -60,6 +61,7 @@ let WsJwtGuard = class WsJwtGuard {
 exports.WsJwtGuard = WsJwtGuard;
 exports.WsJwtGuard = WsJwtGuard = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [jwt_1.JwtService, config_1.ConfigService])
+    __metadata("design:paramtypes", [jwt_1.JwtService,
+        config_1.ConfigService])
 ], WsJwtGuard);
 //# sourceMappingURL=ws-jwt.guard.js.map

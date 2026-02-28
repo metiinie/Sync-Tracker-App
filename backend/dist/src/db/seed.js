@@ -47,34 +47,30 @@ async function seed() {
     const db = (0, node_postgres_1.drizzle)(pool, { schema });
     try {
         console.log('Creating users...');
-        const adminId = (0, crypto_1.randomUUID)();
+        const ownerId = (0, crypto_1.randomUUID)();
         const user1Id = (0, crypto_1.randomUUID)();
         const user2Id = (0, crypto_1.randomUUID)();
         const user3Id = (0, crypto_1.randomUUID)();
         await db.insert(schema.users).values([
             {
-                id: adminId,
-                name: 'System Admin',
-                email: 'admin@tracker.com',
-                systemRole: 'ADMIN',
+                id: ownerId,
+                name: 'Workspace Owner',
+                email: 'owner@tracker.com',
             },
             {
                 id: user1Id,
                 name: 'John Contributor',
                 email: 'john@tracker.com',
-                systemRole: 'USER',
             },
             {
                 id: user2Id,
                 name: 'Sarah Helper',
                 email: 'sarah@tracker.com',
-                systemRole: 'USER',
             },
             {
                 id: user3Id,
                 name: 'Mike Reviewer',
                 email: 'mike@tracker.com',
-                systemRole: 'USER',
             },
         ]);
         console.log('Creating workspace settings...');
@@ -92,7 +88,7 @@ async function seed() {
                 id: task1Id,
                 title: 'Implement Core API',
                 description: 'Build the foundational REST endpoints for the sync tracker.',
-                assignedBy: adminId,
+                assignedBy: ownerId,
                 responsibleOwner: user1Id,
                 status: 'ACTIVE',
                 syncState: 'IN_SYNC',
@@ -101,7 +97,7 @@ async function seed() {
                 id: task2Id,
                 title: 'Design Mobile UI',
                 description: 'Create high-fidelity mockups for the task dashboard.',
-                assignedBy: adminId,
+                assignedBy: ownerId,
                 responsibleOwner: user2Id,
                 status: 'ACTIVE',
                 syncState: 'BLOCKED',
@@ -110,7 +106,7 @@ async function seed() {
                 id: task3Id,
                 title: 'Setup Database Migrations',
                 description: 'Configure Drizzle and Neon for automated schema updates.',
-                assignedBy: adminId,
+                assignedBy: ownerId,
                 responsibleOwner: user3Id,
                 status: 'COMPLETED',
                 syncState: 'IN_SYNC',

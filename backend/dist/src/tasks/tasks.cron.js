@@ -70,7 +70,8 @@ let TasksCron = TasksCron_1 = class TasksCron {
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.lt)(schema.taskParticipants.lastUpdatedAt, threshold), (0, drizzle_orm_1.eq)(schema.taskParticipants.syncState, 'IN_SYNC')),
         });
         for (const participant of staleParticipants) {
-            await this.db.update(schema.taskParticipants)
+            await this.db
+                .update(schema.taskParticipants)
                 .set({ syncState: 'NEEDS_UPDATE', lastUpdatedAt: new Date() })
                 .where((0, drizzle_orm_1.eq)(schema.taskParticipants.id, participant.id));
             this.syncGateway.emitToTask(participant.taskId, 'sync:update', {

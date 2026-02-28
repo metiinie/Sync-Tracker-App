@@ -5,9 +5,9 @@ import { DbModule } from '../db/db.module';
 import { TasksModule } from '../tasks/tasks.module';
 
 @Module({
-    imports: [DbModule, TasksModule],
-    controllers: [UsersController],
-    providers: [UsersService],
-    exports: [UsersService],
+  imports: [DbModule, TasksModule],
+  controllers: [UsersController],
+  providers: [UsersService],
+  exports: [UsersService],
 })
-export class UsersModule { }
+export class UsersModule {}

@@ -5,9 +5,9 @@ import { DbModule } from '../db/db.module';
 import { SyncModule } from '../sync/sync.module';
 
 @Module({
-    imports: [DbModule, SyncModule],
-    controllers: [NotificationsController],
-    providers: [NotificationsService],
-    exports: [NotificationsService],
+  imports: [DbModule, SyncModule],
+  controllers: [NotificationsController],
+  providers: [NotificationsService],
+  exports: [NotificationsService],
 })
-export class NotificationsModule { }
+export class NotificationsModule {}

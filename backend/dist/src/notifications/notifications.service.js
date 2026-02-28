@@ -60,14 +60,19 @@ let NotificationsService = class NotificationsService {
         this.syncGateway = syncGateway;
     }
     async create(userId, taskId, type, content) {
-        const [notification] = await this.db.insert(schema.notifications).values({
+        const [notification] = await this.db
+            .insert(schema.notifications)
+            .values({
             userId,
             taskId,
             type,
             content,
             isRead: 'false',
-        }).returning();
-        this.syncGateway.server.to(`user:${userId}`).emit('notification:new', notification);
+        })
+            .returning();
+        this.syncGateway.server
+            .to(`user:${userId}`)
+            .emit('notification:new', notification);
         return notification;
     }
     async findAllForUser(userId) {
@@ -81,7 +86,8 @@ let NotificationsService = class NotificationsService {
         });
     }
     async markAsRead(notificationId, userId) {
-        const [notification] = await this.db.update(schema.notifications)
+        const [notification] = await this.db
+            .update(schema.notifications)
             .set({ isRead: 'true' })
             .where((0, drizzle_orm_1.eq)(schema.notifications.id, notificationId))
             .returning();

@@ -6,9 +6,9 @@ import { TasksCron } from './tasks.cron';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-    imports: [NotificationsModule],
-    providers: [TasksService, TasksCron],
-    controllers: [TasksController],
-    exports: [TasksService],
+  imports: [NotificationsModule],
+  providers: [TasksService, TasksCron],
+  controllers: [TasksController],
+  exports: [TasksService],
 })
-export class TasksModule { }
+export class TasksModule {}

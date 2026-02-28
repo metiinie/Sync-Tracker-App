@@ -4,21 +4,21 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { Redis } from 'ioredis';
 
 export class RedisIoAdapter extends IoAdapter {
-    private adapterConstructor: ReturnType<typeof createAdapter>;
+  private adapterConstructor: ReturnType<typeof createAdapter>;
 
-    async connectToRedis(): Promise<void> {
-        const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-        const pubClient = new Redis(redisUrl, { lazyConnect: true });
-        const subClient = new Redis(redisUrl, { lazyConnect: true });
+  async connectToRedis(): Promise<void> {
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    const pubClient = new Redis(redisUrl, { lazyConnect: true });
+    const subClient = new Redis(redisUrl, { lazyConnect: true });
 
-        await Promise.all([pubClient.connect(), subClient.connect()]);
+    await Promise.all([pubClient.connect(), subClient.connect()]);
 
-        this.adapterConstructor = createAdapter(pubClient, subClient);
-    }
+    this.adapterConstructor = createAdapter(pubClient, subClient);
+  }
 
-    createIOServer(port: number, options?: ServerOptions): any {
-        const server = super.createIOServer(port, options);
-        server.adapter(this.adapterConstructor);
-        return server;
-    }
+  createIOServer(port: number, options?: ServerOptions): any {
+    const server = super.createIOServer(port, options);
+    server.adapter(this.adapterConstructor);
+    return server;
+  }
 }

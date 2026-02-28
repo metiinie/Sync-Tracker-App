@@ -7,7 +7,6 @@ export declare class UsersService {
         id: string;
         name: string;
         email: string;
-        systemRole: "ADMIN" | "USER";
         isSuspended: boolean;
         createdAt: Date;
     }[]>;
@@ -15,7 +14,6 @@ export declare class UsersService {
         id: string;
         name: string;
         email: string;
-        systemRole: "ADMIN" | "USER";
         isSuspended: boolean;
         createdAt: Date;
     }[]>;

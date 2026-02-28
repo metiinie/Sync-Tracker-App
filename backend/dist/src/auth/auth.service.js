@@ -61,16 +61,18 @@ let AuthService = class AuthService {
         const email = payload.email;
         const name = payload.user_metadata?.full_name || email;
         const existing = await this.db.query.users.findFirst({
-            where: (0, drizzle_orm_1.eq)(schema.users.id, userId),
+            where: (0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(schema.users.id, userId), (0, drizzle_orm_1.eq)(schema.users.email, email)),
         });
         if (existing) {
             if (existing.isSuspended) {
-                throw new common_1.UnauthorizedException('Your account has been suspended by an administrator.');
+                throw new common_1.UnauthorizedException('Your account has been suspended.');
             }
             return existing;
         }
         try {
-            const [user] = await this.db.insert(schema.users).values({
+            const [user] = await this.db
+                .insert(schema.users)
+                .values({
                 id: userId,
                 name,
                 email,

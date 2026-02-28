@@ -7,7 +7,6 @@ export declare class AuthService {
         id: string;
         name: string;
         email: string;
-        systemRole: "ADMIN" | "USER";
         isSuspended: boolean;
         createdAt: Date;
     }>;

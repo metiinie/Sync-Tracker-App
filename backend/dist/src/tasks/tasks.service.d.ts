@@ -95,7 +95,6 @@ export declare class TasksService {
             id: string;
             name: string;
             email: string;
-            systemRole: "ADMIN" | "USER";
             isSuspended: boolean;
             createdAt: Date;
         };
@@ -103,7 +102,6 @@ export declare class TasksService {
             id: string;
             name: string;
             email: string;
-            systemRole: "ADMIN" | "USER";
             isSuspended: boolean;
             createdAt: Date;
         };
@@ -119,7 +117,6 @@ export declare class TasksService {
                 id: string;
                 name: string;
                 email: string;
-                systemRole: "ADMIN" | "USER";
                 isSuspended: boolean;
                 createdAt: Date;
             };
@@ -143,7 +140,6 @@ export declare class TasksService {
                 id: string;
                 name: string;
                 email: string;
-                systemRole: "ADMIN" | "USER";
                 isSuspended: boolean;
                 createdAt: Date;
             };

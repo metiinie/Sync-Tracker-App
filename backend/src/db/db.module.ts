@@ -8,20 +8,20 @@ export const DRIZZLE = 'DRIZZLE';
 
 @Global()
 @Module({
-    providers: [
-        {
-            provide: DRIZZLE,
-            inject: [ConfigService],
-            useFactory: async (configService: ConfigService) => {
-                const databaseUrl = configService.get<string>('DATABASE_URL');
-                const pool = new Pool({
-                    connectionString: databaseUrl,
-                    ssl: { rejectUnauthorized: false },
-                });
-                return drizzle(pool, { schema });
-            },
-        },
-    ],
-    exports: [DRIZZLE],
+  providers: [
+    {
+      provide: DRIZZLE,
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => {
+        const databaseUrl = configService.get<string>('DATABASE_URL');
+        const pool = new Pool({
+          connectionString: databaseUrl,
+          ssl: { rejectUnauthorized: false },
+        });
+        return drizzle(pool, { schema });
+      },
+    },
+  ],
+  exports: [DRIZZLE],
 })
-export class DbModule { }
+export class DbModule {}

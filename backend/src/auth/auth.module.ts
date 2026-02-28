@@ -8,26 +8,26 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ExecutionContext } from '@nestjs/common'; // Added for ExecutionContext type
 
 @Module({
-    imports: [
-        PassportModule,
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            inject: [ConfigService],
-            useFactory: async (configService: ConfigService) => {
-                // For ES256 with JwtModule, we'd traditionally need the public key string.
-                // However, since we primarily use JwtStrategy for REST, 
-                // we'll keep this simple and rely on JwtStrategy for verification.
-                // This part is mainly for when JwtService.verify() is called.
-                return {
-                    verifyOptions: {
-                        algorithms: ['ES256'],
-                    },
-                };
-            },
-        }),
-    ],
-    providers: [AuthService, JwtStrategy],
-    controllers: [AuthController],
-    exports: [AuthService],
+  imports: [
+    PassportModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => {
+        // For ES256 with JwtModule, we'd traditionally need the public key string.
+        // However, since we primarily use JwtStrategy for REST,
+        // we'll keep this simple and rely on JwtStrategy for verification.
+        // This part is mainly for when JwtService.verify() is called.
+        return {
+          verifyOptions: {
+            algorithms: ['ES256'],
+          },
+        };
+      },
+    }),
+  ],
+  providers: [AuthService, JwtStrategy],
+  controllers: [AuthController],
+  exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

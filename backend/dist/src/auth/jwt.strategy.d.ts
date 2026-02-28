@@ -12,7 +12,6 @@ export declare class JwtStrategy extends JwtStrategy_base {
         userId: string;
         email: string;
         name: string;
-        systemRole: "ADMIN" | "USER";
     }>;
 }
 export {};

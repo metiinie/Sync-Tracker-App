@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, TextInput, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Layout, Share2, Info, GitBranch, Share, List, Clock, CheckCircle2, AlertCircle, HelpCircle, Plus, User, Users, Flag as FlagIcon, Shield, Slash, Unlock, Trash2, XCircle } from 'lucide-react-native';
-import { Modal } from 'react-native';
+import { ChevronLeft, Layout, Share2, Info, GitBranch, Share, List, Clock, CheckCircle2, AlertCircle, HelpCircle, Plus, User, Users, Flag as FlagIcon } from 'lucide-react-native';
+
 import Svg, { Circle, Line, Text as SvgText, G } from 'react-native-svg';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -143,74 +143,11 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     );
 };
 
-// --- MODALS & COMPONENTS ---
-
-const AdminActionModal = ({ visible, title, onClose, onConfirm }: any) => {
-    const [reason, setReason] = useState('');
-    return (
-        <Modal visible={visible} transparent animationType="fade">
-            <View className="flex-1 bg-black/50 justify-center px-6">
-                <View className="bg-white rounded-3xl p-6">
-                    <Text className="text-xl font-black text-gray-900 mb-2">{title}</Text>
-                    <Text className="text-gray-500 text-sm mb-4">A reason is required for this administrative action.</Text>
-                    <TextInput
-                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-gray-900 mb-6"
-                        placeholder="Type reason here..."
-                        multiline
-                        value={reason}
-                        onChangeText={setReason}
-                    />
-                    <View className="flex-row">
-                        <TouchableOpacity onPress={onClose} className="flex-1 py-4 items-center">
-                            <Text className="text-gray-400 font-bold">Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => { onConfirm(reason); setReason(''); }}
-                            className="flex-1 bg-black py-4 rounded-2xl items-center"
-                        >
-                            <Text className="text-white font-bold">Confirm</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-        </Modal>
-    );
-};
-
 // --- SUBSCREENS ---
 
 const OverviewTab = ({ task, user, updateSyncState, handleToggleMilestone, newTimeLog, setNewTimeLog, handleLogTime, fetchTask }: any) => {
-    const { systemRole, token } = useAuthStore();
-    const [actionConfig, setActionConfig] = useState<any>(null);
-
-    const handleAdminAction = async (endpoint: string, reason: string) => {
-        try {
-            await api.post(`/admin/tasks/${task.id}/${endpoint}`, { reason });
-            setActionConfig(null);
-            fetchTask();
-        } catch (err) {
-            Alert.alert('Error', 'Admin action failed');
-        }
-    };
-
-    const AdminActionBtn = ({ label, icon: Icon, color, endpoint }: any) => (
-        <TouchableOpacity
-            onPress={() => setActionConfig({ title: label, endpoint })}
-            className="flex-row items-center bg-gray-50 p-4 rounded-2xl mb-2 border border-gray-100"
-        >
-            <Icon size={18} color={color} />
-            <Text className="ml-3 font-bold text-gray-700 text-xs">{label}</Text>
-        </TouchableOpacity>
-    );
-
     return (
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 40 }}>
-            <AdminActionModal
-                visible={!!actionConfig}
-                title={actionConfig?.title}
-                onClose={() => setActionConfig(null)}
-                onConfirm={(reason: string) => handleAdminAction(actionConfig.endpoint, reason)}
-            />
             <View className="mb-8">
                 <View className="flex-row items-center mb-1">
                     <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Responsibility</Text>
@@ -326,52 +263,14 @@ const OverviewTab = ({ task, user, updateSyncState, handleToggleMilestone, newTi
                 </View>
             </View>
 
-            {/* Admin Actions Suite */}
-            {systemRole === 'ADMIN' && (
-                <View className="mb-8 mt-4">
-                    <Text className="text-sm font-black text-red-600 mb-4 tracking-widest uppercase">Admin Action Suite</Text>
-                    <View className="flex-row flex-wrap justify-between">
-                        <View className="w-[48%]">
-                            {task.status !== 'FROZEN' ? (
-                                <AdminActionBtn label="Freeze Task" icon={Slash} color="#3b82f6" endpoint="freeze" />
-                            ) : (
-                                <AdminActionBtn label="Unfreeze / Reopen" icon={Unlock} color="#10b981" endpoint="reopen" />
-                            )}
-                        </View>
-                        <View className="w-[48%]">
-                            <AdminActionBtn label="Force Close" icon={XCircle} color="#ef4444" endpoint="force-close" />
-                        </View>
-                    </View>
-                    <Text className="text-[10px] text-gray-400 italic mt-2">Actions here will be logged immutably and broadcast to all stakeholders.</Text>
-                </View>
-            )}
+
         </ScrollView>
     );
 };
 
 const TreeViewTab = ({ task, fetchTask }: any) => {
-    const { systemRole, token } = useAuthStore();
-    const [removeUser, setRemoveUser] = useState<any>(null);
-
-    const handleRemoveParticipant = async (reason: string) => {
-        try {
-            await api.delete(`/admin/tasks/${task.id}/participants/${removeUser.id}`, {
-                data: { reason }
-            });
-            setRemoveUser(null);
-            fetchTask();
-        } catch (err) {
-            Alert.alert('Error', 'Failed to remove participant');
-        }
-    };
     return (
         <ScrollView className="flex-1 px-6 pt-4">
-            <AdminActionModal
-                visible={!!removeUser}
-                title={`Remove ${removeUser?.name}`}
-                onClose={() => setRemoveUser(null)}
-                onConfirm={handleRemoveParticipant}
-            />
             <View className="flex-row items-center mb-6">
                 <View className="w-1.5 h-10 bg-black rounded-full" />
                 <View className="ml-4">
@@ -412,14 +311,7 @@ const TreeViewTab = ({ task, fetchTask }: any) => {
                             <Text className="font-semibold text-gray-600">{p.user?.name}</Text>
                             <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{p.role}</Text>
                         </View>
-                        {systemRole === 'ADMIN' && (
-                            <TouchableOpacity
-                                onPress={() => setRemoveUser(p.user)}
-                                className="ml-2 w-8 h-8 rounded-full bg-red-50 items-center justify-center border border-red-100"
-                            >
-                                <Trash2 size={14} color="#ef4444" />
-                            </TouchableOpacity>
-                        )}
+
                     </View>
                 ))}
             </View>

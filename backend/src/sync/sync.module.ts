@@ -3,7 +3,7 @@ import { SyncGateway } from './sync.gateway';
 
 @Global()
 @Module({
-    providers: [SyncGateway],
-    exports: [SyncGateway],
+  providers: [SyncGateway],
+  exports: [SyncGateway],
 })
-export class SyncModule { }
+export class SyncModule {}
