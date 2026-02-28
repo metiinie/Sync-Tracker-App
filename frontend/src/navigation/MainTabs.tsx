@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import TasksScreen from '../screens/TasksScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
+import ActivityScreen from '../screens/ActivityScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CustomTabBar from '../components/CustomTabBar';
 
@@ -18,7 +18,7 @@ const MainTabs = () => {
         >
             <Tab.Screen name="Radar" component={HomeScreen} />
             <Tab.Screen name="Tasks" component={TasksScreen} />
-            <Tab.Screen name="Team" component={NotificationsScreen} />
+            <Tab.Screen name="Activity" component={ActivityScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
     );

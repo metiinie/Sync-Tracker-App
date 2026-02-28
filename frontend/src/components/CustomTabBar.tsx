@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Target, CheckSquare, Users, User } from 'lucide-react-native';
+import { Target, CheckSquare, Activity, User } from 'lucide-react-native';
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     return (
@@ -54,7 +54,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                     switch (route.name) {
                         case 'Radar': return <Target size={size} color={color} strokeWidth={strokeWidth} />;
                         case 'Tasks': return <CheckSquare size={size} color={color} strokeWidth={strokeWidth} />;
-                        case 'Team': return <Users size={size} color={color} strokeWidth={strokeWidth} />;
+                        case 'Activity': return <Activity size={size} color={color} strokeWidth={strokeWidth} />;
                         case 'Profile': return <User size={size} color={color} strokeWidth={strokeWidth} />;
                         default: return null;
                     }
@@ -64,7 +64,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                     switch (route.name) {
                         case 'Radar': return 'Radar';
                         case 'Tasks': return 'Tasks';
-                        case 'Team': return 'Team';
+                        case 'Activity': return 'Activity';
                         case 'Profile': return 'Profile';
                         default: return route.name;
                     }

@@ -17,6 +17,7 @@ const tasks_module_1 = require("./tasks/tasks.module");
 const sync_module_1 = require("./sync/sync.module");
 const users_module_1 = require("./users/users.module");
 const notifications_module_1 = require("./notifications/notifications.module");
+const activities_module_1 = require("./activities/activities.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -31,6 +32,7 @@ exports.AppModule = AppModule = __decorate([
             sync_module_1.SyncModule,
             users_module_1.UsersModule,
             notifications_module_1.NotificationsModule,
+            activities_module_1.ActivitiesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [],
