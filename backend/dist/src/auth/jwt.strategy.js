@@ -22,36 +22,37 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
     constructor(configService, authService) {
         const secret = configService.getOrThrow('SUPABASE_JWT_SECRET');
         const secretBuffer = Buffer.from(secret, 'base64');
+        const supabaseUrl = configService.get('SUPABASE_URL');
         super({
             jwtFromRequest: (req) => {
                 const token = passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken()(req);
                 if (token) {
                     const payload = (0, jsonwebtoken_1.decode)(token);
-                    console.log(`[Auth Guard] Raw token received (first 10 chars): ${token.substring(0, 10)}...`);
-                    console.log(`[Auth Guard] Unverified Payload:`, JSON.stringify(payload));
-                    try {
-                        (0, jsonwebtoken_1.verify)(token, secretBuffer);
-                        console.log('[Auth Guard] Diagnostic: Signature VALID with Base64 Decoded secret');
-                    }
-                    catch (err) {
-                        try {
-                            (0, jsonwebtoken_1.verify)(token, secret);
-                            console.warn('[Auth Guard] Diagnostic: Signature VALID with RAW secret (NOT Base64 Decoded)');
-                        }
-                        catch (err2) {
-                            console.error('[Auth Guard] Diagnostic: Signature INVALID with both RAW and Base64 secrets');
-                            console.error('[Auth Guard] Diagnostic: Raw Secret Error:', err2.message);
-                            console.error('[Auth Guard] Diagnostic: Base64 Secret Error:', err.message);
-                        }
-                    }
-                }
-                else {
-                    console.warn('[Auth Guard] No token found in request headers');
+                    const timestamp = new Date().toLocaleTimeString();
+                    console.log(`[${timestamp}] [Auth Guard] Token Payload:`, JSON.stringify(payload));
                 }
                 return token;
             },
+            secretOrKeyProvider: (request, rawJwtToken, done) => {
+                try {
+                    (0, jsonwebtoken_1.verify)(rawJwtToken, secretBuffer);
+                    return done(null, secretBuffer);
+                }
+                catch (e) {
+                    try {
+                        (0, jsonwebtoken_1.verify)(rawJwtToken, secret);
+                        console.warn('[Auth Guard] Diagnostic: Signature VALID with RAW secret');
+                        return done(null, secret);
+                    }
+                    catch (e2) {
+                        console.error('[Auth Guard] Diagnostic: Signature INVALID with both secrets');
+                        return done(e2);
+                    }
+                }
+            },
             ignoreExpiration: false,
-            secretOrKey: secretBuffer,
+            audience: 'authenticated',
+            issuer: supabaseUrl ? `${supabaseUrl}/auth/v1` : undefined,
         });
         this.configService = configService;
         this.authService = authService;
