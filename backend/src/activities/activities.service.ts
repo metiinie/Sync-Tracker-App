@@ -95,12 +95,14 @@ export class ActivitiesService {
 
             // determine role
             let role = 'Observer';
-            if (log.task.responsibleOwner === userId) role = 'Responsible';
-            else if (log.task.assignedBy === userId) role = 'Assigner';
-            else {
-                const participant = log.task.participants.find(p => p.userId === userId);
-                if (participant) {
-                    role = participant.role.charAt(0).toUpperCase() + participant.role.slice(1);
+            if (log.task) {
+                if (log.task.responsibleOwner === userId) role = 'Responsible';
+                else if (log.task.assignedBy === userId) role = 'Assigner';
+                else {
+                    const participant = log.task.participants.find(p => p.userId === userId);
+                    if (participant) {
+                        role = participant.role.charAt(0).toUpperCase() + participant.role.slice(1);
+                    }
                 }
             }
 

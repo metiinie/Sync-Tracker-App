@@ -6,7 +6,7 @@ import { supabase } from '../services/supabase';
 import {
     ArrowLeft, Settings as SettingsIcon, LogOut,
     CheckCircle2, LayoutList, Activity, Clock,
-    ChevronDown, ChevronUp, Edit2, Lock,
+    ChevronDown, ChevronUp, ChevronRight, Edit2, Lock,
     Bell, Mail, Timer, Info
 } from 'lucide-react-native';
 import api from '../services/api';
