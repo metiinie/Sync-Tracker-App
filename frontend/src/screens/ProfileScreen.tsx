@@ -7,7 +7,8 @@ import {
     ArrowLeft, Settings as SettingsIcon, LogOut,
     CheckCircle2, LayoutList, Activity, Clock,
     ChevronDown, ChevronUp, ChevronRight, Edit2, Lock,
-    Bell, Mail, Timer, Info, Sun, Moon, Database, Share2, RefreshCw
+    Bell, Mail, Timer, Info, Sun, Moon, Database, Share2, RefreshCw,
+    Briefcase
 } from 'lucide-react-native';
 import api from '../services/api';
 
@@ -189,18 +190,35 @@ const ProfileScreen = ({ navigation }: any) => {
 
     const renderSettings = () => (
         <ScrollView
-            className="flex-1 px-6"
-            contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
+            className="flex-1 bg-white"
+            contentContainerStyle={{ paddingBottom: 100 }}
             showsVerticalScrollIndicator={false}
         >
-            <Text className="text-[10px] font-black tracking-widest uppercase text-gray-400 mb-4 pl-2">
-                Communication Preferences
-            </Text>
-            <View className="bg-white rounded-3xl mb-8 border border-gray-100 shadow-sm overflow-hidden p-5">
-                <View className="flex-row justify-between items-center py-3 border-b border-gray-50">
+            <View className="border-t border-gray-50">
+                {/* Account Security Group */}
+                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
+                    <Edit2 size={20} color="#4B5563" />
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Update Personal Info</Text>
+                    <ChevronRight size={18} color="#D1D5DB" />
+                </TouchableOpacity>
+                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
+                    <Lock size={20} color="#4B5563" />
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Security & Password</Text>
+                    <ChevronRight size={18} color="#D1D5DB" />
+                </TouchableOpacity>
+
+                {/* Workspace Group */}
+                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
+                    <Briefcase size={20} color="#4B5563" />
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Workspace Settings</Text>
+                    <ChevronRight size={18} color="#D1D5DB" />
+                </TouchableOpacity>
+
+                {/* Notifications Group */}
+                <View className="flex-row justify-between items-center px-6 py-5 border-b border-gray-50">
                     <View className="flex-row items-center">
-                        <Bell size={18} color="#6B7280" />
-                        <Text className="ml-3 font-bold text-gray-800">In-app Alerts</Text>
+                        <Bell size={20} color="#4B5563" />
+                        <Text className="ml-4 font-bold text-gray-800 text-base">In-app Alerts</Text>
                     </View>
                     <TouchableOpacity
                         onPress={() => setInAppNotif(!inAppNotif)}
@@ -209,11 +227,10 @@ const ProfileScreen = ({ navigation }: any) => {
                         <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${inAppNotif ? 'ml-auto' : ''}`} />
                     </TouchableOpacity>
                 </View>
-
-                <View className="flex-row justify-between items-center py-3">
+                <View className="flex-row justify-between items-center px-6 py-5 border-b border-gray-50">
                     <View className="flex-row items-center">
-                        <Mail size={18} color="#6B7280" />
-                        <Text className="ml-3 font-bold text-gray-800">Email Digest</Text>
+                        <Mail size={20} color="#4B5563" />
+                        <Text className="ml-4 font-bold text-gray-800 text-base">Email Digest</Text>
                     </View>
                     <TouchableOpacity
                         onPress={() => setEmailDigest(!emailDigest)}
@@ -222,16 +239,12 @@ const ProfileScreen = ({ navigation }: any) => {
                         <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${emailDigest ? 'ml-auto' : ''}`} />
                     </TouchableOpacity>
                 </View>
-            </View>
 
-            <Text className="text-[10px] font-black tracking-widest uppercase text-gray-400 mb-4 pl-2">
-                Sync & Data Management
-            </Text>
-            <View className="bg-white rounded-3xl mb-8 border border-gray-100 shadow-sm overflow-hidden p-5">
-                <View className="flex-row justify-between items-center py-3 border-b border-gray-50">
+                {/* Sync & Data Group */}
+                <View className="flex-row justify-between items-center px-6 py-5 border-b border-gray-50">
                     <View className="flex-row items-center">
-                        <RefreshCw size={18} color="#6B7280" />
-                        <Text className="ml-3 font-bold text-gray-800">Real-time Sync</Text>
+                        <RefreshCw size={20} color="#4B5563" />
+                        <Text className="ml-4 font-bold text-gray-800 text-base">Real-time Sync</Text>
                     </View>
                     <TouchableOpacity
                         onPress={() => setBgSync(!bgSync)}
@@ -240,49 +253,25 @@ const ProfileScreen = ({ navigation }: any) => {
                         <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${bgSync ? 'ml-auto' : ''}`} />
                     </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity className="flex-row items-center py-4 border-b border-gray-50">
-                    <Share2 size={18} color="#6B7280" />
-                    <Text className="ml-3 font-bold text-gray-800 flex-1">Export Activity Logs</Text>
+                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
+                    <Share2 size={20} color="#4B5563" />
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Export Activity Logs</Text>
                     <Text className="text-blue-600 font-bold text-xs uppercase">CSV/JSON</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity className="flex-row items-center py-4">
-                    <Database size={18} color="#6B7280" />
-                    <Text className="ml-3 font-bold text-gray-800 flex-1">Clear Local Cache</Text>
+                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-100">
+                    <Database size={20} color="#4B5563" />
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Clear Local Cache</Text>
                     <Text className="text-gray-400 font-bold text-xs">24.5 MB</Text>
                 </TouchableOpacity>
-            </View>
 
-            <Text className="text-[10px] font-black tracking-widest uppercase text-gray-400 mb-4 pl-2">
-                Account Security
-            </Text>
-            <View className="bg-white rounded-3xl mb-8 border border-gray-100 shadow-sm overflow-hidden py-1">
-                <TouchableOpacity className="flex-row items-center p-5 border-b border-gray-50">
-                    <Edit2 size={18} color="#6B7280" />
-                    <Text className="ml-4 font-bold text-gray-800 flex-1">Update Personal Info</Text>
-                    <ChevronRight size={16} color="#D1D5DB" />
+                {/* Sign Out - Integrated closely at the bottom of the list */}
+                <TouchableOpacity
+                    onPress={handleLogout}
+                    className="flex-row items-center px-6 py-6 bg-red-50/30"
+                >
+                    <LogOut size={20} color="#EF4444" />
+                    <Text className="ml-4 font-black text-red-500 uppercase tracking-widest text-sm">Sign Out</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center p-5 border-b border-gray-50">
-                    <Lock size={18} color="#6B7280" />
-                    <Text className="ml-4 font-bold text-gray-800 flex-1">Security & Password</Text>
-                    <ChevronRight size={16} color="#D1D5DB" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleLogout} className="flex-row items-center p-5">
-                    <LogOut size={18} color="#EF4444" />
-                    <Text className="ml-4 font-bold text-red-500 flex-1">Sign Out</Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* System Info at Bottom */}
-            <View className="mt-4 items-center">
-                <View className="flex-row items-center bg-gray-100 px-3 py-1.5 rounded-full mb-2">
-                    <Info size={12} color="#9CA3AF" />
-                    <Text className="text-gray-400 text-[10px] font-black uppercase tracking-widest ml-1.5">
-                        Sync-Tracker • v1.0.4.26
-                    </Text>
-                </View>
-                <Text className="text-gray-300 text-[9px] font-medium">Build: 2026.03.01.ALPHA • Secure Sync Node</Text>
             </View>
         </ScrollView>
     );
@@ -290,7 +279,7 @@ const ProfileScreen = ({ navigation }: any) => {
     return (
         <SafeAreaView className="flex-1 bg-[#F9FAFB]">
             {/* Header */}
-            <View className="flex-row justify-between items-center px-6 pt-4 pb-2 bg-[#F9FAFB]">
+            <View className={`flex-row justify-between items-center px-6 pt-4 pb-4 ${view === 'settings' ? 'bg-white border-b border-gray-50' : 'bg-[#F9FAFB]'}`}>
                 <TouchableOpacity
                     onPress={() => view === 'settings' ? setView('profile') : navigation.goBack()}
                     className="p-2 -ml-2"
