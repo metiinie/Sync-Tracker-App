@@ -10,15 +10,11 @@ export class ActivitiesService {
 
     async getActivities(userId: string, scope: 'my_tasks' | 'delegated') {
         // Determine the tasks in scope
-        let taskIdsQuery;
+        let taskIdsQuery: string[] = [];
 
         if (scope === 'my_tasks') {
             const owned = await this.db.query.tasks.findMany({
                 where: eq(schema.tasks.responsibleOwner, userId),
-                columns: { id: true }
-            });
-            const assigned = await this.db.query.tasks.findMany({
-                where: and(eq(schema.tasks.assignedBy, userId), ne(schema.tasks.responsibleOwner, userId)),
                 columns: { id: true }
             });
             const participated = await this.db.query.taskParticipants.findMany({
@@ -26,15 +22,12 @@ export class ActivitiesService {
                 columns: { taskId: true }
             });
 
-            const ids = [...owned.map(t => t.id), ...assigned.map(t => t.id), ...participated.map(p => p.taskId)];
+            const ids = [...owned.map(t => t.id), ...participated.map(p => p.taskId)];
             taskIdsQuery = [...new Set(ids)];
         } else {
             // delegated by me
             const delegated = await this.db.query.tasks.findMany({
-                where: and(
-                    eq(schema.tasks.assignedBy, userId),
-                    ne(schema.tasks.responsibleOwner, userId)
-                ),
+                where: eq(schema.tasks.assignedBy, userId),
                 columns: { id: true }
             });
             taskIdsQuery = delegated.map(t => t.id);
@@ -42,27 +35,25 @@ export class ActivitiesService {
 
         if (taskIdsQuery.length === 0) return [];
 
-        // Query syncLogs, along with tasks and users
-        // drizzle doesn't easily support 'in' for empty arrays so we checked above
-        const stmt = sql`${schema.syncLogs.taskId} IN ${taskIdsQuery}`;
-
         const logs = await this.db.query.syncLogs.findMany({
             where: (logs, { sql }) => sql`${logs.taskId} = ANY(${taskIdsQuery})`,
             with: {
                 task: {
                     with: {
-                        participants: true
+                        participants: true,
+                        owner: true,
+                        assigner: true,
                     }
                 },
                 user: true,
             },
             orderBy: [desc(schema.syncLogs.timestamp)],
-            limit: 100,
+            limit: 200,
         });
 
         return logs.map(log => {
             // Determine Event Type based on action string
-            let type = 'ALL';
+            let type = 'Sync Updates';
             let stateBadge = 'IN_SYNC';
 
             const actionLower = log.action.toLowerCase();
@@ -75,26 +66,28 @@ export class ActivitiesService {
                 stateBadge = 'HELP_REQUESTED';
             } else if (actionLower.includes('transfer')) {
                 type = 'Transfers';
-                stateBadge = 'PENDING_TRANSFER'; // custom badge
+                stateBadge = 'PENDING';
             } else if (actionLower.includes('milestone')) {
                 type = 'Milestones';
-                stateBadge = 'MILESTONE'; // custom
+                stateBadge = 'MILESTONE';
             } else if (actionLower.includes('logged') || actionLower.includes('mins')) {
                 type = 'Time Logged';
-                stateBadge = 'TIME'; // custom
+                stateBadge = 'TIME';
             } else if (actionLower.includes('accepted')) {
                 type = 'Responsibility Accepted';
                 stateBadge = 'ACTIVE';
-            } else if (actionLower.includes('sync state updated to')) {
+            } else if (actionLower.includes('created')) {
                 type = 'Sync Updates';
-                if (log.action.includes('NEEDS_UPDATE')) stateBadge = 'NEEDS_UPDATE';
-                if (log.action.includes('IN_SYNC')) stateBadge = 'IN_SYNC';
-            } else {
-                type = 'Sync Updates';
+                stateBadge = 'PENDING';
             }
 
-            // determine role
-            let role = 'Observer';
+            // Sync state badge fallback to current task state if it's a general sync update
+            if (type === 'Sync Updates' && log.task) {
+                stateBadge = log.task.syncState;
+            }
+
+            // determine your role in this task
+            let role = 'Contributor';
             if (log.task) {
                 if (log.task.responsibleOwner === userId) role = 'Responsible';
                 else if (log.task.assignedBy === userId) role = 'Assigner';
@@ -109,8 +102,9 @@ export class ActivitiesService {
             return {
                 id: log.id,
                 taskId: log.taskId,
+                actorId: log.userId,
                 actorName: log.user.name,
-                actionRaw: log.action,
+                action: log.action,
                 taskTitle: log.task ? log.task.title : 'Deleted Task',
                 taskState: log.task ? log.task.syncState : 'UNKNOWN',
                 timestamp: log.timestamp,
