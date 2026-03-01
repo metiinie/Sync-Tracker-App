@@ -250,7 +250,7 @@ const TasksScreen = ({ navigation }: any) => {
                     Tasks
                 </Text>
                 <TouchableOpacity
-                    onPress={() => navigation.navigate('Team')}
+                    onPress={() => navigation.navigate('Activity')}
                     style={{
                         width: 42,
                         height: 42,

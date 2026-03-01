@@ -139,7 +139,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 <QuickActionButton
                     icon={Activity}
                     label="Activity"
-                    onPress={() => navigation.navigate('Team')}
+                    onPress={() => navigation.navigate('Activity')}
                 />
                 <QuickActionButton
                     icon={Clock}
@@ -165,7 +165,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 <Text className="text-[10px] font-black tracking-widest uppercase text-gray-400 pl-2">
                     Recent Activity
                 </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Team')}>
+                <TouchableOpacity onPress={() => navigation.navigate('Activity')}>
                     <Text className="text-blue-600 font-bold text-[10px] uppercase tracking-wider">View All</Text>
                 </TouchableOpacity>
             </View>

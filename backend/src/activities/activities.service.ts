@@ -8,7 +8,7 @@ import { eq, or, desc, and, ne, sql } from 'drizzle-orm';
 export class ActivitiesService {
     constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) { }
 
-    async getActivities(userId: string, scope: 'my_tasks' | 'delegated') {
+    async getActivities(userId: string, scope: 'my_tasks' | 'delegated' | 'all') {
         // Determine the tasks in scope
         let taskIdsQuery: string[] = [];
 
@@ -24,13 +24,27 @@ export class ActivitiesService {
 
             const ids = [...owned.map(t => t.id), ...participated.map(p => p.taskId)];
             taskIdsQuery = [...new Set(ids)];
-        } else {
-            // delegated by me
+        } else if (scope === 'delegated') {
             const delegated = await this.db.query.tasks.findMany({
                 where: eq(schema.tasks.assignedBy, userId),
                 columns: { id: true }
             });
             taskIdsQuery = delegated.map(t => t.id);
+        } else {
+            // scope === 'all'
+            const owned = await this.db.query.tasks.findMany({
+                where: or(
+                    eq(schema.tasks.responsibleOwner, userId),
+                    eq(schema.tasks.assignedBy, userId)
+                ),
+                columns: { id: true }
+            });
+            const participated = await this.db.query.taskParticipants.findMany({
+                where: eq(schema.taskParticipants.userId, userId),
+                columns: { taskId: true }
+            });
+            const ids = [...owned.map(t => t.id), ...participated.map(p => p.taskId)];
+            taskIdsQuery = [...new Set(ids)];
         }
 
         if (taskIdsQuery.length === 0) return [];

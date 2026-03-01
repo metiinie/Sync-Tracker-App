@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, LayoutAnimation, Platform, UIManager, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     Search,
-    Filter,
     Activity as ActivityIcon,
     Clock,
     Ban,
@@ -14,13 +13,17 @@ import {
     RefreshCcw,
     ChevronDown,
     ChevronUp,
-    AlertTriangle,
     History,
-    Timer
+    Timer,
+    ExternalLink,
+    LifeBuoy,
+    Unlock,
+    CheckCircle
 } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
+import { useNavigation } from '@react-navigation/native';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -38,7 +41,6 @@ const formatTimeAgo = (dateStr: string) => {
     if (diffInMins < 1) return 'now';
     if (diffInMins < 60) return `${diffInMins}m ago`;
     if (diffInHours < 24) return `${diffInHours}h ago`;
-    if (diffInDays === 1) return 'Yesterday';
     return `${diffInDays}d ago`;
 };
 
@@ -49,9 +51,9 @@ const getDateGroup = (dateStr: string) => {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date >= today) return 'Today';
-    if (date >= yesterday) return 'Yesterday';
-    return 'Earlier';
+    if (date >= today) return 'TODAY';
+    if (date >= yesterday) return 'YESTERDAY';
+    return 'EARLIER';
 };
 
 const FILTERS = [
@@ -65,15 +67,15 @@ const FILTERS = [
     'Time Logged'
 ];
 
-const ActivityScreen = ({ navigation }: any) => {
+const ActivityScreen = () => {
+    const navigation = useNavigation<any>();
     const { user } = useAuthStore();
-    const [scope, setScope] = useState<'my_tasks' | 'delegated'>('my_tasks');
+    const [scope, setScope] = useState<'my_tasks' | 'delegated' | 'all'>('all');
     const [activities, setActivities] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('All');
-    const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
     const fetchActivities = async (showLoading = true) => {
         if (showLoading) setLoading(true);
@@ -92,30 +94,26 @@ const ActivityScreen = ({ navigation }: any) => {
         fetchActivities();
 
         const socket = getSocket();
-        // Listen for events that should trigger a feed update
-        socket.on('sync:update', () => fetchActivities(false));
-        socket.on('timelog:created', () => fetchActivities(false));
-        socket.on('milestone:updated', () => fetchActivities(false));
-        socket.on('task:accepted', () => fetchActivities(false));
-        socket.on('task:transfer', () => fetchActivities(false));
+        const refresh = () => fetchActivities(false);
+
+        socket.on('sync:update', refresh);
+        socket.on('timelog:created', refresh);
+        socket.on('milestone:updated', refresh);
+        socket.on('task:accepted', refresh);
+        socket.on('task:transfer', refresh);
 
         return () => {
-            socket.off('sync:update');
-            socket.off('timelog:created');
-            socket.off('milestone:updated');
-            socket.off('task:accepted');
-            socket.off('task:transfer');
+            socket.off('sync:update', refresh);
+            socket.off('timelog:created', refresh);
+            socket.off('milestone:updated', refresh);
+            socket.off('task:accepted', refresh);
+            socket.off('task:transfer', refresh);
         };
     }, [scope]);
 
     const onRefresh = () => {
         setRefreshing(true);
         fetchActivities(false);
-    };
-
-    const toggleGroup = (groupId: string) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setCollapsedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
     };
 
     const filteredActivities = useMemo(() => {
@@ -137,192 +135,203 @@ const ActivityScreen = ({ navigation }: any) => {
     }, [activities, selectedFilter, searchQuery]);
 
     const groupedActivities = useMemo(() => {
-        // 1. Group by Date
-        const dateGroups: Record<string, any[]> = {
-            'Today': [],
-            'Yesterday': [],
-            'Earlier': []
+        const groups: Record<string, any[]> = {
+            'TODAY': [],
+            'YESTERDAY': [],
+            'EARLIER': []
         };
 
         filteredActivities.forEach(activity => {
             const group = getDateGroup(activity.timestamp);
-            dateGroups[group].push(activity);
+            groups[group].push(activity);
         });
 
-        // 2. Group within each date by Actor/Task within 5 mins
-        const finalGroups: Record<string, any[]> = {};
-
-        Object.keys(dateGroups).forEach(date => {
-            const dayActivities = dateGroups[date];
-            const processed: any[] = [];
-
-            let currentGroup: any = null;
-
-            dayActivities.forEach((activity, index) => {
-                const time = new Date(activity.timestamp).getTime();
-
-                if (currentGroup &&
-                    currentGroup.actorId === activity.actorId &&
-                    currentGroup.taskId === activity.taskId &&
-                    (new Date(currentGroup.activities[0].timestamp).getTime() - time) < 300000) { // 5 mins
-                    currentGroup.activities.push(activity);
-                } else {
-                    currentGroup = {
-                        id: `group-${activity.id}`,
-                        actorId: activity.actorId,
-                        taskId: activity.taskId,
-                        actorName: activity.actorName,
-                        taskTitle: activity.taskTitle,
-                        userRole: activity.userRole,
-                        taskState: activity.taskState,
-                        activities: [activity]
-                    };
-                    processed.push(currentGroup);
-                }
-            });
-
-            finalGroups[date] = processed;
-        });
-
-        return finalGroups;
+        return groups;
     }, [filteredActivities]);
 
-    const getStateStyles = (state: string) => {
+    const getStatusConfig = (state: string) => {
         switch (state) {
-            case 'BLOCKED': return { bg: 'bg-red-50', text: 'text-red-600', dot: '#ef4444' };
-            case 'HELP_REQUESTED': return { bg: 'bg-blue-50', text: 'text-blue-600', dot: '#3b82f6' };
-            case 'NEEDS_UPDATE': return { bg: 'bg-amber-50', text: 'text-amber-600', dot: '#f59e0b' };
-            case 'PENDING': return { bg: 'bg-amber-50', text: 'text-amber-600', dot: '#f59e0b' };
-            case 'MILESTONE': return { bg: 'bg-indigo-50', text: 'text-indigo-600', dot: '#6366f1' };
-            case 'TIME': return { bg: 'bg-emerald-50', text: 'text-emerald-600', dot: '#10b981' };
-            default: return { bg: 'bg-green-50', text: 'text-green-600', dot: '#10b981' };
+            case 'BLOCKED':
+                return {
+                    bg: 'bg-red-50',
+                    text: 'text-red-600',
+                    label: 'BLOCKED',
+                    border: 'border-red-100',
+                    tint: 'bg-red-[50/30]',
+                    iconBg: 'bg-red-100'
+                };
+            case 'HELP_REQUESTED':
+                return {
+                    bg: 'bg-blue-50',
+                    text: 'text-blue-600',
+                    label: 'HELP REQUESTED',
+                    border: 'border-blue-100',
+                    tint: 'bg-blue-[50/30]',
+                    iconBg: 'bg-blue-100'
+                };
+            case 'PENDING':
+                return {
+                    bg: 'bg-amber-50',
+                    text: 'text-amber-600',
+                    label: 'PENDING',
+                    border: 'border-amber-100',
+                    tint: 'bg-amber-[50/30]',
+                    iconBg: 'bg-amber-100'
+                };
+            case 'IN_SYNC':
+                return {
+                    bg: 'bg-green-50',
+                    text: 'text-green-600',
+                    label: 'IN SYNC',
+                    border: 'border-green-100',
+                    tint: 'bg-green-[50/30]',
+                    iconBg: 'bg-green-100'
+                };
+            default:
+                return {
+                    bg: 'bg-gray-50',
+                    text: 'text-gray-600',
+                    label: state.replace('_', ' '),
+                    border: 'border-gray-100',
+                    tint: 'bg-white',
+                    iconBg: 'bg-gray-100'
+                };
         }
     };
 
-    const getIcon = (type: string, state: string) => {
-        const size = 16;
-        const styles = getStateStyles(state);
-
-        switch (type) {
-            case 'Blocked': return <Ban size={size} color={styles.dot} />;
-            case 'Help Requested': return <HelpCircle size={size} color={styles.dot} />;
-            case 'Transfers': return <ArrowRightLeft size={size} color={styles.dot} />;
-            case 'Milestones': return <Flag size={size} color={styles.dot} />;
-            case 'Time Logged': return <Timer size={size} color={styles.dot} />;
-            case 'Responsibility Accepted': return <CheckCircle2 size={size} color={styles.dot} />;
-            default: return <RefreshCcw size={size} color={styles.dot} />;
-        }
-    };
-
-    const renderGroup = (group: any) => {
-        const isCollapsed = collapsedGroups[group.id];
-        const styles = getStateStyles(group.taskState);
-        const mainActivity = group.activities[0];
-
-        // Determine card background tint
-        let cardBg = 'bg-white';
-        if (group.taskState === 'BLOCKED') cardBg = 'bg-red-[50/30]';
-        if (group.taskState === 'HELP_REQUESTED') cardBg = 'bg-blue-[50/30]';
+    const renderCard = (activity: any) => {
+        const config = getStatusConfig(activity.stateBadge);
 
         return (
-            <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: group.taskId } })}
-                key={group.id}
-                className={`mb-4 rounded-3xl border border-gray-100 shadow-sm overflow-hidden ${cardBg}`}
+            <View
+                key={activity.id}
+                className={`mb-4 rounded-[32px] border ${config.border} ${config.tint} p-6 pb-5 shadow-sm`}
             >
-                <View className="px-5 pt-5 pb-4">
-                    <View className="flex-row justify-between items-start">
-                        <View className="flex-1 pr-4">
-                            <Text className="text-gray-900 font-bold text-base leading-tight">
-                                <Text className="text-black font-black">{group.actorName}</Text>
-                                {group.activities.length > 1 ? ` performed ${group.activities.length} actions on ` : ` ${mainActivity.action.replace('Sync state updated to ', 'marked ')} on `}
-                                <Text className="text-black font-black">{group.taskTitle}</Text>
-                            </Text>
+                {/* Top Row: Status & Time */}
+                <View className="flex-row justify-between items-center mb-4">
+                    <View className={`${config.bg} px-3 py-1 rounded-full`}>
+                        <Text className={`${config.text} text-[10px] font-black tracking-widest uppercase`}>
+                            {config.label}
+                        </Text>
+                    </View>
+                    <Text className="text-gray-400 text-xs font-medium">
+                        {formatTimeAgo(activity.timestamp)}
+                    </Text>
+                </View>
 
-                            <View className="flex-row items-center mt-2">
-                                <Text className="text-gray-400 text-xs font-bold">
-                                    {group.userRole ? `You are ${group.userRole}` : 'Observer'} • Task now {group.taskState.replace('_', ' ')}
-                                </Text>
-                                <View className="w-1 h-1 rounded-full bg-gray-300 mx-2" />
-                                <Text className="text-gray-400 text-xs font-medium">
-                                    {formatTimeAgo(mainActivity.timestamp)}
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View className={`${styles.bg} px-3 py-1.5 rounded-full flex-row items-center`}>
-                            <View className="w-1.5 h-1.5 rounded-full mr-2" style={{ backgroundColor: styles.dot }} />
-                            <Text className={`${styles.text} text-[10px] font-black tracking-widest`}>
-                                {group.taskState}
-                            </Text>
-                        </View>
+                {/* Content Row: Text & Avatar */}
+                <View className="flex-row items-center">
+                    <View className="flex-1 pr-4">
+                        <Text className="text-[#1A1A1A] text-[15px] font-bold leading-[22px]">
+                            <Text className="font-extrabold">{activity.actorName}</Text>
+                            {` marked `}
+                            <Text className="text-blue-600 font-extrabold">{activity.taskTitle}</Text>
+                            {` as `}
+                            <Text className={config.text}>{activity.stateBadge.replace('_', ' ')}</Text>
+                        </Text>
+                        <Text className="text-gray-400 text-xs mt-2 italic font-medium">
+                            Role: {activity.userRole}
+                        </Text>
                     </View>
 
-                    {group.activities.length > 1 && (
+                    <View className={`w-14 h-14 rounded-2xl ${config.iconBg} items-center justify-center overflow-hidden`}>
+                        {/* Placeholder for Avatar or Custom Icon based on state */}
+                        {activity.stateBadge === 'BLOCKED' ? <Ban size={24} color="#ef4444" strokeWidth={2.5} /> :
+                            activity.stateBadge === 'HELP_REQUESTED' ? <HelpCircle size={24} color="#3b82f6" strokeWidth={2.5} /> :
+                                activity.stateBadge === 'PENDING' ? <Clock size={24} color="#f59e0b" strokeWidth={2.5} /> :
+                                    <CheckCircle size={24} color="#10b981" strokeWidth={2.5} />}
+                    </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View className="mt-5 flex-row gap-3">
+                    {activity.stateBadge === 'BLOCKED' ? (
                         <TouchableOpacity
-                            onPress={() => toggleGroup(group.id)}
-                            className="mt-4 pt-3 border-t border-gray-50 flex-row justify-between items-center"
+                            onPress={() => navigation.navigate('TaskDetail', { taskId: activity.taskId })}
+                            className="flex-1 bg-white border border-red-200 py-3 rounded-2xl items-center justify-center flex-row"
                         >
-                            <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">
-                                {isCollapsed ? 'Show' : 'Hide'} {group.activities.length} Grouped Actions
-                            </Text>
-                            {isCollapsed ? <ChevronDown size={14} color="#9ca3af" /> : <ChevronUp size={14} color="#9ca3af" />}
+                            <Unlock size={16} color="#ef4444" className="mr-2" />
+                            <Text className="text-red-600 font-black text-xs uppercase tracking-widest">Unblock Task</Text>
+                        </TouchableOpacity>
+                    ) : activity.stateBadge === 'HELP_REQUESTED' ? (
+                        <>
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate('TaskDetail', { taskId: activity.taskId })}
+                                className="flex-[1.5] bg-blue-600 py-3 rounded-2xl items-center justify-center flex-row"
+                            >
+                                <LifeBuoy size={16} color="#fff" className="mr-2" />
+                                <Text className="text-white font-black text-xs uppercase tracking-widest">Provide Support</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate('TaskDetail', { taskId: activity.taskId })}
+                                className="flex-1 bg-white border border-blue-200 py-3 rounded-2xl items-center justify-center"
+                            >
+                                <Text className="text-blue-600 font-black text-xs uppercase tracking-widest">Details</Text>
+                            </TouchableOpacity>
+                        </>
+                    ) : activity.stateBadge === 'PENDING' ? (
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('TaskDetail', { taskId: activity.taskId })}
+                            className="flex-1 bg-white border border-amber-200 py-3 rounded-2xl items-center justify-center flex-row"
+                        >
+                            <CheckCircle2 size={16} color="#f59e0b" className="mr-2" />
+                            <Text className="text-amber-600 font-black text-xs uppercase tracking-widest">Approve Transfer</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('TaskDetail', { taskId: activity.taskId })}
+                            className="flex-1 bg-white border border-gray-100 py-3 rounded-2xl items-center justify-center flex-row"
+                        >
+                            <ExternalLink size={16} color="#4B5563" className="mr-2" />
+                            <Text className="text-gray-600 font-black text-xs uppercase tracking-widest">View Task</Text>
                         </TouchableOpacity>
                     )}
-
-                    {!isCollapsed && group.activities.length > 1 && (
-                        <View className="mt-3">
-                            {group.activities.map((act: any, idx: number) => (
-                                <View key={act.id} className="flex-row items-center py-1.5 ml-1">
-                                    <View className="w-1.5 h-1.5 rounded-full bg-gray-200 mr-3" />
-                                    <Text className="text-gray-500 text-xs font-medium flex-1">
-                                        {act.action}
-                                    </Text>
-                                    <Text className="text-gray-300 text-[10px] ml-2">
-                                        {formatTimeAgo(act.timestamp)}
-                                    </Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
                 </View>
-            </TouchableOpacity>
+            </View>
         );
     };
 
     return (
         <SafeAreaView className="flex-1 bg-white">
             {/* Header */}
-            <View className="px-6 pt-2 pb-4">
-                <View className="flex-row justify-between items-center mb-6">
-                    <View>
-                        <Text className="text-3xl font-black text-gray-900 tracking-tight">Activity</Text>
-                        <Text className="text-gray-400 text-xs font-black uppercase tracking-[2px]">Accountability Feed</Text>
-                    </View>
-                    <TouchableOpacity className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                        <History size={20} color="#111827" />
-                    </TouchableOpacity>
+            <View className="px-6 py-4 flex-row justify-between items-center">
+                <View className="p-2 -ml-2">
+                    <ActivityIcon size={24} color="#000" />
                 </View>
+                <Text className="text-xl font-black text-gray-900 tracking-tight">Activity</Text>
+                <View className="w-10 h-10 rounded-full items-center justify-center">
+                    <View className="w-2 h-2 rounded-full bg-red-500 absolute top-2 right-2 border-2 border-white" />
+                    <History size={24} color="#000" />
+                </View>
+            </View>
 
-                {/* Scope Control */}
-                <View className="bg-gray-100 p-1.5 rounded-2xl flex-row mb-6">
+            {/* 3-Segment Scope Control */}
+            <View className="px-6 mb-6">
+                <View className="bg-gray-100/80 p-1.5 rounded-[20px] flex-row">
                     <TouchableOpacity
-                        onPress={() => setScope('my_tasks')}
-                        className={`flex-1 py-3 items-center rounded-xl ${scope === 'my_tasks' ? 'bg-white shadow-sm' : ''}`}
+                        onPress={() => setScope('all')}
+                        className={`flex-1 py-3 items-center rounded-2xl ${scope === 'all' ? 'bg-white shadow-sm' : ''}`}
                     >
-                        <Text className={`font-black text-sm ${scope === 'my_tasks' ? 'text-gray-900' : 'text-gray-400'}`}>My Tasks</Text>
+                        <Text className={`font-black text-[11px] uppercase tracking-wider ${scope === 'all' ? 'text-blue-600' : 'text-gray-400'}`}>All Activity</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => setScope('delegated')}
-                        className={`flex-1 py-3 items-center rounded-xl ${scope === 'delegated' ? 'bg-white shadow-sm' : ''}`}
+                        className={`flex-1 py-3 items-center rounded-2xl ${scope === 'delegated' ? 'bg-white shadow-sm' : ''}`}
                     >
-                        <Text className={`font-black text-sm ${scope === 'delegated' ? 'text-gray-900' : 'text-gray-400'}`}>Delegated By Me</Text>
+                        <Text className={`font-black text-[11px] uppercase tracking-wider ${scope === 'delegated' ? 'text-blue-600' : 'text-gray-400'}`}>Delegated By Me</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setScope('my_tasks')}
+                        className={`flex-1 py-3 items-center rounded-2xl ${scope === 'my_tasks' ? 'bg-white shadow-sm' : ''}`}
+                    >
+                        <Text className={`font-black text-[11px] uppercase tracking-wider ${scope === 'my_tasks' ? 'text-blue-600' : 'text-gray-400'}`}>My Tasks</Text>
                     </TouchableOpacity>
                 </View>
+            </View>
 
-                {/* Search Bar */}
-                <View className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3.5 flex-row items-center mb-6">
+            {/* Search Bar */}
+            <View className="px-6 mb-6">
+                <View className="bg-gray-50 border border-gray-100 rounded-[20px] px-5 py-3.5 flex-row items-center">
                     <Search size={20} color="#9CA3AF" />
                     <TextInput
                         className="flex-1 ml-3 text-gray-900 font-bold text-sm"
@@ -332,16 +341,18 @@ const ActivityScreen = ({ navigation }: any) => {
                         onChangeText={setSearchQuery}
                     />
                 </View>
+            </View>
 
-                {/* Filter Chips */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
+            {/* Filter Chips */}
+            <View className="mb-4">
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 24, paddingRight: 10 }}>
                     {FILTERS.map(filter => (
                         <TouchableOpacity
                             key={filter}
                             onPress={() => setSelectedFilter(filter)}
-                            className={`mr-2 px-6 py-2.5 rounded-full border ${selectedFilter === filter ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'}`}
+                            className={`mr-3 px-6 py-2.5 rounded-full border ${selectedFilter === filter ? 'bg-blue-600 border-blue-600' : 'bg-gray-50 border-gray-100'}`}
                         >
-                            <Text className={`text-xs font-black ${selectedFilter === filter ? 'text-white' : 'text-gray-500'}`}>
+                            <Text className={`text-[11px] font-black uppercase tracking-widest ${selectedFilter === filter ? 'text-white' : 'text-gray-500'}`}>
                                 {filter}
                             </Text>
                         </TouchableOpacity>
@@ -353,43 +364,32 @@ const ActivityScreen = ({ navigation }: any) => {
             {loading ? (
                 <View className="flex-1 justify-center items-center">
                     <ActivityIndicator color="#2563eb" size="large" />
-                    <Text className="text-gray-400 font-bold mt-4 uppercase tracking-widest text-xs">Synchronizing Feed</Text>
+                    <Text className="text-gray-400 font-bold mt-4 uppercase tracking-widest text-[10px]">Synchronizing Feed</Text>
                 </View>
             ) : (
                 <ScrollView
                     className="flex-1"
-                    contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
+                    contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563eb" />}
                 >
                     {Object.keys(groupedActivities).map(dateGroup => (
                         groupedActivities[dateGroup].length > 0 && (
                             <View key={dateGroup} className="mt-6">
-                                <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[3px] mb-6 ml-1">
+                                <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[3px] mb-6">
                                     {dateGroup}
                                 </Text>
-                                {groupedActivities[dateGroup].map(group => renderGroup(group))}
+                                {groupedActivities[dateGroup].map(activity => renderCard(activity))}
                             </View>
                         )
                     ))}
 
                     {filteredActivities.length === 0 && (
-                        <View className="items-center justify-center py-20 opacity-40">
+                        <View className="items-center justify-center py-20 opacity-30">
                             <History size={60} color="#e5e7eb" strokeWidth={1} />
-                            <Text className="text-gray-400 font-black mt-4 uppercase tracking-widest text-xs">No activity entries found</Text>
+                            <Text className="text-gray-400 font-black mt-4 uppercase tracking-widest text-[10px]">No activity entries found</Text>
                         </View>
                     )}
                 </ScrollView>
-            )}
-
-            {/* Floating Action Hint */}
-            {activities.length > 0 && !loading && (
-                <View className="absolute bottom-32 left-0 right-0 items-center pointer-events-none">
-                    <View className="bg-black/80 px-4 py-2 rounded-full flex-row items-center border border-white/20">
-                        <Text className="text-white text-[10px] font-black uppercase tracking-widest">
-                            Tap Card to Investigation
-                        </Text>
-                    </View>
-                </View>
             )}
         </SafeAreaView>
     );

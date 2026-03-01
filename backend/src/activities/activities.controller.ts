@@ -10,8 +10,8 @@ export class ActivitiesController {
     @Get()
     async getActivities(
         @Request() req: any,
-        @Query('scope') scope: 'my_tasks' | 'delegated' = 'my_tasks',
+        @Query('scope') scope: 'my_tasks' | 'delegated' | 'all' = 'all',
     ) {
-        return this.activitiesService.getActivities(req.user.userId, scope);
+        return this.activitiesService.getActivities(req.user.sub, scope);
     }
 }

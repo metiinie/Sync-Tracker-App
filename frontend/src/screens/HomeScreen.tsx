@@ -153,11 +153,11 @@ const HomeScreen = ({ navigation }: any) => {
 
     // ─── NAVIGATION HELPERS ──────────────────────
     const navigateToTask = (taskId: string) => {
-        navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId } });
+        navigation.navigate('TaskDetail', { taskId });
     };
 
     const handleUpdateSync = (taskId: string) => {
-        navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId } });
+        navigation.navigate('TaskDetail', { taskId });
     };
 
     const handleNudge = (taskId: string) => {
@@ -166,7 +166,7 @@ const HomeScreen = ({ navigation }: any) => {
     };
 
     const handleCreateTask = () => {
-        navigation.navigate('Tasks', { screen: 'CreateTask' });
+        navigation.navigate('CreateTask');
     };
 
     const handleGlobalSync = () => {
@@ -241,7 +241,7 @@ const HomeScreen = ({ navigation }: any) => {
 
                 {/* Notification Bell */}
                 <TouchableOpacity
-                    onPress={() => navigation.navigate('Team')}
+                    onPress={() => navigation.navigate('Activity')}
                     style={{
                         width: 42,
                         height: 42,
