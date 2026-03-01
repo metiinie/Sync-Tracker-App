@@ -67,8 +67,7 @@ const FILTERS = [
     'Time Logged'
 ];
 
-const ActivityScreen = () => {
-    const navigation = useNavigation<any>();
+const ActivityScreen = ({ navigation }: any) => {
     const { user } = useAuthStore();
     const [scope, setScope] = useState<'my_tasks' | 'delegated' | 'all'>('all');
     const [activities, setActivities] = useState<any[]>([]);
