@@ -199,21 +199,27 @@ const ProfileScreen = ({ navigation }: any) => {
         >
             <View className="border-t border-gray-50">
                 {/* Account Security Group */}
-                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('EditProfile')}
+                    className="flex-row items-center px-6 py-5 border-b border-gray-50"
+                >
                     <Edit2 size={20} color="#4B5563" />
-                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Update Personal Info</Text>
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Edit Profile</Text>
                     <ChevronRight size={18} color="#D1D5DB" />
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('Security')}
+                    className="flex-row items-center px-6 py-5 border-b border-gray-50"
+                >
                     <Lock size={20} color="#4B5563" />
-                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Security & Password</Text>
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Security</Text>
                     <ChevronRight size={18} color="#D1D5DB" />
                 </TouchableOpacity>
 
                 {/* Workspace Group */}
                 <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
                     <Briefcase size={20} color="#4B5563" />
-                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Workspace Settings</Text>
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Workspaces</Text>
                     <ChevronRight size={18} color="#D1D5DB" />
                 </TouchableOpacity>
 
@@ -258,12 +264,12 @@ const ProfileScreen = ({ navigation }: any) => {
                 </View>
                 <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
                     <Share2 size={20} color="#4B5563" />
-                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Export Activity Logs</Text>
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Export Logs</Text>
                     <Text className="text-blue-600 font-bold text-xs uppercase">CSV/JSON</Text>
                 </TouchableOpacity>
                 <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-100">
                     <Database size={20} color="#4B5563" />
-                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Clear Local Cache</Text>
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Clear Cache</Text>
                     <Text className="text-gray-400 font-bold text-xs">24.5 MB</Text>
                 </TouchableOpacity>
 

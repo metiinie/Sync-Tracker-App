@@ -2,11 +2,12 @@ import { Injectable, Inject } from '@nestjs/common';
 import { DRIZZLE } from '../db/db.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
-import { ilike, or } from 'drizzle-orm';
+import { ilike, or, eq } from 'drizzle-orm';
+
 
 @Injectable()
 export class UsersService {
-  constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) {}
+  constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) { }
 
   async search(query: string) {
     return this.db.query.users.findMany({
@@ -23,4 +24,15 @@ export class UsersService {
       limit: 50,
     });
   }
+
+  async updateProfile(userId: string, data: { name?: string; email?: string }) {
+    const [updatedUser] = await this.db
+      .update(schema.users)
+      .set(data)
+      .where(eq(schema.users.id, userId))
+      .returning();
+
+    return updatedUser;
+  }
 }
+

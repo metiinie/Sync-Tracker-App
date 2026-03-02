@@ -37,4 +37,9 @@ export class UsersController {
   async updateSettings(@Request() req: any, @Body() data: any) {
     return this.settingsService.updateSettings(req.user.userId, data);
   }
+
+  @Patch('profile')
+  async updateProfile(@Request() req: any, @Body() data: { name?: string }) {
+    return this.usersService.updateProfile(req.user.userId, data);
+  }
 }

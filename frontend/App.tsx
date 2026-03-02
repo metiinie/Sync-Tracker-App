@@ -15,6 +15,8 @@ import TaskDetailScreen from './src/screens/TaskDetailScreen';
 import CreateTaskScreen from './src/screens/CreateTaskScreen';
 import SplashScreen from './src/screens/SplashScreen';
 import NotificationScreen from './src/screens/NotificationScreen';
+import EditProfileScreen from './src/screens/EditProfileScreen';
+import SecurityScreen from './src/screens/SecurityScreen';
 
 const Stack = createNativeStackNavigator();
 const queryClient = new QueryClient();
@@ -78,6 +80,16 @@ export default function App() {
               component={NotificationScreen}
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="EditProfile"
+              component={EditProfileScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Security"
+              component={SecurityScreen}
+              options={{ headerShown: false }}
+            />
           </>
         )}
       </Stack.Navigator>
@@ -86,7 +98,7 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <View style={{ flex: 1, backgroundColor: settings?.theme === 'dark' ? '#111827' : '#F9FAFB' }}>
+      <View className={settings?.theme === 'dark' ? 'dark flex-1' : 'flex-1'} style={{ backgroundColor: settings?.theme === 'dark' ? '#111827' : '#F9FAFB' }}>
         <NavigationContainer>
           <StatusBar style={settings?.theme === 'dark' ? 'light' : 'dark'} />
           {renderContent()}
