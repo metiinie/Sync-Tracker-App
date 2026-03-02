@@ -39,7 +39,7 @@ const TasksScreen = ({ navigation, route }: any) => {
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [activeSegment, setActiveSegment] = useState('all');
-    const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
+    const [activeStatus, setActiveStatus] = useState<string | null>(null);
 
     // Handle deep-linking params
     useEffect(() => {
@@ -144,11 +144,7 @@ const TasksScreen = ({ navigation, route }: any) => {
 
     // ─── TOGGLE STATUS FILTER (Multi-select) ───────
     const toggleStatus = useCallback((statusId: string) => {
-        setActiveStatuses(prev =>
-            prev.includes(statusId)
-                ? prev.filter(s => s !== statusId)
-                : [...prev, statusId]
-        );
+        setActiveStatus(prev => prev === statusId ? null : statusId);
     }, []);
 
     // ─── DETERMINE USER ROLE FOR A TASK ────────────
@@ -191,15 +187,13 @@ const TasksScreen = ({ navigation, route }: any) => {
                 break;
         }
 
-        // 2. Status filter (sync state, multi-select)
-        if (activeStatuses.length > 0) {
+        // 2. Status filter (sync state, single-select)
+        if (activeStatus) {
             result = result.filter((t: any) => {
                 const syncState = t.syncState || 'IN_SYNC';
                 const taskStatus = t.status;
-                return activeStatuses.some(s => {
-                    if (s === 'PENDING') return taskStatus === 'PENDING' || syncState === 'PENDING';
-                    return syncState === s;
-                });
+                if (activeStatus === 'PENDING') return taskStatus === 'PENDING' || syncState === 'PENDING';
+                return syncState === activeStatus;
             });
         }
 
@@ -226,7 +220,7 @@ const TasksScreen = ({ navigation, route }: any) => {
         });
 
         return result;
-    }, [tasks, activeSegment, activeStatuses, search, user?.id]);
+    }, [tasks, activeSegment, activeStatus, search, user?.id]);
 
     // ─── RENDER TASK CARD ──────────────────────────
     const renderTask = useCallback(({ item }: { item: any }) => (
@@ -370,7 +364,7 @@ const TasksScreen = ({ navigation, route }: any) => {
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={{ gap: 8 }}
                     renderItem={({ item: filter }) => {
-                        const isActive = activeStatuses.includes(filter.id);
+                        const isActive = activeStatus === filter.id;
                         return (
                             <TouchableOpacity
                                 onPress={() => toggleStatus(filter.id)}
