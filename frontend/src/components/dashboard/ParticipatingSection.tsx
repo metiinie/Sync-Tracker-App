@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { RefreshCcw } from 'lucide-react-native';
+import { useAuthStore } from '../../store/authStore';
 
 interface ParticipatingTask {
     task: any;
@@ -35,6 +36,9 @@ const getRoleBadgeColor = (role: string) => {
 };
 
 const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTaskPress, onQuickSync, onHeaderPress }) => {
+    const { settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
+
     if (items.length === 0) return null;
 
     return (
@@ -44,7 +48,7 @@ const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTa
                 <Text style={{
                     fontSize: 12,
                     fontWeight: '800',
-                    color: '#9CA3AF',
+                    color: isDark ? '#6B7280' : '#9CA3AF',
                     letterSpacing: 2,
                     textTransform: 'uppercase',
                 }}>
@@ -64,17 +68,17 @@ const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTa
                             onPress={() => onTaskPress(item.task.id)}
                             activeOpacity={0.7}
                             style={{
-                                backgroundColor: '#FFFFFF',
+                                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                                 borderRadius: 14,
                                 paddingVertical: 10,
                                 paddingHorizontal: 14,
                                 borderWidth: 1,
-                                borderColor: '#F3F4F6',
+                                borderColor: isDark ? '#374151' : '#F3F4F6',
                                 flexDirection: 'row',
                                 alignItems: 'center',
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 1 },
-                                shadowOpacity: 0.02,
+                                shadowOpacity: isDark ? 0.3 : 0.02,
                                 shadowRadius: 4,
                                 elevation: 1,
                             }}
@@ -89,7 +93,7 @@ const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTa
                             }} />
 
                             {/* Task title */}
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginRight: 8 }} numberOfLines={1}>
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#D1D5DB' : '#374151', marginRight: 8 }} numberOfLines={1}>
                                 {item.task.title}
                             </Text>
 
@@ -117,12 +121,12 @@ const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTa
                                         width: 24,
                                         height: 24,
                                         borderRadius: 12,
-                                        backgroundColor: '#F3F4F6',
+                                        backgroundColor: isDark ? '#374151' : '#F3F4F6',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                     }}
                                 >
-                                    <RefreshCcw size={12} color="#4B5563" />
+                                    <RefreshCcw size={12} color={isDark ? '#9CA3AF' : '#4B5563'} />
                                 </TouchableOpacity>
                             )}
                         </TouchableOpacity>
