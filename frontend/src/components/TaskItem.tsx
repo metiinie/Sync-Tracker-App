@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
-import { Users, AlertTriangle, ArrowRightLeft } from 'lucide-react-native';
 import { timeAgo } from '../utils/timeAgo';
+import { useAuthStore } from '../store/authStore';
 
 interface TaskItemProps {
     task: any;
@@ -80,6 +80,8 @@ const getAvatarColor = (name: string) => {
 };
 
 const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
+    const { settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
     const [expanded, setExpanded] = useState(false);
 
     const syncConfig = getSyncConfig(task.syncState);
@@ -111,17 +113,17 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
             onPress={handlePress}
             activeOpacity={0.7}
             style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                 borderRadius: 16,
                 padding: 16,
                 marginBottom: 10,
                 borderWidth: 1,
-                borderColor: '#F0F0F0',
+                borderColor: isDark ? '#374151' : '#F0F0F0',
                 borderLeftWidth: 4,
                 borderLeftColor: syncConfig.color,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.04,
+                shadowOpacity: isDark ? 0.3 : 0.04,
                 shadowRadius: 8,
                 elevation: 2,
             }}
@@ -172,7 +174,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
                         width: 18,
                         height: 18,
                         borderRadius: 9,
-                        backgroundColor: syncConfig.bg,
+                        backgroundColor: isDark ? `${syncConfig.color}20` : syncConfig.bg,
                         alignItems: 'center',
                         justifyContent: 'center',
                     }}>
@@ -211,7 +213,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
                 style={{
                     fontSize: 15,
                     fontWeight: '700',
-                    color: '#111827',
+                    color: isDark ? '#F9FAFB' : '#111827',
                     marginBottom: 12,
                     lineHeight: 20,
                 }}
@@ -244,7 +246,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
                     </View>
                     <Text style={{
                         fontSize: 13,
-                        color: '#6B7280',
+                        color: isDark ? '#9CA3AF' : '#6B7280',
                         fontWeight: '500',
                     }} numberOfLines={1}>
                         {ownerName}
@@ -267,17 +269,17 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
                 {/* Milestone Progress */}
                 {totalMilestones > 0 && (
                     <View style={{
-                        backgroundColor: completedMilestones === totalMilestones ? '#F0FDF4' : '#F9FAFB',
+                        backgroundColor: completedMilestones === totalMilestones ? (isDark ? '#064E3B' : '#F0FDF4') : (isDark ? '#374151' : '#F9FAFB'),
                         borderRadius: 8,
                         paddingHorizontal: 8,
                         paddingVertical: 3,
                         borderWidth: 1,
-                        borderColor: completedMilestones === totalMilestones ? '#BBF7D0' : '#E5E7EB',
+                        borderColor: completedMilestones === totalMilestones ? (isDark ? '#059669' : '#BBF7D0') : (isDark ? '#4B5563' : '#E5E7EB'),
                     }}>
                         <Text style={{
                             fontSize: 12,
                             fontWeight: '700',
-                            color: completedMilestones === totalMilestones ? '#059669' : '#374151',
+                            color: completedMilestones === totalMilestones ? (isDark ? '#34D399' : '#059669') : (isDark ? '#D1D5DB' : '#374151'),
                         }}>
                             {completedMilestones}/{totalMilestones}
                         </Text>
@@ -286,79 +288,78 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
             </View>
 
             {/* ─── EXPANDABLE PREVIEW ─── */}
-            {expanded && (
-                <View style={{
-                    marginTop: 12,
-                    paddingTop: 12,
-                    borderTopWidth: 1,
-                    borderTopColor: '#F3F4F6',
-                }}>
-                    {/* Assigned By */}
-                    <View style={{ flexDirection: 'row', marginBottom: 6 }}>
-                        <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>
-                            Assigned by:{' '}
-                        </Text>
-                        <Text style={{ fontSize: 12, color: '#374151', fontWeight: '600' }}>
-                            {assignerName}
+            <View style={{
+                marginTop: 12,
+                paddingTop: 12,
+                borderTopWidth: 1,
+                borderTopColor: isDark ? '#374151' : '#F3F4F6',
+            }}>
+                {/* Assigned By */}
+                <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>
+                        Assigned by:{' '}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: isDark ? '#D1D5DB' : '#374151', fontWeight: '600' }}>
+                        {assignerName}
+                    </Text>
+                </View>
+
+                {/* Description */}
+                {task.description && (
+                    <Text
+                        style={{
+                            fontSize: 13,
+                            color: isDark ? '#9CA3AF' : '#6B7280',
+                            lineHeight: 18,
+                            marginBottom: 6,
+                        }}
+                        numberOfLines={2}
+                    >
+                        {task.description}
+                    </Text>
+                )}
+
+                {/* Last Log */}
+                {task.lastLog && (
+                    <View style={{
+                        backgroundColor: isDark ? '#374151' : '#F9FAFB',
+                        borderRadius: 8,
+                        padding: 10,
+                        marginTop: 4,
+                    }}>
+                        <Text style={{ fontSize: 12, color: isDark ? '#D1D5DB' : '#6B7280', fontStyle: 'italic' }} numberOfLines={1}>
+                            📝 {task.lastLog}
                         </Text>
                     </View>
+                )}
 
-                    {/* Description */}
-                    {task.description && (
-                        <Text
-                            style={{
-                                fontSize: 13,
-                                color: '#6B7280',
-                                lineHeight: 18,
-                                marginBottom: 6,
-                            }}
-                            numberOfLines={2}
-                        >
-                            {task.description}
-                        </Text>
-                    )}
+                {/* Tap to open detail hint */}
+                <TouchableOpacity
+                    onPress={onPress}
+                    style={{
+                        marginTop: 8,
+                        alignSelf: 'flex-end',
+                    }}
+                >
+                    <Text style={{
+                        fontSize: 12,
+                        color: isDark ? '#60A5FA' : '#3B82F6',
+                        fontWeight: '600',
+                    }}>
+                        Open Full Details →
+                    </Text>
+                </TouchableOpacity>
 
-                    {/* Last Log */}
-                    {task.lastLog && (
-                        <View style={{
-                            backgroundColor: '#F9FAFB',
-                            borderRadius: 8,
-                            padding: 10,
-                            marginTop: 4,
-                        }}>
-                            <Text style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }} numberOfLines={1}>
-                                📝 {task.lastLog}
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Tap to open detail hint */}
-                    <TouchableOpacity
-                        onPress={onPress}
-                        style={{
-                            marginTop: 8,
-                            alignSelf: 'flex-end',
-                        }}
-                    >
-                        <Text style={{
-                            fontSize: 12,
-                            color: '#3B82F6',
-                            fontWeight: '600',
-                        }}>
-                            Open Full Details →
-                        </Text>
-                    </TouchableOpacity>
-
-                    {/* Collapse button */}
-                    <TouchableOpacity
-                        onPress={handleCollapse}
-                        style={{ marginTop: 4, alignSelf: 'center' }}
-                    >
-                        <Text style={{ fontSize: 11, color: '#D1D5DB', fontWeight: '500' }}>
-                            Tap to collapse
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+                {/* Collapse button */}
+                <TouchableOpacity
+                    onPress={handleCollapse}
+                    style={{ marginTop: 4, alignSelf: 'center' }}
+                >
+                    <Text style={{ fontSize: 11, color: '#D1D5DB', fontWeight: '500' }}>
+                        Tap to collapse
+                    </Text>
+                </TouchableOpacity>
+            </View>
             )}
         </TouchableOpacity>
     );
