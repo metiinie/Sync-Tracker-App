@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { Users, AlertTriangle, ArrowRightLeft } from 'lucide-react-native';
 import { timeAgo } from '../utils/timeAgo';
 import { useAuthStore } from '../store/authStore';
 
@@ -288,78 +289,79 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
             </View>
 
             {/* ─── EXPANDABLE PREVIEW ─── */}
-            <View style={{
-                marginTop: 12,
-                paddingTop: 12,
-                borderTopWidth: 1,
-                borderTopColor: isDark ? '#374151' : '#F3F4F6',
-            }}>
-                {/* Assigned By */}
-                <View style={{ flexDirection: 'row', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>
-                        Assigned by:{' '}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: isDark ? '#D1D5DB' : '#374151', fontWeight: '600' }}>
-                        {assignerName}
-                    </Text>
-                </View>
-
-                {/* Description */}
-                {task.description && (
-                    <Text
-                        style={{
-                            fontSize: 13,
-                            color: isDark ? '#9CA3AF' : '#6B7280',
-                            lineHeight: 18,
-                            marginBottom: 6,
-                        }}
-                        numberOfLines={2}
-                    >
-                        {task.description}
-                    </Text>
-                )}
-
-                {/* Last Log */}
-                {task.lastLog && (
-                    <View style={{
-                        backgroundColor: isDark ? '#374151' : '#F9FAFB',
-                        borderRadius: 8,
-                        padding: 10,
-                        marginTop: 4,
-                    }}>
-                        <Text style={{ fontSize: 12, color: isDark ? '#D1D5DB' : '#6B7280', fontStyle: 'italic' }} numberOfLines={1}>
-                            📝 {task.lastLog}
+            {expanded && (
+                <View style={{
+                    marginTop: 12,
+                    paddingTop: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: isDark ? '#374151' : '#E5E7EB',
+                }}>
+                    {/* Assigned by */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                        <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>
+                            Assigned by:{' '}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: isDark ? '#D1D5DB' : '#374151', fontWeight: '600' }}>
+                            {assignerName}
                         </Text>
                     </View>
-                )}
 
-                {/* Tap to open detail hint */}
-                <TouchableOpacity
-                    onPress={onPress}
-                    style={{
-                        marginTop: 8,
-                        alignSelf: 'flex-end',
-                    }}
-                >
-                    <Text style={{
-                        fontSize: 12,
-                        color: isDark ? '#60A5FA' : '#3B82F6',
-                        fontWeight: '600',
-                    }}>
-                        Open Full Details →
-                    </Text>
-                </TouchableOpacity>
+                    {/* Description */}
+                    {task.description && (
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: isDark ? '#9CA3AF' : '#6B7280',
+                                lineHeight: 18,
+                                marginBottom: 6,
+                            }}
+                            numberOfLines={2}
+                        >
+                            {task.description}
+                        </Text>
+                    )}
 
-                {/* Collapse button */}
-                <TouchableOpacity
-                    onPress={handleCollapse}
-                    style={{ marginTop: 4, alignSelf: 'center' }}
-                >
-                    <Text style={{ fontSize: 11, color: '#D1D5DB', fontWeight: '500' }}>
-                        Tap to collapse
-                    </Text>
-                </TouchableOpacity>
-            </View>
+                    {/* Last Log */}
+                    {task.lastLog && (
+                        <View style={{
+                            backgroundColor: isDark ? '#374151' : '#F9FAFB',
+                            borderRadius: 8,
+                            padding: 10,
+                            marginTop: 4,
+                        }}>
+                            <Text style={{ fontSize: 12, color: isDark ? '#D1D5DB' : '#6B7280', fontStyle: 'italic' }} numberOfLines={1}>
+                                📝 {task.lastLog}
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Tap to open detail hint */}
+                    <TouchableOpacity
+                        onPress={onPress}
+                        style={{
+                            marginTop: 8,
+                            alignSelf: 'flex-end',
+                        }}
+                    >
+                        <Text style={{
+                            fontSize: 12,
+                            color: isDark ? '#60A5FA' : '#3B82F6',
+                            fontWeight: '600',
+                        }}>
+                            Open Full Details →
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Collapse button */}
+                    <TouchableOpacity
+                        onPress={handleCollapse}
+                        style={{ marginTop: 4, alignSelf: 'center' }}
+                    >
+                        <Text style={{ fontSize: 11, color: isDark ? '#6B7280' : '#D1D5DB', fontWeight: '500' }}>
+                            Tap to collapse
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             )}
         </TouchableOpacity>
     );
