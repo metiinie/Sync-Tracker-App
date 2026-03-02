@@ -24,4 +24,23 @@ export class WorkspaceSettingsService {
 
         return settings;
     }
+
+    async updateSettings(data: { staleThresholdHours?: string; allowResponsibilityTransfer?: boolean; enableHelperRole?: boolean }) {
+        const settings = await this.db.query.workspaceSettings.findFirst();
+
+        if (settings) {
+            const [updated] = await this.db
+                .update(schema.workspaceSettings)
+                .set(data)
+                .returning();
+            return updated;
+        } else {
+            const [created] = await this.db
+                .insert(schema.workspaceSettings)
+                .values(data)
+                .returning();
+            return created;
+        }
+    }
 }
+

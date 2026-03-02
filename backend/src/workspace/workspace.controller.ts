@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
 import { WorkspaceSettingsService } from './workspace.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -10,5 +10,10 @@ export class WorkspaceSettingsController {
     @Get('settings')
     async getSettings() {
         return this.workspaceService.getSettings();
+    }
+
+    @Patch('settings')
+    async updateSettings(@Body() data: any) {
+        return this.workspaceService.updateSettings(data);
     }
 }
