@@ -42,8 +42,14 @@ let TasksController = class TasksController {
     async findOne(id) {
         return this.tasksService.findOne(id);
     }
-    async addMilestone(id, title, req) {
-        return this.tasksService.addMilestone(id, title, req.user.userId);
+    async addMilestone(id, body, req) {
+        return this.tasksService.addMilestone(id, body.title, req.user.userId, body.dueDate);
+    }
+    async updateMilestone(mid, body, req) {
+        return this.tasksService.updateMilestone(mid, body, req.user.userId);
+    }
+    async deleteMilestone(mid, req) {
+        return this.tasksService.deleteMilestone(mid, req.user.userId);
     }
     async toggleMilestone(mid, isCompleted, req) {
         return this.tasksService.toggleMilestone(mid, isCompleted, req.user.userId);
@@ -53,6 +59,9 @@ let TasksController = class TasksController {
     }
     async syncAll(req) {
         return this.tasksService.syncAll(req.user.userId);
+    }
+    async syncParticipant(id, req) {
+        return this.tasksService.syncParticipant(id, req.user.userId);
     }
     async nudge(id, req) {
         return this.tasksService.nudge(id, req.user.userId);
@@ -119,12 +128,29 @@ __decorate([
 __decorate([
     (0, common_1.Post)(':id/milestones'),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)('title')),
+    __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "addMilestone", null);
+__decorate([
+    (0, common_1.Patch)('milestones/:mid'),
+    __param(0, (0, common_1.Param)('mid')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "updateMilestone", null);
+__decorate([
+    (0, common_1.Delete)('milestones/:mid'),
+    __param(0, (0, common_1.Param)('mid')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "deleteMilestone", null);
 __decorate([
     (0, common_1.Patch)('milestones/:mid/toggle'),
     __param(0, (0, common_1.Param)('mid')),
@@ -150,6 +176,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "syncAll", null);
+__decorate([
+    (0, common_1.Patch)(':id/sync-participant'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "syncParticipant", null);
 __decorate([
     (0, common_1.Post)(':id/nudge'),
     __param(0, (0, common_1.Param)('id')),

@@ -121,35 +121,43 @@ export class TasksService {
     return taskDetails;
   }
 
-  async addMilestone(taskId: string, title: string, userId: string) {
+  async addMilestone(taskId: string, title: string, userId: string, dueDate?: string) {
     const [milestone] = await this.db
       .insert(schema.milestones)
       .values({
         taskId,
         title,
+        dueDate: dueDate ? new Date(dueDate) : null,
       })
       .returning();
 
-    await this.logAction(taskId, userId, `Milestone added: ${title}`);
+    await this.logAction(taskId, userId, `Milestone added: ${title}${dueDate ? ` (Due: ${dueDate})` : ''}`);
     this.syncGateway.emitToTask(taskId, 'milestone:created', milestone);
     return milestone;
   }
 
-  async toggleMilestone(
+  async updateMilestone(
     milestoneId: string,
-    isCompleted: boolean,
+    data: { title?: string; dueDate?: string; isCompleted?: boolean },
     userId: string,
   ) {
+    const updateData: any = {};
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.dueDate !== undefined)
+      updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    if (data.isCompleted !== undefined)
+      updateData.isCompleted = data.isCompleted ? 'true' : 'false';
+
     const [milestone] = await this.db
       .update(schema.milestones)
-      .set({ isCompleted: isCompleted ? 'true' : 'false' })
+      .set(updateData)
       .where(eq(schema.milestones.id, milestoneId))
       .returning();
 
     await this.logAction(
       milestone.taskId,
       userId,
-      `Milestone ${milestone.title} marked as ${isCompleted ? 'completed' : 'incomplete'}`,
+      `Milestone updated: ${milestone.title}`,
     );
     this.syncGateway.emitToTask(
       milestone.taskId,
@@ -157,6 +165,34 @@ export class TasksService {
       milestone,
     );
     return milestone;
+  }
+
+  async deleteMilestone(milestoneId: string, userId: string) {
+    const [milestone] = await this.db
+      .delete(schema.milestones)
+      .where(eq(schema.milestones.id, milestoneId))
+      .returning();
+
+    if (milestone) {
+      await this.logAction(
+        milestone.taskId,
+        userId,
+        `Milestone deleted: ${milestone.title}`,
+      );
+      this.syncGateway.emitToTask(milestone.taskId, 'milestone:deleted', {
+        id: milestoneId,
+      });
+    }
+
+    return { success: true };
+  }
+
+  async toggleMilestone(
+    milestoneId: string,
+    isCompleted: boolean,
+    userId: string,
+  ) {
+    return this.updateMilestone(milestoneId, { isCompleted }, userId);
   }
 
   async logTime(
@@ -517,6 +553,39 @@ export class TasksService {
     };
 
     return stats;
+  }
+
+  async syncParticipant(taskId: string, userId: string) {
+    const participant = await this.db.query.taskParticipants.findFirst({
+      where: and(
+        eq(schema.taskParticipants.taskId, taskId),
+        eq(schema.taskParticipants.userId, userId),
+      ),
+    });
+
+    if (!participant) throw new NotFoundException('Participant record not found');
+
+    await this.db
+      .update(schema.taskParticipants)
+      .set({
+        syncState: 'IN_SYNC',
+        lastUpdatedAt: new Date(),
+      })
+      .where(eq(schema.taskParticipants.id, participant.id));
+
+    await this.logAction(
+      taskId,
+      userId,
+      `Quick Sync: Participant (${participant.role}) state updated to IN_SYNC`,
+    );
+
+    this.syncGateway.emitToTask(taskId, 'sync:update', {
+      taskId,
+      userId,
+      syncState: 'IN_SYNC',
+    });
+
+    return { success: true };
   }
 
   async syncAll(userId: string) {

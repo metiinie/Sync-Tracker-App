@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { RefreshCcw } from 'lucide-react-native';
 
 interface ParticipatingTask {
     task: any;
@@ -9,6 +10,7 @@ interface ParticipatingTask {
 interface ParticipatingSectionProps {
     items: ParticipatingTask[];
     onTaskPress: (taskId: string) => void;
+    onQuickSync: (taskId: string) => void;
 }
 
 const getSyncDot = (syncState: string) => {
@@ -31,7 +33,7 @@ const getRoleBadgeColor = (role: string) => {
     }
 };
 
-const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTaskPress }) => {
+const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTaskPress, onQuickSync }) => {
     if (items.length === 0) return null;
 
     return (
@@ -100,6 +102,27 @@ const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTa
                                     {item.role || 'Participant'}
                                 </Text>
                             </View>
+
+                            {/* Quick Sync Button */}
+                            {item.task.participants?.find((p: any) => p.syncState !== 'IN_SYNC') && (
+                                <TouchableOpacity
+                                    onPress={(e) => {
+                                        e.stopPropagation();
+                                        onQuickSync(item.task.id);
+                                    }}
+                                    style={{
+                                        marginLeft: 10,
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: 12,
+                                        backgroundColor: '#F3F4F6',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <RefreshCcw size={12} color="#4B5563" />
+                                </TouchableOpacity>
+                            )}
                         </TouchableOpacity>
                     );
                 })}

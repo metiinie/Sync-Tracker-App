@@ -74,6 +74,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const [syncParams, setSyncParams] = useState({ state: '', note: '' });
     const [timeLog, setTimeLog] = useState({ hours: '', minutes: '', note: '' });
     const [newMilestone, setNewMilestone] = useState('');
+    const [newMilestoneDate, setNewMilestoneDate] = useState('');
 
     const fetchTask = async (showRefresh = false) => {
         if (showRefresh) setRefreshing(true);
@@ -162,9 +163,22 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const handleAddMilestone = async () => {
         if (!newMilestone.trim()) return;
         try {
-            await api.post(`/tasks/${taskId}/milestones`, { title: newMilestone });
+            await api.post(`/tasks/${taskId}/milestones`, {
+                title: newMilestone,
+                dueDate: newMilestoneDate || null
+            });
             setShowMilestoneModal(false);
             setNewMilestone('');
+            setNewMilestoneDate('');
+            fetchTask();
+        } catch (err) {
+            console.log(err);
+        }
+    };
+
+    const handleDeleteMilestone = async (mid: string) => {
+        try {
+            await api.delete(`/tasks/milestones/${mid}`);
             fetchTask();
         } catch (err) {
             console.log(err);
@@ -543,16 +557,46 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                 <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
                     <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>PROJECT MILESTONES</Text>
 
+                    {/* Progress Bar */}
+                    {task.milestones?.length > 0 && (
+                        <View style={{ marginBottom: 20 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563' }}>
+                                    Track Progress
+                                </Text>
+                                <Text style={{ fontSize: 12, fontWeight: '800', color: '#10B981' }}>
+                                    {Math.round((task.milestones.filter((m: any) => m.isCompleted === 'true').length / task.milestones.length) * 100)}%
+                                </Text>
+                            </View>
+                            <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+                                <View style={{
+                                    height: '100%',
+                                    backgroundColor: '#10B981',
+                                    width: `${(task.milestones.filter((m: any) => m.isCompleted === 'true').length / task.milestones.length) * 100}%`
+                                }} />
+                            </View>
+                        </View>
+                    )}
+
                     {task.milestones?.length === 0 ? (
                         <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>No milestones defined.</Text>
                     ) : (
                         task.milestones?.map((m: any, i: number) => {
                             const isCompleted = m.isCompleted === 'true';
+                            const dueDate = m.dueDate ? new Date(m.dueDate) : null;
+                            const isOverdue = dueDate && !isCompleted && dueDate < new Date();
+                            const isNear = dueDate && !isCompleted && (dueDate.getTime() - new Date().getTime()) < 172800000; // 48h
+
                             return (
                                 <View key={m.id} style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    marginBottom: 12,
+                                    marginBottom: 16,
+                                    backgroundColor: '#FFFFFF',
+                                    padding: 12,
+                                    borderRadius: 12,
+                                    borderWidth: 1,
+                                    borderColor: isOverdue ? '#FCA5A5' : isNear ? '#FDE68A' : '#F3F4F6'
                                 }}>
                                     <TouchableOpacity
                                         onPress={() => handleToggleMilestone(m.id, m.isCompleted)}
@@ -567,13 +611,23 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                         {isCompleted && <CheckCircle2 size={12} color="#FFF" />}
                                     </TouchableOpacity>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isCompleted ? '#111827' : '#374151' }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isCompleted ? '#9CA3AF' : '#111827', textDecorationLine: isCompleted ? 'line-through' : 'none' }}>
                                             {m.title}
                                         </Text>
-                                        <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
-                                            {isCompleted ? 'Completed' : 'Awaiting completion'}
-                                        </Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                            <Clock size={10} color={isOverdue ? '#EF4444' : '#9CA3AF'} />
+                                            <Text style={{ fontSize: 11, color: isOverdue ? '#EF4444' : '#9CA3AF', marginLeft: 4, fontWeight: isOverdue || isNear ? '700' : '400' }}>
+                                                {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : 'No due date'}
+                                                {isOverdue && ' • OVERDUE'}
+                                                {isNear && !isOverdue && ' • APPROACHING'}
+                                            </Text>
+                                        </View>
                                     </View>
+                                    {(isOwner || isAssigner) && (
+                                        <TouchableOpacity onPress={() => handleDeleteMilestone(m.id)}>
+                                            <X size={16} color="#9CA3AF" />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             );
                         })
@@ -772,14 +826,20 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
             <Modal visible={showMilestoneModal} transparent animationType="fade">
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20 }}>
                     <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 24 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Add Milestone</Text>
                         <TextInput
-                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
                             placeholder="Milestone title..."
                             placeholderTextColor="#9CA3AF"
                             value={newMilestone}
                             onChangeText={setNewMilestone}
                             autoFocus
+                        />
+                        <TextInput
+                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                            placeholder="Due Date (YYYY-MM-DD)"
+                            placeholderTextColor="#9CA3AF"
+                            value={newMilestoneDate}
+                            onChangeText={setNewMilestoneDate}
                         />
                         <View style={{ flexDirection: 'row', gap: 12 }}>
                             <TouchableOpacity onPress={() => setShowMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>

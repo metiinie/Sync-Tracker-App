@@ -29,6 +29,7 @@ const HomeScreen = ({ navigation }: any) => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isLoggingTime, setIsLoggingTime] = useState(false);
     const [unreadNotifications, setUnreadNotifications] = useState(0);
+    const [staleThreshold, setStaleThreshold] = useState(24);
     const user = useAuthStore(state => state.user);
 
     const fetchTasks = async () => {
@@ -50,15 +51,26 @@ const HomeScreen = ({ navigation }: any) => {
         }
     };
 
+    const fetchWorkspaceSettings = async () => {
+        try {
+            const response = await api.get('/workspace/settings');
+            const threshold = parseInt(response.data.staleThresholdHours, 10);
+            if (!isNaN(threshold)) setStaleThreshold(threshold);
+        } catch (error) {
+            console.error('Error fetching workspace settings:', error);
+        }
+    };
+
     const onRefresh = async () => {
         setRefreshing(true);
-        await Promise.all([fetchTasks(), fetchUnreadCount()]);
+        await Promise.all([fetchTasks(), fetchUnreadCount(), fetchWorkspaceSettings()]);
         setRefreshing(false);
     };
 
     useEffect(() => {
         fetchTasks();
         fetchUnreadCount();
+        fetchWorkspaceSettings();
 
         const socket = getSocket();
 
@@ -125,8 +137,12 @@ const HomeScreen = ({ navigation }: any) => {
         const attentionItems: { task: any; role: 'Owner' | 'Assigner' | 'Participant'; riskState: string }[] = [];
 
         tasks.forEach(t => {
+            // ─── NEW: I am the owner AND it's PENDING (Incoming Transfer) ───
+            if (t.responsibleOwner === userId && t.status === 'PENDING') {
+                attentionItems.push({ task: t, role: 'Owner', riskState: 'PENDING_ACCEPTANCE' });
+            }
             // I am responsible AND BLOCKED
-            if (t.responsibleOwner === userId && t.syncState === 'BLOCKED') {
+            else if (t.responsibleOwner === userId && t.syncState === 'BLOCKED') {
                 attentionItems.push({ task: t, role: 'Owner', riskState: 'BLOCKED' });
             }
             // I am responsible AND HELP_REQUESTED
@@ -141,8 +157,8 @@ const HomeScreen = ({ navigation }: any) => {
             else if (t.assignedBy === userId && t.responsibleOwner !== userId && t.syncState === 'HELP_REQUESTED') {
                 attentionItems.push({ task: t, role: 'Assigner', riskState: 'HELP_REQUESTED' });
             }
-            // Stale beyond threshold (24h)
-            else if (t.responsibleOwner === userId && isStale(t.lastUpdatedAt || t.createdAt, 24)) {
+            // Stale beyond threshold
+            else if (t.responsibleOwner === userId && isStale(t.lastUpdatedAt || t.createdAt, staleThreshold)) {
                 attentionItems.push({ task: t, role: 'Owner', riskState: 'STALE' });
             }
         });
@@ -180,6 +196,17 @@ const HomeScreen = ({ navigation }: any) => {
 
     const handleUpdateSync = (taskId: string) => {
         navigation.navigate('TaskDetail', { taskId });
+    };
+
+    const handleParticipantSync = async (taskId: string) => {
+        try {
+            await api.patch(`/tasks/${taskId}/sync-participant`);
+            Alert.alert("Synced", "Your status for this track is now IN_SYNC.");
+            fetchTasks();
+        } catch (error) {
+            console.error('Error syncing participant:', error);
+            Alert.alert("Error", "Failed to sync status.");
+        }
     };
 
     const handleNudge = async (taskId: string) => {
@@ -375,6 +402,7 @@ const HomeScreen = ({ navigation }: any) => {
                 <ParticipatingSection
                     items={dashboard.participating}
                     onTaskPress={navigateToTask}
+                    onQuickSync={handleParticipantSync}
                 />
 
                 {/* 5️⃣ QUICK ACTIONS */}

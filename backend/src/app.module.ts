@@ -9,6 +9,7 @@ import { SyncModule } from './sync/sync.module';
 import { UsersModule } from './users/users.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ActivitiesModule } from './activities/activities.module';
+import { WorkspaceSettingsModule } from './workspace/workspace.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ActivitiesModule } from './activities/activities.module';
     UsersModule,
     NotificationsModule,
     ActivitiesModule,
+    WorkspaceSettingsModule,
   ],
   controllers: [AppController],
   providers: [],

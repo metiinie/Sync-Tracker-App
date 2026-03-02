@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  Delete,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -78,10 +79,24 @@ export class TasksController {
   @Post(':id/milestones')
   async addMilestone(
     @Param('id') id: string,
-    @Body('title') title: string,
+    @Body() body: { title: string; dueDate?: string },
     @Request() req: any,
   ) {
-    return this.tasksService.addMilestone(id, title, req.user.userId);
+    return this.tasksService.addMilestone(id, body.title, req.user.userId, body.dueDate);
+  }
+
+  @Patch('milestones/:mid')
+  async updateMilestone(
+    @Param('mid') mid: string,
+    @Body() body: any,
+    @Request() req: any,
+  ) {
+    return this.tasksService.updateMilestone(mid, body, req.user.userId);
+  }
+
+  @Delete('milestones/:mid')
+  async deleteMilestone(@Param('mid') mid: string, @Request() req: any) {
+    return this.tasksService.deleteMilestone(mid, req.user.userId);
   }
 
   @Patch('milestones/:mid/toggle')
@@ -110,6 +125,11 @@ export class TasksController {
   @Patch('sync-all')
   async syncAll(@Request() req: any) {
     return this.tasksService.syncAll(req.user.userId);
+  }
+
+  @Patch(':id/sync-participant')
+  async syncParticipant(@Param('id') id: string, @Request() req: any) {
+    return this.tasksService.syncParticipant(id, req.user.userId);
   }
 
   @Post(':id/nudge')

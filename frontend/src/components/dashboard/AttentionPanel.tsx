@@ -40,6 +40,14 @@ const getRiskConfig = (riskState: string) => {
                 badgeText: '#FFFFFF',
                 label: 'STALE',
             };
+        case 'PENDING_ACCEPTANCE':
+            return {
+                bg: '#F5F3FF',
+                border: '#8B5CF6',
+                badge: '#8B5CF6',
+                badgeText: '#FFFFFF',
+                label: 'PENDING ACCEPTANCE',
+            };
         default:
             return {
                 bg: '#F9FAFB',
@@ -101,13 +109,13 @@ const AttentionPanel: React.FC<AttentionPanelProps> = ({ items, onTaskPress }) =
                     NEEDS ATTENTION
                 </Text>
                 <View style={{
-                    backgroundColor: '#EF4444',
+                    backgroundColor: items.some(i => i.riskState === 'PENDING_ACCEPTANCE') ? '#8B5CF6' : '#EF4444',
                     borderRadius: 12,
                     paddingHorizontal: 10,
                     paddingVertical: 4,
                 }}>
                     <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF' }}>
-                        {items.length} CRITICAL
+                        {items.length} {items.some(i => i.riskState === 'PENDING_ACCEPTANCE') ? 'ACTIONABLE' : 'CRITICAL'}
                     </Text>
                 </View>
             </View>

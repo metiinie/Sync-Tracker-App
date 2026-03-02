@@ -12,22 +12,37 @@ export declare class TasksService {
         role: string;
     }[], milestones?: string[]): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
     }>;
-    addMilestone(taskId: string, title: string, userId: string): Promise<{
+    addMilestone(taskId: string, title: string, userId: string, dueDate?: string): Promise<{
         id: string;
-        title: string;
         createdAt: Date;
+        title: string;
         taskId: string;
         isCompleted: string;
         dueDate: Date | null;
+    }>;
+    updateMilestone(milestoneId: string, data: {
+        title?: string;
+        dueDate?: string;
+        isCompleted?: boolean;
+    }, userId: string): Promise<{
+        id: string;
+        taskId: string;
+        title: string;
+        isCompleted: string;
+        dueDate: Date | null;
+        createdAt: Date;
+    }>;
+    deleteMilestone(milestoneId: string, userId: string): Promise<{
+        success: boolean;
     }>;
     toggleMilestone(milestoneId: string, isCompleted: boolean, userId: string): Promise<{
         id: string;
@@ -42,8 +57,8 @@ export declare class TasksService {
         description: string | null;
         taskId: string;
         userId: string;
-        durationMinutes: string;
         timestamp: Date;
+        durationMinutes: string;
     }>;
     accept(taskId: string, userId: string): Promise<{
         id: string;
@@ -86,37 +101,14 @@ export declare class TasksService {
     findAllForUser(userId: string): Promise<any[]>;
     findOne(taskId: string): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
-        milestones: {
-            id: string;
-            title: string;
-            createdAt: Date;
-            taskId: string;
-            isCompleted: string;
-            dueDate: Date | null;
-        }[];
-        timeLogs: {
-            id: string;
-            description: string | null;
-            taskId: string;
-            userId: string;
-            durationMinutes: string;
-            timestamp: Date;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                isSuspended: boolean;
-                createdAt: Date;
-            };
-        }[];
         assigner: {
             id: string;
             name: string;
@@ -147,6 +139,29 @@ export declare class TasksService {
                 createdAt: Date;
             };
         }[];
+        milestones: {
+            id: string;
+            createdAt: Date;
+            title: string;
+            taskId: string;
+            isCompleted: string;
+            dueDate: Date | null;
+        }[];
+        timeLogs: {
+            id: string;
+            description: string | null;
+            taskId: string;
+            userId: string;
+            timestamp: Date;
+            durationMinutes: string;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
     } | undefined>;
     getUserStats(userId: string): Promise<{
         active: number;
@@ -161,6 +176,9 @@ export declare class TasksService {
             BLOCKED: number;
             HELP_REQUESTED: number;
         };
+    }>;
+    syncParticipant(taskId: string, userId: string): Promise<{
+        success: boolean;
     }>;
     syncAll(userId: string): Promise<{
         success: boolean;
