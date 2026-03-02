@@ -1,8 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Home as HomeIcon, CheckCircle2, History, UserCircle2 } from 'lucide-react-native';
+import { useAuthStore } from '../store/authStore';
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
+    const { settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
+
     return (
         <View style={{
             position: 'absolute',
@@ -10,18 +14,18 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
             left: 24,
             right: 24,
             flexDirection: 'row',
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            backgroundColor: isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)',
             borderRadius: 28,
             height: 64,
             alignItems: 'center',
             justifyContent: 'space-around',
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
+            shadowOpacity: isDark ? 0.3 : 0.08,
             shadowRadius: 20,
             elevation: 8,
             borderWidth: 1,
-            borderColor: 'rgba(0, 0, 0, 0.04)',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
         }}>
             {state.routes.map((route: any, index: number) => {
                 const { options } = descriptors[route.key];
@@ -47,7 +51,9 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                 };
 
                 const getIcon = () => {
-                    const color = isFocused ? '#111827' : '#9CA3AF';
+                    const activeColor = isDark ? '#FFFFFF' : '#111827';
+                    const inactiveColor = isDark ? '#6B7280' : '#9CA3AF';
+                    const color = isFocused ? activeColor : inactiveColor;
                     const size = 22;
                     const strokeWidth = isFocused ? 2.5 : 2;
 
@@ -87,14 +93,14 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                             paddingHorizontal: 12,
                             paddingVertical: 4,
                             borderRadius: 16,
-                            backgroundColor: isFocused ? '#F3F4F6' : 'transparent',
+                            backgroundColor: isFocused ? (isDark ? '#374151' : '#F3F4F6') : 'transparent',
                         }}>
                             {getIcon()}
                         </View>
                         <Text style={{
                             fontSize: 10,
                             fontWeight: isFocused ? '700' : '500',
-                            color: isFocused ? '#111827' : '#9CA3AF',
+                            color: isFocused ? (isDark ? '#F9FAFB' : '#111827') : (isDark ? '#6B7280' : '#9CA3AF'),
                             marginTop: 2,
                         }}>
                             {getLabel()}
@@ -106,7 +112,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                                 width: 4,
                                 height: 4,
                                 borderRadius: 2,
-                                backgroundColor: '#111827',
+                                backgroundColor: isDark ? '#F9FAFB' : '#111827',
                             }} />
                         )}
                     </TouchableOpacity>

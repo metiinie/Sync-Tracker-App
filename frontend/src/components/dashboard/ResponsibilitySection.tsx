@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Edit3, Users, Clock } from 'lucide-react-native';
 import { timeAgo } from '../../utils/timeAgo';
+import { useAuthStore } from '../../store/authStore';
 
 interface ResponsibilitySectionProps {
     groups: {
@@ -23,6 +24,9 @@ const statusConfig: Record<string, { dot: string; label: string; icon: string }>
 };
 
 const ResponsibilitySection: React.FC<ResponsibilitySectionProps> = ({ groups, onTaskPress, onUpdateSync, onHeaderPress }) => {
+    const { settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
+
     const hasAny = groups.blocked.length + groups.help.length + groups.needsUpdate.length + groups.inSync.length > 0;
 
     if (!hasAny) return null;
@@ -34,7 +38,7 @@ const ResponsibilitySection: React.FC<ResponsibilitySectionProps> = ({ groups, o
                 <Text style={{
                     fontSize: 12,
                     fontWeight: '800',
-                    color: '#9CA3AF',
+                    color: isDark ? '#6B7280' : '#9CA3AF',
                     letterSpacing: 2,
                     textTransform: 'uppercase',
                 }}>
@@ -56,7 +60,7 @@ const ResponsibilitySection: React.FC<ResponsibilitySectionProps> = ({ groups, o
                                 onPress={() => onTaskPress(task.id)}
                                 activeOpacity={0.7}
                                 style={{
-                                    backgroundColor: '#FFFFFF',
+                                    backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                                     borderRadius: 16,
                                     padding: 16,
                                     marginBottom: 10,
@@ -64,11 +68,11 @@ const ResponsibilitySection: React.FC<ResponsibilitySectionProps> = ({ groups, o
                                     alignItems: 'center',
                                     shadowColor: '#000',
                                     shadowOffset: { width: 0, height: 1 },
-                                    shadowOpacity: 0.04,
+                                    shadowOpacity: isDark ? 0.3 : 0.04,
                                     shadowRadius: 6,
                                     elevation: 1,
                                     borderWidth: 1,
-                                    borderColor: '#F3F4F6',
+                                    borderColor: isDark ? '#374151' : '#F3F4F6',
                                 }}
                             >
                                 {/* Sync State Icon */}
@@ -91,17 +95,17 @@ const ResponsibilitySection: React.FC<ResponsibilitySectionProps> = ({ groups, o
 
                                 {/* Task Info */}
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 3 }} numberOfLines={1}>
+                                    <Text style={{ fontSize: 15, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827', marginBottom: 3 }} numberOfLines={1}>
                                         {task.title}
                                     </Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>
+                                        <Text style={{ fontSize: 12, color: isDark ? '#9CA3AF' : '#9CA3AF', fontWeight: '500' }}>
                                             {config.label}
                                         </Text>
                                         {task.assigner?.name && (
                                             <>
-                                                <Text style={{ fontSize: 12, color: '#D1D5DB', marginHorizontal: 6 }}>•</Text>
-                                                <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>
+                                                <Text style={{ fontSize: 12, color: isDark ? '#4B5563' : '#D1D5DB', marginHorizontal: 6 }}>•</Text>
+                                                <Text style={{ fontSize: 12, color: isDark ? '#9CA3AF' : '#9CA3AF', fontWeight: '500' }}>
                                                     By {task.assigner.name}
                                                 </Text>
                                             </>
@@ -120,13 +124,13 @@ const ResponsibilitySection: React.FC<ResponsibilitySectionProps> = ({ groups, o
                                         width: 38,
                                         height: 38,
                                         borderRadius: 12,
-                                        backgroundColor: '#F3F4F6',
+                                        backgroundColor: isDark ? '#374151' : '#F3F4F6',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         marginLeft: 8,
                                     }}
                                 >
-                                    <Edit3 size={16} color="#6B7280" />
+                                    <Edit3 size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
                                 </TouchableOpacity>
                             </TouchableOpacity>
                         ))}

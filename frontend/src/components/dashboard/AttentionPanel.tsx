@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { AlertTriangle, Clock, ChevronRight, CheckCircle } from 'lucide-react-native';
+import { CheckCircle, Clock } from 'lucide-react-native';
 import { timeAgo } from '../../utils/timeAgo';
+import { useAuthStore } from '../../store/authStore';
 
 interface AttentionItem {
     task: any;
@@ -14,11 +15,11 @@ interface AttentionPanelProps {
     onTaskPress: (taskId: string) => void;
 }
 
-const getRiskConfig = (riskState: string) => {
+const getRiskConfig = (riskState: string, isDark: boolean) => {
     switch (riskState) {
         case 'BLOCKED':
             return {
-                bg: '#FEF2F2',
+                bg: isDark ? '#451A1A' : '#FEF2F2',
                 border: '#EF4444',
                 badge: '#EF4444',
                 badgeText: '#FFFFFF',
@@ -26,7 +27,7 @@ const getRiskConfig = (riskState: string) => {
             };
         case 'HELP_REQUESTED':
             return {
-                bg: '#EFF6FF',
+                bg: isDark ? '#1E3A8A' : '#EFF6FF',
                 border: '#3B82F6',
                 badge: '#3B82F6',
                 badgeText: '#FFFFFF',
@@ -34,7 +35,7 @@ const getRiskConfig = (riskState: string) => {
             };
         case 'STALE':
             return {
-                bg: '#FFFBEB',
+                bg: isDark ? '#45290A' : '#FFFBEB',
                 border: '#F59E0B',
                 badge: '#F59E0B',
                 badgeText: '#FFFFFF',
@@ -42,7 +43,7 @@ const getRiskConfig = (riskState: string) => {
             };
         case 'PENDING_ACCEPTANCE':
             return {
-                bg: '#F5F3FF',
+                bg: isDark ? '#2E1065' : '#F5F3FF',
                 border: '#8B5CF6',
                 badge: '#8B5CF6',
                 badgeText: '#FFFFFF',
@@ -50,9 +51,9 @@ const getRiskConfig = (riskState: string) => {
             };
         default:
             return {
-                bg: '#F9FAFB',
-                border: '#9CA3AF',
-                badge: '#9CA3AF',
+                bg: isDark ? '#1F2937' : '#F9FAFB',
+                border: isDark ? '#4B5563' : '#9CA3AF',
+                badge: isDark ? '#4B5563' : '#9CA3AF',
                 badgeText: '#FFFFFF',
                 label: riskState,
             };
@@ -60,6 +61,9 @@ const getRiskConfig = (riskState: string) => {
 };
 
 const AttentionPanel: React.FC<AttentionPanelProps> = ({ items, onTaskPress }) => {
+    const { settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
+
     if (items.length === 0) {
         return (
             <View style={{ marginTop: 16, marginBottom: 8 }}>
@@ -72,28 +76,28 @@ const AttentionPanel: React.FC<AttentionPanelProps> = ({ items, onTaskPress }) =
 
                 {/* Empty State */}
                 <View style={{
-                    backgroundColor: '#F0FDF4',
+                    backgroundColor: isDark ? '#064E3B' : '#F0FDF4',
                     borderRadius: 20,
                     padding: 32,
                     alignItems: 'center',
                     borderWidth: 1,
-                    borderColor: '#D1FAE5',
+                    borderColor: isDark ? '#059669' : '#D1FAE5',
                 }}>
                     <View style={{
                         width: 56,
                         height: 56,
                         borderRadius: 28,
-                        backgroundColor: '#DCFCE7',
+                        backgroundColor: isDark ? '#10B981' : '#DCFCE7',
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginBottom: 12,
                     }}>
-                        <CheckCircle size={28} color="#10B981" />
+                        <CheckCircle size={28} color={isDark ? '#FFFFFF' : '#10B981'} />
                     </View>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#065F46', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#A7F3D0' : '#065F46', marginBottom: 4 }}>
                         Everything is in sync.
                     </Text>
-                    <Text style={{ fontSize: 13, color: '#6EE7B7', fontWeight: '500' }}>
+                    <Text style={{ fontSize: 13, color: isDark ? '#34D399' : '#6EE7B7', fontWeight: '500' }}>
                         No blocked tasks or pending requests
                     </Text>
                 </View>
@@ -122,7 +126,7 @@ const AttentionPanel: React.FC<AttentionPanelProps> = ({ items, onTaskPress }) =
 
             {/* Attention Cards */}
             {items.map((item, idx) => {
-                const config = getRiskConfig(item.riskState);
+                const config = getRiskConfig(item.riskState, isDark);
                 return (
                     <TouchableOpacity
                         key={`attention-${item.task.id}-${idx}`}
@@ -163,14 +167,14 @@ const AttentionPanel: React.FC<AttentionPanelProps> = ({ items, onTaskPress }) =
                         </View>
 
                         {/* Task Title */}
-                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 8 }} numberOfLines={2}>
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827', marginBottom: 8 }} numberOfLines={2}>
                             {item.task.title}
                         </Text>
 
                         {/* Bottom Row: Role + Arrow */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>
-                                Role: <Text style={{ fontWeight: '700', color: '#374151' }}>{item.role}</Text>
+                            <Text style={{ fontSize: 13, color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '500' }}>
+                                Role: <Text style={{ fontWeight: '700', color: isDark ? '#D1D5DB' : '#374151' }}>{item.role}</Text>
                             </Text>
                             <Text style={{ fontSize: 13, color: config.border, fontWeight: '600' }}>
                                 View Details

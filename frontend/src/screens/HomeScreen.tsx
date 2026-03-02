@@ -38,7 +38,8 @@ const HomeScreen = ({ navigation }: any) => {
     const [unreadNotifications, setUnreadNotifications] = useState(0);
     const [recentActivities, setRecentActivities] = useState<any[]>([]);
     const [staleThreshold, setStaleThreshold] = useState(24);
-    const user = useAuthStore(state => state.user);
+    const { user, settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
 
     const fetchTasks = async () => {
         try {
@@ -316,8 +317,8 @@ const HomeScreen = ({ navigation }: any) => {
     if (!dashboard) return null;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? '#111827' : '#FAFAFA'} />
 
             {/* ─── HEADER ──────────────────────── */}
             <View style={{
@@ -357,10 +358,10 @@ const HomeScreen = ({ navigation }: any) => {
                         }} />
                     </View>
                     <View>
-                        <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>
+                        <Text style={{ fontSize: 20, fontWeight: '800', color: isDark ? '#FFFFFF' : '#111827' }}>
                             SyncTracker
                         </Text>
-                        <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>
+                        <Text style={{ fontSize: 12, color: isDark ? '#9CA3AF' : '#9CA3AF', fontWeight: '500' }}>
                             {getGreeting()}, {firstName}
                         </Text>
                     </View>
@@ -373,12 +374,12 @@ const HomeScreen = ({ navigation }: any) => {
                         width: 42,
                         height: 42,
                         borderRadius: 14,
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: isDark ? '#374151' : '#F3F4F6',
                         alignItems: 'center',
                         justifyContent: 'center',
                     }}
                 >
-                    <Bell size={20} color="#374151" />
+                    <Bell size={20} color={isDark ? '#E5E7EB' : '#374151'} />
                     {unreadNotifications > 0 && (
                         <View style={{
                             position: 'absolute',
@@ -389,7 +390,7 @@ const HomeScreen = ({ navigation }: any) => {
                             borderRadius: 5,
                             backgroundColor: '#EF4444',
                             borderWidth: 2,
-                            borderColor: '#F3F4F6',
+                            borderColor: isDark ? '#374151' : '#F3F4F6',
                         }} />
                     )}
                 </TouchableOpacity>
@@ -403,10 +404,10 @@ const HomeScreen = ({ navigation }: any) => {
             >
                 {/* ─── GREETING ────────────────────── */}
                 <View style={{ paddingHorizontal: 24, paddingTop: 20, marginBottom: 24 }}>
-                    <Text style={{ fontSize: 14, color: '#6B7280', fontWeight: '500', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 14, color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '500', marginBottom: 4 }}>
                         {getGreeting()},
                     </Text>
-                    <Text style={{ fontSize: 26, fontWeight: '800', color: '#111827' }}>
+                    <Text style={{ fontSize: 26, fontWeight: '800', color: isDark ? '#FFFFFF' : '#111827' }}>
                         {firstName}
                     </Text>
                 </View>
@@ -423,13 +424,13 @@ const HomeScreen = ({ navigation }: any) => {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', marginRight: 8 }} />
-                                <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>Activity Pulse</Text>
+                                <Text style={{ fontSize: 15, fontWeight: '700', color: isDark ? '#FFFFFF' : '#111827' }}>Activity Pulse</Text>
                             </View>
                             <TouchableOpacity onPress={() => navigation.navigate('Activity')}>
                                 <Text style={{ fontSize: 13, color: '#3B82F6', fontWeight: '600' }}>View All</Text>
                             </TouchableOpacity>
                         </View>
-                        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 }}>
+                        <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFFFFF', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.3 : 0.05, shadowRadius: 10, elevation: 2 }}>
                             {recentActivities.map((act, idx) => (
                                 <TouchableOpacity
                                     key={act.id}
@@ -440,25 +441,25 @@ const HomeScreen = ({ navigation }: any) => {
                                         marginBottom: idx === recentActivities.length - 1 ? 0 : 12,
                                         paddingBottom: idx === recentActivities.length - 1 ? 0 : 12,
                                         borderBottomWidth: idx === recentActivities.length - 1 ? 0 : 1,
-                                        borderBottomColor: '#F3F4F6'
+                                        borderBottomColor: isDark ? '#374151' : '#F3F4F6'
                                     }}
                                 >
-                                    <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#F3F6FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: isDark ? '#1F2937' : '#F3F6FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                                         <Clock size={16} color="#3B82F6" />
                                     </View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 13, color: '#374151', lineHeight: 18 }} numberOfLines={2}>
-                                            <Text style={{ fontWeight: '700', color: '#111827' }}>{act.actorName}</Text>
+                                        <Text style={{ fontSize: 13, color: isDark ? '#D1D5DB' : '#374151', lineHeight: 18 }} numberOfLines={2}>
+                                            <Text style={{ fontWeight: '700', color: isDark ? '#FFFFFF' : '#111827' }}>{act.actorName}</Text>
                                             {' '}
                                             {act.actionText}
                                             {' on '}
-                                            <Text style={{ fontWeight: '700', color: '#111827' }}>{act.taskTitle}</Text>
+                                            <Text style={{ fontWeight: '700', color: isDark ? '#FFFFFF' : '#111827' }}>{act.taskTitle}</Text>
                                         </Text>
-                                        <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4, fontWeight: '500' }}>
+                                        <Text style={{ fontSize: 11, color: isDark ? '#6B7280' : '#9CA3AF', marginTop: 4, fontWeight: '500' }}>
                                             {formatTimeAgo(act.timestamp)}
                                         </Text>
                                     </View>
-                                    <ChevronRight size={14} color="#D1D5DB" />
+                                    <ChevronRight size={14} color={isDark ? '#4B5563' : '#D1D5DB'} />
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -502,17 +503,17 @@ const HomeScreen = ({ navigation }: any) => {
                             width: 80,
                             height: 80,
                             borderRadius: 40,
-                            backgroundColor: '#F3F4F6',
+                            backgroundColor: isDark ? '#374151' : '#F3F4F6',
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginBottom: 16,
                         }}>
-                            <Shield size={36} color="#D1D5DB" />
+                            <Shield size={36} color={isDark ? '#4B5563' : '#D1D5DB'} />
                         </View>
-                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#9CA3AF', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#9CA3AF' : '#9CA3AF', marginBottom: 4 }}>
                             No tasks on your radar
                         </Text>
-                        <Text style={{ fontSize: 13, color: '#D1D5DB', fontWeight: '500', textAlign: 'center', paddingHorizontal: 40 }}>
+                        <Text style={{ fontSize: 13, color: isDark ? '#6B7280' : '#D1D5DB', fontWeight: '500', textAlign: 'center', paddingHorizontal: 40 }}>
                             Create a task to begin syncing with your team
                         </Text>
                     </View>
@@ -528,10 +529,10 @@ const HomeScreen = ({ navigation }: any) => {
             >
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}
+                    style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}
                 >
                     <View style={{
-                        backgroundColor: '#FFF',
+                        backgroundColor: isDark ? '#1F2937' : '#FFF',
                         padding: 24,
                         borderTopLeftRadius: 32,
                         borderTopRightRadius: 32,
@@ -539,17 +540,17 @@ const HomeScreen = ({ navigation }: any) => {
                     }}>
                         {/* Header */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827' }}>Log Time</Text>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827' }}>Log Time</Text>
                             <TouchableOpacity
                                 onPress={() => setShowLogTimeModal(false)}
-                                style={{ padding: 8, backgroundColor: '#F3F4F6', borderRadius: 12 }}
+                                style={{ padding: 8, backgroundColor: isDark ? '#374151' : '#F3F4F6', borderRadius: 12 }}
                             >
-                                <X size={20} color="#6B7280" />
+                                <X size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
                             </TouchableOpacity>
                         </View>
 
                         {/* Task Selector */}
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#9CA3AF', marginBottom: 12, letterSpacing: 0.5 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#6B7280' : '#9CA3AF', marginBottom: 12, letterSpacing: 0.5 }}>
                             FOR WHICH TRACK?
                         </Text>
                         <ScrollView
@@ -567,9 +568,9 @@ const HomeScreen = ({ navigation }: any) => {
                                             paddingHorizontal: 16,
                                             paddingVertical: 12,
                                             borderRadius: 16,
-                                            backgroundColor: selectedTaskId === t.id ? '#1A1A2E' : '#F3F4F6',
+                                            backgroundColor: selectedTaskId === t.id ? (isDark ? '#3B82F6' : '#1A1A2E') : (isDark ? '#374151' : '#F3F4F6'),
                                             borderWidth: 1,
-                                            borderColor: selectedTaskId === t.id ? '#1A1A2E' : '#E5E7EB',
+                                            borderColor: selectedTaskId === t.id ? (isDark ? '#3B82F6' : '#1A1A2E') : (isDark ? '#4B5563' : '#E5E7EB'),
                                             minWidth: 120,
                                         }}
                                     >
@@ -578,95 +579,88 @@ const HomeScreen = ({ navigation }: any) => {
                                             style={{
                                                 fontSize: 14,
                                                 fontWeight: '700',
-                                                color: selectedTaskId === t.id ? '#FFFFFF' : '#374151'
+                                                color: selectedTaskId === t.id ? '#FFFFFF' : (isDark ? '#D1D5DB' : '#4B5563'),
+                                                marginBottom: 4,
                                             }}
                                         >
                                             {t.title}
                                         </Text>
-                                        <Text style={{
-                                            fontSize: 10,
-                                            fontWeight: '500',
-                                            color: selectedTaskId === t.id ? 'rgba(255,255,255,0.6)' : '#9CA3AF',
-                                            marginTop: 2
-                                        }}>
-                                            ID: {t.id.substring(0, 4).toUpperCase()}
+                                        <Text style={{ fontSize: 11, color: selectedTaskId === t.id ? 'rgba(255,255,255,0.7)' : (isDark ? '#9CA3AF' : '#9CA3AF'), fontWeight: '600' }}>
+                                            {t.syncState || 'IN_SYNC'}
                                         </Text>
                                     </TouchableOpacity>
                                 ))
                             ) : (
-                                <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', paddingVertical: 10 }}>
-                                    No active tracks found to log time for.
-                                </Text>
+                                <View style={{ padding: 12, backgroundColor: isDark ? '#374151' : '#F9FAFB', borderRadius: 12 }}>
+                                    <Text style={{ color: isDark ? '#9CA3AF' : '#9CA3AF', fontSize: 13 }}>No active tracks available.</Text>
+                                </View>
                             )}
                         </ScrollView>
 
                         {/* Time Inputs */}
-                        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 20 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#6B7280' : '#9CA3AF', marginBottom: 12, letterSpacing: 0.5 }}>
+                            DURATION
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 24 }}>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginLeft: 4 }}>HOURS</Text>
                                 <TextInput
                                     style={{
-                                        backgroundColor: '#F9FAFB',
+                                        backgroundColor: isDark ? '#374151' : '#F9FAFB',
                                         padding: 16,
                                         borderRadius: 16,
-                                        fontSize: 18,
-                                        fontWeight: '700',
-                                        color: '#111827',
+                                        fontSize: 24,
+                                        fontWeight: '800',
                                         textAlign: 'center',
-                                        borderWidth: 1,
-                                        borderColor: '#F3F4F6'
+                                        color: isDark ? '#F9FAFB' : '#111827',
                                     }}
+                                    keyboardType="number-pad"
                                     placeholder="0"
-                                    placeholderTextColor="#D1D5DB"
-                                    keyboardType="numeric"
+                                    placeholderTextColor={isDark ? '#6B7280' : '#D1D5DB'}
                                     value={timeLog.hours}
-                                    onChangeText={t => setTimeLog({ ...timeLog, hours: t })}
+                                    onChangeText={(text) => setTimeLog({ ...timeLog, hours: text.replace(/[^0-9]/g, '') })}
+                                    maxLength={2}
                                 />
+                                <Text style={{ textAlign: 'center', marginTop: 8, color: isDark ? '#9CA3AF' : '#9CA3AF', fontSize: 12, fontWeight: '600' }}>Hours</Text>
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginLeft: 4 }}>MINUTES</Text>
                                 <TextInput
                                     style={{
-                                        backgroundColor: '#F9FAFB',
+                                        backgroundColor: isDark ? '#374151' : '#F9FAFB',
                                         padding: 16,
                                         borderRadius: 16,
-                                        fontSize: 18,
-                                        fontWeight: '700',
-                                        color: '#111827',
+                                        fontSize: 24,
+                                        fontWeight: '800',
                                         textAlign: 'center',
-                                        borderWidth: 1,
-                                        borderColor: '#F3F4F6'
+                                        color: isDark ? '#F9FAFB' : '#111827',
                                     }}
-                                    placeholder="0"
-                                    placeholderTextColor="#D1D5DB"
-                                    keyboardType="numeric"
-                                    maxLength={2}
+                                    keyboardType="number-pad"
+                                    placeholder="00"
+                                    placeholderTextColor={isDark ? '#6B7280' : '#D1D5DB'}
                                     value={timeLog.minutes}
-                                    onChangeText={t => setTimeLog({ ...timeLog, minutes: t })}
+                                    onChangeText={(text) => setTimeLog({ ...timeLog, minutes: text.replace(/[^0-9]/g, '') })}
+                                    maxLength={2}
                                 />
+                                <Text style={{ textAlign: 'center', marginTop: 8, color: isDark ? '#9CA3AF' : '#9CA3AF', fontSize: 12, fontWeight: '600' }}>Minutes</Text>
                             </View>
                         </View>
 
-                        {/* Note Input */}
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginLeft: 4 }}>WORK DESCRIPTION</Text>
+                        {/* Notes */}
                         <TextInput
                             style={{
-                                backgroundColor: '#F9FAFB',
+                                backgroundColor: isDark ? '#374151' : '#F9FAFB',
                                 padding: 16,
                                 borderRadius: 16,
-                                fontSize: 14,
-                                color: '#111827',
-                                marginBottom: 32,
-                                minHeight: 100,
+                                fontSize: 15,
+                                color: isDark ? '#F9FAFB' : '#111827',
+                                minHeight: 80,
                                 textAlignVertical: 'top',
-                                borderWidth: 1,
-                                borderColor: '#F3F4F6'
+                                marginBottom: 24,
                             }}
-                            placeholder="What did you achieve? (Optional)"
-                            placeholderTextColor="#9CA3AF"
+                            placeholder="What did you work on? (Optional)"
+                            placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                             multiline
                             value={timeLog.note}
-                            onChangeText={t => setTimeLog({ ...timeLog, note: t })}
+                            onChangeText={(text) => setTimeLog({ ...timeLog, note: text })}
                         />
 
                         {/* Actions */}
@@ -677,27 +671,27 @@ const HomeScreen = ({ navigation }: any) => {
                                     flex: 1,
                                     paddingVertical: 18,
                                     borderRadius: 18,
-                                    backgroundColor: '#F3F4F6',
+                                    backgroundColor: isDark ? '#374151' : '#F3F4F6',
                                     alignItems: 'center'
                                 }}
                             >
-                                <Text style={{ fontSize: 15, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                                <Text style={{ fontSize: 15, fontWeight: '700', color: isDark ? '#D1D5DB' : '#4B5563' }}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={submitLogTime}
                                 activeOpacity={0.8}
-                                disabled={isLoggingTime}
+                                disabled={isLoggingTime || (!selectedTaskId || (!timeLog.hours && !timeLog.minutes))}
                                 style={{
                                     flex: 2,
                                     paddingVertical: 18,
                                     borderRadius: 18,
-                                    backgroundColor: isLoggingTime ? '#9CA3AF' : '#111827',
+                                    backgroundColor: (!selectedTaskId || (!timeLog.hours && !timeLog.minutes)) ? (isDark ? '#4B5563' : '#E5E7EB') : (isDark ? '#3B82F6' : '#111827'),
                                     flexDirection: 'row',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     shadowColor: '#000',
                                     shadowOffset: { width: 0, height: 4 },
-                                    shadowOpacity: 0.15,
+                                    shadowOpacity: (!selectedTaskId || (!timeLog.hours && !timeLog.minutes)) ? 0 : 0.15,
                                     shadowRadius: 12,
                                     elevation: 5
                                 }}
@@ -706,8 +700,10 @@ const HomeScreen = ({ navigation }: any) => {
                                     <ActivityIndicator size="small" color="#FFF" />
                                 ) : (
                                     <>
-                                        <Clock size={16} color="#FFF" style={{ marginRight: 8 }} />
-                                        <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFF' }}>Log Time</Text>
+                                        <Clock size={16} color={(!selectedTaskId || (!timeLog.hours && !timeLog.minutes)) ? (isDark ? '#9CA3AF' : '#9CA3AF') : '#FFF'} style={{ marginRight: 8 }} />
+                                        <Text style={{ fontSize: 15, fontWeight: '700', color: (!selectedTaskId || (!timeLog.hours && !timeLog.minutes)) ? (isDark ? '#9CA3AF' : '#9CA3AF') : '#FFF' }}>
+                                            Log Time
+                                        </Text>
                                     </>
                                 )}
                             </TouchableOpacity>

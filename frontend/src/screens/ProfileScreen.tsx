@@ -360,14 +360,10 @@ const ProfileScreen = ({ navigation }: any) => {
 
                 {/* System Info */}
                 <View className="px-6 py-10 items-center">
-                    <View className="bg-gray-50 px-3 py-1 rounded-full mb-3">
-                        <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest">System Info</Text>
-                    </View>
-                    <Text className="text-gray-400 text-xs font-medium">Sync Tracker v1.0.4 (Alpha)</Text>
-                    <Text className="text-gray-300 text-[10px] mt-1 font-mono">ENV: PRODUCTION • BUILD: 2026.03.02</Text>
-                    <View className="flex-row items-center mt-4 opacity-30">
+                    <Text className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">v1.0.4</Text>
+                    <View className="flex-row items-center mt-2 opacity-40">
                         <Info size={12} color="#9CA3AF" />
-                        <Text className="ml-1 text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Powered by Antigravity OS</Text>
+                        <Text className="ml-1 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Powered by Awol</Text>
                     </View>
                 </View>
             </View>

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Clock } from 'lucide-react-native';
 import { timeAgo } from '../../utils/timeAgo';
+import { useAuthStore } from '../../store/authStore';
 
 interface DelegatedSectionProps {
     tasks: any[];
@@ -31,6 +32,9 @@ const getSyncLabel = (syncState: string) => {
 };
 
 const DelegatedSection: React.FC<DelegatedSectionProps> = ({ tasks, onTaskPress, onNudge, onHeaderPress }) => {
+    const { settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
+
     if (tasks.length === 0) return null;
 
     return (
@@ -40,7 +44,7 @@ const DelegatedSection: React.FC<DelegatedSectionProps> = ({ tasks, onTaskPress,
                 <Text style={{
                     fontSize: 12,
                     fontWeight: '800',
-                    color: '#9CA3AF',
+                    color: isDark ? '#6B7280' : '#9CA3AF',
                     letterSpacing: 2,
                     textTransform: 'uppercase',
                 }}>
@@ -60,7 +64,7 @@ const DelegatedSection: React.FC<DelegatedSectionProps> = ({ tasks, onTaskPress,
                         onPress={() => onTaskPress(task.id)}
                         activeOpacity={0.7}
                         style={{
-                            backgroundColor: '#FFFFFF',
+                            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                             borderRadius: 16,
                             padding: 16,
                             marginBottom: 10,
@@ -68,16 +72,16 @@ const DelegatedSection: React.FC<DelegatedSectionProps> = ({ tasks, onTaskPress,
                             borderLeftColor: isBlocked ? '#EF4444' : 'transparent',
                             shadowColor: '#000',
                             shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.04,
+                            shadowOpacity: isDark ? 0.3 : 0.04,
                             shadowRadius: 6,
                             elevation: 1,
                             borderWidth: 1,
-                            borderColor: '#F3F4F6',
+                            borderColor: isDark ? '#374151' : '#F3F4F6',
                         }}
                     >
                         {/* Task Title & Nudge */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                            <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827', flex: 1, marginRight: 12 }} numberOfLines={1}>
+                            <Text style={{ fontSize: 15, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827', flex: 1, marginRight: 12 }} numberOfLines={1}>
                                 {task.title}
                             </Text>
                             <TouchableOpacity
@@ -100,16 +104,16 @@ const DelegatedSection: React.FC<DelegatedSectionProps> = ({ tasks, onTaskPress,
                                 width: 24,
                                 height: 24,
                                 borderRadius: 12,
-                                backgroundColor: '#E5E7EB',
+                                backgroundColor: isDark ? '#374151' : '#E5E7EB',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 marginRight: 8,
                             }}>
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#6B7280' }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? '#9CA3AF' : '#6B7280' }}>
                                     {(task.owner?.name || 'U').charAt(0).toUpperCase()}
                                 </Text>
                             </View>
-                            <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500', marginRight: 8 }}>
+                            <Text style={{ fontSize: 13, color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '500', marginRight: 8 }}>
                                 {task.owner?.name || 'Unknown'}
                             </Text>
                             <View style={{
