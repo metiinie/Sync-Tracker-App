@@ -14,6 +14,7 @@ import MainTabs from './src/navigation/MainTabs';
 import TaskDetailScreen from './src/screens/TaskDetailScreen';
 import CreateTaskScreen from './src/screens/CreateTaskScreen';
 import SplashScreen from './src/screens/SplashScreen';
+import NotificationScreen from './src/screens/NotificationScreen';
 
 const Stack = createNativeStackNavigator();
 const queryClient = new QueryClient();
@@ -71,6 +72,11 @@ export default function App() {
               name="CreateTask"
               component={CreateTaskScreen}
               options={{ headerShown: true, title: 'New Track', headerShadowVisible: false }}
+            />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationScreen}
+              options={{ headerShown: false }}
             />
           </>
         )}

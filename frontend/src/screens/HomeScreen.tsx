@@ -28,6 +28,7 @@ const HomeScreen = ({ navigation }: any) => {
     const [timeLog, setTimeLog] = useState({ hours: '', minutes: '', note: '' });
     const [isSyncing, setIsSyncing] = useState(false);
     const [isLoggingTime, setIsLoggingTime] = useState(false);
+    const [unreadNotifications, setUnreadNotifications] = useState(0);
     const user = useAuthStore(state => state.user);
 
     const fetchTasks = async () => {
@@ -39,14 +40,25 @@ const HomeScreen = ({ navigation }: any) => {
         }
     };
 
+    const fetchUnreadCount = async () => {
+        try {
+            const response = await api.get('/notifications');
+            const unread = response.data.filter((n: any) => n.isRead === 'false').length;
+            setUnreadNotifications(unread);
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+        }
+    };
+
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchTasks();
+        await Promise.all([fetchTasks(), fetchUnreadCount()]);
         setRefreshing(false);
     };
 
     useEffect(() => {
         fetchTasks();
+        fetchUnreadCount();
 
         const socket = getSocket();
 
@@ -81,6 +93,10 @@ const HomeScreen = ({ navigation }: any) => {
             fetchTasks();
         });
 
+        socket.on('notification:new', () => {
+            setUnreadNotifications(prev => prev + 1);
+        });
+
         return () => {
             socket.off('sync:update');
             socket.off('task:blocked');
@@ -88,6 +104,7 @@ const HomeScreen = ({ navigation }: any) => {
             socket.off('task:assigned');
             socket.off('task:transferred');
             socket.off('milestone:completed');
+            socket.off('notification:new');
         };
     }, []);
 
@@ -300,7 +317,7 @@ const HomeScreen = ({ navigation }: any) => {
 
                 {/* Notification Bell */}
                 <TouchableOpacity
-                    onPress={() => navigation.navigate('Activity')}
+                    onPress={() => navigation.navigate('Notifications')}
                     style={{
                         width: 42,
                         height: 42,
@@ -311,6 +328,19 @@ const HomeScreen = ({ navigation }: any) => {
                     }}
                 >
                     <Bell size={20} color="#374151" />
+                    {unreadNotifications > 0 && (
+                        <View style={{
+                            position: 'absolute',
+                            top: 10,
+                            right: 10,
+                            width: 10,
+                            height: 10,
+                            borderRadius: 5,
+                            backgroundColor: '#EF4444',
+                            borderWidth: 2,
+                            borderColor: '#F3F4F6',
+                        }} />
+                    )}
                 </TouchableOpacity>
             </View>
 
