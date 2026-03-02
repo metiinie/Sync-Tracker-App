@@ -38,43 +38,51 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading || showSplash) {
+  // Render content based on app state
+  const renderContent = () => {
     if (showSplash) {
       return <SplashScreen onFinish={() => setShowSplash(false)} />;
     }
+
+    if (loading) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
+      );
+    }
+
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!token ? (
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen
+              name="TaskDetail"
+              component={TaskDetailScreen}
+              options={{ headerShown: true, title: 'Track Details', headerShadowVisible: false }}
+            />
+            <Stack.Screen
+              name="CreateTask"
+              component={CreateTaskScreen}
+              options={{ headerShown: true, title: 'New Track', headerShadowVisible: false }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
     );
-  }
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
       <NavigationContainer>
         <StatusBar style="auto" />
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {!token ? (
-            <>
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Register" component={RegisterScreen} />
-            </>
-          ) : (
-            <>
-              <Stack.Screen name="Main" component={MainTabs} />
-              <Stack.Screen
-                name="TaskDetail"
-                component={TaskDetailScreen}
-                options={{ headerShown: true, title: 'Track Details', headerShadowVisible: false }}
-              />
-              <Stack.Screen
-                name="CreateTask"
-                component={CreateTaskScreen}
-                options={{ headerShown: true, title: 'New Track', headerShadowVisible: false }}
-              />
-            </>
-          )}
-        </Stack.Navigator>
+        {renderContent()}
       </NavigationContainer>
     </QueryClientProvider>
   );

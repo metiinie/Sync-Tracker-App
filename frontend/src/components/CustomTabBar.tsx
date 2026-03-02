@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Target, CheckSquare, Activity, User } from 'lucide-react-native';
+import { Home as HomeIcon, CheckCircle2, Bell, UserCircle2 } from 'lucide-react-native';
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     return (
@@ -49,20 +49,20 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                 const getIcon = () => {
                     const color = isFocused ? '#111827' : '#9CA3AF';
                     const size = 22;
-                    const strokeWidth = isFocused ? 2.5 : 1.8;
+                    const strokeWidth = isFocused ? 2.5 : 2;
 
                     switch (route.name) {
-                        case 'Radar': return <Target size={size} color={color} strokeWidth={strokeWidth} />;
-                        case 'Tasks': return <CheckSquare size={size} color={color} strokeWidth={strokeWidth} />;
-                        case 'Activity': return <Activity size={size} color={color} strokeWidth={strokeWidth} />;
-                        case 'Profile': return <User size={size} color={color} strokeWidth={strokeWidth} />;
+                        case 'Home': return <HomeIcon size={size} color={color} strokeWidth={strokeWidth} />;
+                        case 'Tasks': return <CheckCircle2 size={size} color={color} strokeWidth={strokeWidth} />;
+                        case 'Activity': return <Bell size={size} color={color} strokeWidth={strokeWidth} />;
+                        case 'Profile': return <UserCircle2 size={size} color={color} strokeWidth={strokeWidth} />;
                         default: return null;
                     }
                 };
 
                 const getLabel = () => {
                     switch (route.name) {
-                        case 'Radar': return 'Radar';
+                        case 'Home': return 'Home';
                         case 'Tasks': return 'Tasks';
                         case 'Activity': return 'Activity';
                         case 'Profile': return 'Profile';

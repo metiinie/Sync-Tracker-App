@@ -1,20 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import {
+    View, Text, TextInput, TouchableOpacity, ScrollView,
+    Alert, ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Plus, X, User, Users, Flag, Trash2, CheckCircle2 } from 'lucide-react-native';
+import {
+    ChevronLeft, Plus, X, User, Users, Flag, Trash2,
+    CheckCircle2, Zap, FileText, Target
+} from 'lucide-react-native';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
+// ─── HELPERS ───────────────────────────────────────────
+const getInitials = (name: string) => {
+    if (!name) return '??';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+};
+
+const getAvatarColor = (name: string) => {
+    if (!name) return '#9CA3AF';
+    const colors = ['#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#14B8A6'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+};
+
 const CreateTaskScreen = ({ navigation }: any) => {
-    const { token } = useAuthStore();
+    const { token, user } = useAuthStore();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [responsibleOwnerId, setResponsibleOwnerId] = useState('');
-    const [participants, setParticipants] = useState<{ userId: string, role: string }[]>([]);
+    const [participants, setParticipants] = useState<{ userId: string; role: string }[]>([]);
     const [milestones, setMilestones] = useState<string[]>([]);
     const [newMilestone, setNewMilestone] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
-    // User search (simplified for MVP)
+    // Active section for step indicator
+    const [activeSection, setActiveSection] = useState(0);
+
+    // User search
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
 
@@ -56,11 +82,16 @@ const CreateTaskScreen = ({ navigation }: any) => {
     };
 
     const handleCreate = async () => {
-        if (!title || !responsibleOwnerId) {
-            Alert.alert('Missing Fields', 'Title and Responsible Owner are required');
+        if (!title.trim()) {
+            Alert.alert('Missing Fields', 'Track title is required.');
+            return;
+        }
+        if (!responsibleOwnerId) {
+            Alert.alert('Missing Fields', 'Please assign a Responsible Owner.');
             return;
         }
 
+        setSubmitting(true);
         try {
             await api.post('/tasks', {
                 title,
@@ -69,167 +100,564 @@ const CreateTaskScreen = ({ navigation }: any) => {
                 participants,
                 milestones,
             });
-            Alert.alert('Success', 'Responsibility assigned. Awaiting acceptance.');
+            Alert.alert('Track Launched', 'Responsibility assigned. Awaiting acceptance.');
             navigation.goBack();
         } catch (error: any) {
             Alert.alert('Error', error.response?.data?.message || 'Failed to create task');
+        } finally {
+            setSubmitting(false);
         }
     };
 
+    // Step indicators
+    const steps = [
+        { label: 'Details', icon: FileText, filled: !!title.trim() },
+        { label: 'Owner', icon: User, filled: !!responsibleOwnerId },
+        { label: 'Team', icon: Users, filled: participants.length > 0 },
+        { label: 'Goals', icon: Target, filled: milestones.length > 0 },
+    ];
+
+    const selectedOwner = allUsers.find(u => u.id === responsibleOwnerId);
+
     return (
-        <SafeAreaView className="flex-1 bg-white">
-            <View className="flex-row items-center px-6 pt-2 pb-4 border-b border-gray-100">
-                <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
-                    <ChevronLeft size={24} color="#000" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+            <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+
+            {/* ─── HEADER ───────────────────────────────────────── */}
+            <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+                backgroundColor: '#FFFFFF',
+                borderBottomWidth: 1,
+                borderBottomColor: '#F3F4F6',
+            }}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+                    <ChevronLeft size={24} color="#374151" />
                 </TouchableOpacity>
-                <Text className="text-xl font-bold ml-2">New Accountability Track</Text>
+                <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
+                        New Track
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#9CA3AF', fontWeight: '500', marginTop: 1 }}>
+                        Assign Accountability
+                    </Text>
+                </View>
+                <View style={{ width: 32 }} />
             </View>
 
-            <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: 100 }}>
-                {/* Basic Info */}
-                <View className="mb-8">
-                    <Text className="text-gray-900 font-bold text-lg mb-4">Core Information</Text>
-                    <View className="bg-gray-50 rounded-2xl p-4 border border-gray-100 mb-4">
-                        <Text className="text-gray-400 text-xs font-bold uppercase mb-2">Track Title</Text>
-                        <TextInput
-                            className="text-gray-900 text-base font-semibold"
-                            placeholder="e.g., Q1 Revenue Optimization"
-                            value={title}
-                            onChangeText={setTitle}
-                        />
-                    </View>
-                    <View className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                        <Text className="text-gray-400 text-xs font-bold uppercase mb-2">Context / Description</Text>
-                        <TextInput
-                            className="text-gray-900 text-base"
-                            placeholder="What is the mission?"
-                            value={description}
-                            onChangeText={setDescription}
-                            multiline
-                            numberOfLines={3}
-                            textAlignVertical="top"
-                        />
-                    </View>
-                </View>
-
-                {/* Responsible Owner */}
-                <View className="mb-8">
-                    <View className="flex-row items-center mb-4">
-                        <User size={20} color="#000" />
-                        <Text className="text-gray-900 font-bold text-lg ml-2">Responsible Owner</Text>
-                    </View>
-                    {loadingUsers ? (
-                        <ActivityIndicator color="#000" />
-                    ) : (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                            {allUsers.map((u) => {
-                                const isSelected = responsibleOwnerId === u.id;
-                                return (
-                                    <TouchableOpacity
-                                        key={u.id}
-                                        onPress={() => setResponsibleOwnerId(u.id)}
-                                        className={`mr-3 px-4 py-3 rounded-2xl border ${isSelected ? 'bg-black border-black' : 'bg-gray-50 border-gray-100'
-                                            } items-center`}
-                                    >
-                                        <Text className={`font-semibold ${isSelected ? 'text-white' : 'text-gray-700'}`}>
-                                            {u.name}
-                                        </Text>
-                                        <Text className={`text-xs ${isSelected ? 'text-gray-400' : 'text-gray-400'}`}>
-                                            {u.email.split('@')[0]}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                    )}
-                </View>
-
-                {/* Participants */}
-                <View className="mb-8">
-                    <View className="flex-row items-center mb-4">
-                        <Users size={20} color="#000" />
-                        <Text className="text-gray-900 font-bold text-lg ml-2">Participants</Text>
-                    </View>
-
-                    {/* Selected Participants Chips */}
-                    <View className="flex-row flex-wrap mb-4">
-                        {participants.length === 0 && (
-                            <Text className="text-gray-400 italic">No additional participants yet</Text>
-                        )}
-                        {participants.map((p) => {
-                            const userObj = allUsers.find(u => u.id === p.userId);
-                            return (
-                                <View key={p.userId} className="bg-gray-100 rounded-full px-3 py-1.5 flex-row items-center mr-2 mb-2">
-                                    <Text className="text-gray-700 text-sm font-medium mr-2">{userObj?.name}</Text>
-                                    <TouchableOpacity onPress={() => removeParticipant(p.userId)}>
-                                        <X size={14} color="#6b7280" />
-                                    </TouchableOpacity>
-                                </View>
-                            );
-                        })}
-                    </View>
-
-                    {/* Participant Picker */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                        {allUsers.filter(u => u.id !== responsibleOwnerId).map((u) => {
-                            const isAdded = participants.find(p => p.userId === u.id);
-                            return (
-                                <TouchableOpacity
-                                    key={u.id}
-                                    onPress={() => isAdded ? removeParticipant(u.id) : addParticipant(u.id)}
-                                    className={`mr-3 px-4 py-2 rounded-xl border ${isAdded ? 'bg-gray-200 border-gray-300' : 'bg-white border-gray-200'
-                                        }`}
-                                >
-                                    <Text className="text-gray-600 font-medium">+ {u.name}</Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
-
-                {/* Milestones */}
-                <View className="mb-10">
-                    <View className="flex-row items-center mb-4">
-                        <Flag size={20} color="#000" />
-                        <Text className="text-gray-900 font-bold text-lg ml-2">Milestones</Text>
-                    </View>
-
-                    <View className="flex-row mb-4">
-                        <TextInput
-                            className="flex-1 bg-gray-50 p-4 rounded-l-2xl border-y border-l border-gray-100"
-                            placeholder="Add a milestone..."
-                            value={newMilestone}
-                            onChangeText={setNewMilestone}
-                        />
+            {/* ─── STEP INDICATOR ────────────────────────────────── */}
+            <View style={{
+                flexDirection: 'row',
+                paddingHorizontal: 20,
+                paddingVertical: 16,
+                backgroundColor: '#FFFFFF',
+                borderBottomWidth: 1,
+                borderBottomColor: '#F3F4F6',
+                gap: 8,
+            }}>
+                {steps.map((step, i) => {
+                    const Icon = step.icon;
+                    const isActive = activeSection === i;
+                    const isFilled = step.filled;
+                    return (
                         <TouchableOpacity
-                            onPress={addMilestone}
-                            className="bg-black px-6 items-center justify-center rounded-r-2xl"
+                            key={i}
+                            onPress={() => setActiveSection(i)}
+                            style={{
+                                flex: 1,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                paddingVertical: 8,
+                                borderRadius: 12,
+                                backgroundColor: isActive ? '#111827' : isFilled ? '#F0FDF4' : '#F9FAFB',
+                                borderWidth: 1,
+                                borderColor: isActive ? '#111827' : isFilled ? '#BBF7D0' : '#E5E7EB',
+                            }}
                         >
-                            <Plus size={24} color="#fff" />
+                            {isFilled && !isActive ? (
+                                <CheckCircle2 size={14} color="#10B981" />
+                            ) : (
+                                <Icon size={14} color={isActive ? '#FFFFFF' : '#6B7280'} />
+                            )}
+                            <Text style={{
+                                fontSize: 11,
+                                fontWeight: '700',
+                                color: isActive ? '#FFFFFF' : isFilled ? '#10B981' : '#6B7280',
+                                marginLeft: 4,
+                            }}>
+                                {step.label}
+                            </Text>
                         </TouchableOpacity>
+                    );
+                })}
+            </View>
+
+            {/* ─── CONTENT ──────────────────────────────────────── */}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
+                <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingBottom: 120 }}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    {/* ─── SECTION 1: CORE DETAILS ─────────────── */}
+                    <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>
+                            CORE DETAILS
+                        </Text>
+
+                        {/* Title */}
+                        <View style={{
+                            backgroundColor: '#FFFFFF',
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: title.trim() ? '#10B981' : '#F3F4F6',
+                            padding: 16,
+                            marginBottom: 12,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.03,
+                            shadowRadius: 4,
+                            elevation: 1,
+                        }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
+                                TRACK TITLE *
+                            </Text>
+                            <TextInput
+                                style={{ fontSize: 16, fontWeight: '600', color: '#111827', padding: 0 }}
+                                placeholder="e.g., Q1 Revenue Optimization"
+                                placeholderTextColor="#D1D5DB"
+                                value={title}
+                                onChangeText={setTitle}
+                                onFocus={() => setActiveSection(0)}
+                            />
+                        </View>
+
+                        {/* Description */}
+                        <View style={{
+                            backgroundColor: '#FFFFFF',
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: '#F3F4F6',
+                            padding: 16,
+                            marginBottom: 8,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.03,
+                            shadowRadius: 4,
+                            elevation: 1,
+                        }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
+                                MISSION CONTEXT
+                            </Text>
+                            <TextInput
+                                style={{ fontSize: 14, color: '#374151', minHeight: 80, padding: 0, textAlignVertical: 'top' }}
+                                placeholder="Describe the mission and expectations..."
+                                placeholderTextColor="#D1D5DB"
+                                value={description}
+                                onChangeText={setDescription}
+                                multiline
+                                onFocus={() => setActiveSection(0)}
+                            />
+                        </View>
                     </View>
 
-                    {milestones.map((m, index) => (
-                        <View key={index} className="flex-row items-center bg-gray-50 p-4 rounded-xl mb-2 border border-gray-100">
-                            <CheckCircle2 size={18} color="#9ca3af" />
-                            <Text className="flex-1 ml-3 text-gray-700 font-medium">{m}</Text>
-                            <TouchableOpacity onPress={() => removeMilestone(index)}>
-                                <Trash2 size={18} color="#ef4444" />
+                    {/* ─── SECTION 2: RESPONSIBLE OWNER ─────────── */}
+                    <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>
+                            RESPONSIBLE OWNER
+                        </Text>
+
+                        {/* Selected Owner Card */}
+                        {selectedOwner && (
+                            <View style={{
+                                backgroundColor: '#FFFFFF',
+                                borderRadius: 16,
+                                borderWidth: 2,
+                                borderColor: '#111827',
+                                padding: 16,
+                                marginBottom: 16,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                            }}>
+                                <View style={{
+                                    width: 40, height: 40, borderRadius: 20,
+                                    backgroundColor: getAvatarColor(selectedOwner.name),
+                                    alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>
+                                        {getInitials(selectedOwner.name)}
+                                    </Text>
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>
+                                        {selectedOwner.name}
+                                    </Text>
+                                    <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
+                                        {selectedOwner.email}
+                                    </Text>
+                                </View>
+                                <View style={{ backgroundColor: '#111827', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}>
+                                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 }}>OWNER</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* User Picker */}
+                        {loadingUsers ? (
+                            <ActivityIndicator color="#111827" />
+                        ) : (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    {allUsers.map(u => {
+                                        const isSelected = responsibleOwnerId === u.id;
+                                        return (
+                                            <TouchableOpacity
+                                                key={u.id}
+                                                onPress={() => {
+                                                    setResponsibleOwnerId(u.id);
+                                                    setActiveSection(1);
+                                                    // Remove from participants if already added
+                                                    setParticipants(prev => prev.filter(p => p.userId !== u.id));
+                                                }}
+                                                style={{
+                                                    alignItems: 'center',
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 12,
+                                                    borderRadius: 16,
+                                                    backgroundColor: isSelected ? '#111827' : '#FFFFFF',
+                                                    borderWidth: 1,
+                                                    borderColor: isSelected ? '#111827' : '#E5E7EB',
+                                                    minWidth: 80,
+                                                    shadowColor: '#000',
+                                                    shadowOffset: { width: 0, height: 1 },
+                                                    shadowOpacity: isSelected ? 0 : 0.03,
+                                                    shadowRadius: 4,
+                                                    elevation: isSelected ? 0 : 1,
+                                                }}
+                                            >
+                                                <View style={{
+                                                    width: 36, height: 36, borderRadius: 18,
+                                                    backgroundColor: isSelected ? '#FFFFFF20' : getAvatarColor(u.name),
+                                                    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+                                                }}>
+                                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>
+                                                        {getInitials(u.name)}
+                                                    </Text>
+                                                </View>
+                                                <Text style={{
+                                                    fontSize: 12, fontWeight: '600',
+                                                    color: isSelected ? '#FFFFFF' : '#374151',
+                                                }} numberOfLines={1}>
+                                                    {u.name.split(' ')[0]}
+                                                </Text>
+                                                <Text style={{
+                                                    fontSize: 10, color: isSelected ? '#FFFFFF80' : '#9CA3AF',
+                                                    marginTop: 2,
+                                                }} numberOfLines={1}>
+                                                    {u.email.split('@')[0]}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </ScrollView>
+                        )}
+                    </View>
+
+                    {/* ─── SECTION 3: PARTICIPANTS ──────────────── */}
+                    <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>
+                            TEAM PARTICIPANTS
+                        </Text>
+
+                        {/* Selected Chips */}
+                        {participants.length > 0 && (
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 8 }}>
+                                {participants.map(p => {
+                                    const userObj = allUsers.find(u => u.id === p.userId);
+                                    if (!userObj) return null;
+                                    return (
+                                        <View key={p.userId} style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            backgroundColor: '#FFFFFF',
+                                            paddingLeft: 4,
+                                            paddingRight: 10,
+                                            paddingVertical: 4,
+                                            borderRadius: 20,
+                                            borderWidth: 1,
+                                            borderColor: '#E5E7EB',
+                                        }}>
+                                            <View style={{
+                                                width: 24, height: 24, borderRadius: 12,
+                                                backgroundColor: getAvatarColor(userObj.name),
+                                                alignItems: 'center', justifyContent: 'center',
+                                            }}>
+                                                <Text style={{ fontSize: 8, fontWeight: '700', color: '#FFF' }}>
+                                                    {getInitials(userObj.name)}
+                                                </Text>
+                                            </View>
+                                            <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151', marginLeft: 8 }}>
+                                                {userObj.name}
+                                            </Text>
+                                            <TouchableOpacity
+                                                onPress={() => removeParticipant(p.userId)}
+                                                style={{ marginLeft: 8, padding: 2 }}
+                                            >
+                                                <X size={14} color="#9CA3AF" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        )}
+
+                        {/* Participant Picker */}
+                        {loadingUsers ? (
+                            <ActivityIndicator color="#111827" />
+                        ) : (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    {allUsers.filter(u => u.id !== responsibleOwnerId).map(u => {
+                                        const isAdded = !!participants.find(p => p.userId === u.id);
+                                        return (
+                                            <TouchableOpacity
+                                                key={u.id}
+                                                onPress={() => {
+                                                    isAdded ? removeParticipant(u.id) : addParticipant(u.id);
+                                                    setActiveSection(2);
+                                                }}
+                                                style={{
+                                                    alignItems: 'center',
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 12,
+                                                    borderRadius: 16,
+                                                    backgroundColor: isAdded ? '#EFF6FF' : '#FFFFFF',
+                                                    borderWidth: 1,
+                                                    borderColor: isAdded ? '#3B82F6' : '#E5E7EB',
+                                                    minWidth: 80,
+                                                }}
+                                            >
+                                                <View style={{
+                                                    width: 36, height: 36, borderRadius: 18,
+                                                    backgroundColor: getAvatarColor(u.name),
+                                                    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+                                                }}>
+                                                    {isAdded ? (
+                                                        <CheckCircle2 size={16} color="#FFF" />
+                                                    ) : (
+                                                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>
+                                                            {getInitials(u.name)}
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                                <Text style={{
+                                                    fontSize: 12, fontWeight: '600',
+                                                    color: isAdded ? '#3B82F6' : '#374151',
+                                                }} numberOfLines={1}>
+                                                    {u.name.split(' ')[0]}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </ScrollView>
+                        )}
+
+                        {participants.length === 0 && (
+                            <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', marginTop: 12 }}>
+                                No additional participants yet. Tap to add.
+                            </Text>
+                        )}
+                    </View>
+
+                    {/* ─── SECTION 4: MILESTONES ────────────────── */}
+                    <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>
+                            EXECUTION MILESTONES
+                        </Text>
+
+                        {/* Add Milestone Input */}
+                        <View style={{
+                            flexDirection: 'row',
+                            marginBottom: 16,
+                            gap: 0,
+                        }}>
+                            <TextInput
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: '#FFFFFF',
+                                    paddingHorizontal: 16,
+                                    paddingVertical: 14,
+                                    borderTopLeftRadius: 14,
+                                    borderBottomLeftRadius: 14,
+                                    borderWidth: 1,
+                                    borderRightWidth: 0,
+                                    borderColor: '#E5E7EB',
+                                    fontSize: 14,
+                                    color: '#111827',
+                                }}
+                                placeholder="Add a milestone..."
+                                placeholderTextColor="#D1D5DB"
+                                value={newMilestone}
+                                onChangeText={setNewMilestone}
+                                onSubmitEditing={addMilestone}
+                                onFocus={() => setActiveSection(3)}
+                            />
+                            <TouchableOpacity
+                                onPress={addMilestone}
+                                style={{
+                                    backgroundColor: '#111827',
+                                    paddingHorizontal: 20,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderTopRightRadius: 14,
+                                    borderBottomRightRadius: 14,
+                                }}
+                            >
+                                <Plus size={20} color="#FFF" />
                             </TouchableOpacity>
                         </View>
-                    ))}
+
+                        {/* Milestone List */}
+                        {milestones.map((m, index) => (
+                            <View key={index} style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: '#FFFFFF',
+                                paddingHorizontal: 16,
+                                paddingVertical: 14,
+                                borderRadius: 14,
+                                borderWidth: 1,
+                                borderColor: '#F3F4F6',
+                                marginBottom: 8,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.02,
+                                shadowRadius: 2,
+                                elevation: 1,
+                            }}>
+                                <View style={{
+                                    width: 24, height: 24, borderRadius: 12,
+                                    backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#10B981' }}>
+                                        {index + 1}
+                                    </Text>
+                                </View>
+                                <Text style={{ flex: 1, fontSize: 14, fontWeight: '500', color: '#374151', marginLeft: 12 }}>
+                                    {m}
+                                </Text>
+                                <TouchableOpacity onPress={() => removeMilestone(index)} style={{ padding: 4 }}>
+                                    <Trash2 size={16} color="#EF4444" />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+
+                        {milestones.length === 0 && (
+                            <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>
+                                Define key checkpoints for this track.
+                            </Text>
+                        )}
+                    </View>
+
+                </ScrollView>
+            </KeyboardAvoidingView>
+
+            {/* ─── BOTTOM LAUNCH BAR ────────────────────────────── */}
+            <View style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                paddingHorizontal: 20,
+                paddingTop: 16,
+                paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+                backgroundColor: '#FFFFFF',
+                borderTopWidth: 1,
+                borderTopColor: '#F3F4F6',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 12,
+                elevation: 8,
+            }}>
+                {/* Summary Pills */}
+                <View style={{ flexDirection: 'row', marginBottom: 14, gap: 8 }}>
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center',
+                        backgroundColor: title.trim() ? '#F0FDF4' : '#FEF2F2',
+                        paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+                    }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: title.trim() ? '#10B981' : '#EF4444', marginRight: 6 }} />
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: title.trim() ? '#10B981' : '#EF4444' }}>Title</Text>
+                    </View>
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center',
+                        backgroundColor: responsibleOwnerId ? '#F0FDF4' : '#FEF2F2',
+                        paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+                    }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: responsibleOwnerId ? '#10B981' : '#EF4444', marginRight: 6 }} />
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: responsibleOwnerId ? '#10B981' : '#EF4444' }}>Owner</Text>
+                    </View>
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center',
+                        backgroundColor: '#F3F4F6',
+                        paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+                    }}>
+                        <Users size={10} color="#6B7280" />
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#6B7280', marginLeft: 4 }}>{participants.length}</Text>
+                    </View>
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center',
+                        backgroundColor: '#F3F4F6',
+                        paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+                    }}>
+                        <Target size={10} color="#6B7280" />
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#6B7280', marginLeft: 4 }}>{milestones.length}</Text>
+                    </View>
                 </View>
 
+                {/* Launch Button */}
                 <TouchableOpacity
                     onPress={handleCreate}
-                    className="bg-black py-5 rounded-3xl items-center shadow-lg shadow-black/30"
+                    disabled={submitting || !title.trim() || !responsibleOwnerId}
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: (title.trim() && responsibleOwnerId) ? '#111827' : '#D1D5DB',
+                        paddingVertical: 16,
+                        borderRadius: 16,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: (title.trim() && responsibleOwnerId) ? 0.15 : 0,
+                        shadowRadius: 12,
+                        elevation: (title.trim() && responsibleOwnerId) ? 4 : 0,
+                    }}
                 >
-                    <Text className="text-white font-bold text-lg">Launch Track</Text>
+                    {submitting ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                        <>
+                            <Zap size={18} color="#FFFFFF" />
+                            <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF', marginLeft: 8, letterSpacing: 0.5 }}>
+                                Launch Track
+                            </Text>
+                        </>
+                    )}
                 </TouchableOpacity>
-            </ScrollView>
+            </View>
         </SafeAreaView>
     );
 };
-
 
 export default CreateTaskScreen;
