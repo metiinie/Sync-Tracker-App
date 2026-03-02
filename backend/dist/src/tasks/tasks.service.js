@@ -460,6 +460,7 @@ let TasksService = class TasksService {
                 user: true,
             },
         });
+        await this.logAction(taskId, userId, `New comment added: ${content}`);
         this.syncGateway.emitToTask(taskId, 'comment:new', fullComment);
         return fullComment;
     }
@@ -600,11 +601,12 @@ let TasksService = class TasksService {
             participationCount: participations.length
         };
     }
-    async logAction(taskId, userId, action) {
+    async logAction(taskId, userId, action, metadata) {
         await this.db.insert(schema.syncLogs).values({
             taskId,
             userId,
             action,
+            metadata,
         });
     }
 };

@@ -11,9 +11,9 @@ export declare class NotificationsController {
         type: string;
         isRead: string;
         task: {
-            description: string | null;
             id: string;
             createdAt: Date;
+            description: string | null;
             title: string;
             assignedBy: string;
             responsibleOwner: string;

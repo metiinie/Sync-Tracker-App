@@ -29,6 +29,7 @@ const HomeScreen = ({ navigation }: any) => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isLoggingTime, setIsLoggingTime] = useState(false);
     const [unreadNotifications, setUnreadNotifications] = useState(0);
+    const [recentActivities, setRecentActivities] = useState<any[]>([]);
     const [staleThreshold, setStaleThreshold] = useState(24);
     const user = useAuthStore(state => state.user);
 
@@ -38,6 +39,15 @@ const HomeScreen = ({ navigation }: any) => {
             setTasks(response.data);
         } catch (error) {
             console.error('Error fetching tasks:', error);
+        }
+    };
+
+    const fetchRecentActivities = async () => {
+        try {
+            const response = await api.get('/activities?limit=3&scope=all');
+            setRecentActivities(response.data);
+        } catch (error) {
+            console.error('Error fetching recent activities:', error);
         }
     };
 
@@ -63,12 +73,20 @@ const HomeScreen = ({ navigation }: any) => {
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await Promise.all([fetchTasks(), fetchUnreadCount(), fetchWorkspaceSettings()]);
+        await Promise.all([fetchTasks(), fetchRecentActivities(), fetchUnreadCount(), fetchWorkspaceSettings()]);
         setRefreshing(false);
+    };
+
+    const refreshSilent = () => {
+        fetchTasks();
+        fetchRecentActivities();
+        fetchUnreadCount();
+        fetchWorkspaceSettings();
     };
 
     useEffect(() => {
         fetchTasks();
+        fetchRecentActivities();
         fetchUnreadCount();
         fetchWorkspaceSettings();
 
@@ -81,41 +99,36 @@ const HomeScreen = ({ navigation }: any) => {
             ));
         });
 
-        socket.on('task:blocked', (data) => {
-            setTasks(prevTasks => prevTasks.map(t =>
-                t.id === data.taskId ? { ...t, syncState: 'BLOCKED', lastUpdatedAt: new Date().toISOString() } : t
-            ));
-        });
-
-        socket.on('task:helpRequested', (data) => {
-            setTasks(prevTasks => prevTasks.map(t =>
-                t.id === data.taskId ? { ...t, syncState: 'HELP_REQUESTED', lastUpdatedAt: new Date().toISOString() } : t
-            ));
-        });
-
-        socket.on('task:assigned', () => {
-            fetchTasks(); // Re-fetch to get new task
-        });
-
-        socket.on('task:transferred', () => {
-            fetchTasks();
-        });
-
-        socket.on('milestone:completed', () => {
-            fetchTasks();
-        });
-
+        socket.on('task:created', refreshSilent);
+        socket.on('task:updated', refreshSilent);
+        socket.on('task:deleted', refreshSilent);
+        socket.on('task:transfer', refreshSilent);
+        socket.on('task:accepted', refreshSilent);
+        socket.on('task:completed', refreshSilent);
+        socket.on('milestone:created', refreshSilent);
+        socket.on('milestone:updated', refreshSilent);
+        socket.on('milestone:deleted', refreshSilent);
+        socket.on('comment:new', refreshSilent);
+        socket.on('task:join', refreshSilent);
+        socket.on('task:leave', refreshSilent);
         socket.on('notification:new', () => {
             setUnreadNotifications(prev => prev + 1);
         });
 
         return () => {
             socket.off('sync:update');
-            socket.off('task:blocked');
-            socket.off('task:helpRequested');
-            socket.off('task:assigned');
-            socket.off('task:transferred');
-            socket.off('milestone:completed');
+            socket.off('task:created');
+            socket.off('task:updated');
+            socket.off('task:deleted');
+            socket.off('task:transfer');
+            socket.off('task:accepted');
+            socket.off('task:completed');
+            socket.off('milestone:created');
+            socket.off('milestone:updated');
+            socket.off('milestone:deleted');
+            socket.off('comment:new');
+            socket.off('task:join');
+            socket.off('task:leave');
             socket.off('notification:new');
         };
     }, []);
@@ -378,16 +391,68 @@ const HomeScreen = ({ navigation }: any) => {
             {/* ─── SCROLLABLE BODY ──────────────── */}
             <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 140 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" />}
             >
-                {/* 1️⃣ ATTENTION PANEL */}
+                {/* ─── GREETING ────────────────────── */}
+                <View style={{ paddingHorizontal: 24, paddingTop: 20, marginBottom: 24 }}>
+                    <Text style={{ fontSize: 14, color: '#6B7280', fontWeight: '500', marginBottom: 4 }}>
+                        {getGreeting()},
+                    </Text>
+                    <Text style={{ fontSize: 26, fontWeight: '800', color: '#111827' }}>
+                        {firstName}
+                    </Text>
+                </View>
+
+                {/* ─── ATTENTION PANEL ────────────────────── */}
                 <AttentionPanel
                     items={dashboard.attentionItems}
                     onTaskPress={navigateToTask}
                 />
 
+                {/* ─── ACTIVITY PULSE (Pulse) ────────────────────── */}
+                {recentActivities.length > 0 && (
+                    <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', marginRight: 8 }} />
+                                <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>Activity Pulse</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => navigation.navigate('Activity')}>
+                                <Text style={{ fontSize: 13, color: '#3B82F6', fontWeight: '600' }}>View All</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 }}>
+                            {recentActivities.map((act, idx) => (
+                                <TouchableOpacity
+                                    key={act.id}
+                                    onPress={() => navigateToTask(act.taskId)}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        marginBottom: idx === recentActivities.length - 1 ? 0 : 12,
+                                        paddingBottom: idx === recentActivities.length - 1 ? 0 : 12,
+                                        borderBottomWidth: idx === recentActivities.length - 1 ? 0 : 1,
+                                        borderBottomColor: '#F3F4F6'
+                                    }}
+                                >
+                                    <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#F3F6FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                        <Clock size={16} color="#3B82F6" />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 13, color: '#111827', fontWeight: '600' }} numberOfLines={1}>
+                                            {act.actorName} {act.action.toLowerCase().includes('comment') ? 'commented' : act.action.split(':')[0]}
+                                        </Text>
+                                        <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }} numberOfLines={1}>
+                                            in {act.taskTitle}
+                                        </Text>
+                                    </View>
+                                    <ChevronRight size={14} color="#D1D5DB" />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                )}
                 {/* 2️⃣ MY RESPONSIBILITY */}
                 <ResponsibilitySection
                     groups={dashboard.myResponsibility}

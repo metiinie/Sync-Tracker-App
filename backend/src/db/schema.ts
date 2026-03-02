@@ -6,6 +6,7 @@ import {
   pgEnum,
   foreignKey,
   boolean,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -120,6 +121,7 @@ export const syncLogs = pgTable('sync_logs', {
     .references(() => users.id)
     .notNull(),
   action: text('action').notNull(),
+  metadata: jsonb('metadata'),
   timestamp: timestamp('timestamp').defaultNow().notNull(),
 });
 

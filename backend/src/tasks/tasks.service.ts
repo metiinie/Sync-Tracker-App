@@ -613,6 +613,7 @@ export class TasksService {
       },
     });
 
+    await this.logAction(taskId, userId, `New comment added: ${content}`);
     this.syncGateway.emitToTask(taskId, 'comment:new', fullComment);
     return fullComment;
   }
@@ -798,11 +799,12 @@ export class TasksService {
     };
   }
 
-  private async logAction(taskId: string, userId: string, action: string) {
+  private async logAction(taskId: string, userId: string, action: string, metadata?: any) {
     await this.db.insert(schema.syncLogs).values({
       taskId,
       userId,
       action,
+      metadata,
     });
   }
 }

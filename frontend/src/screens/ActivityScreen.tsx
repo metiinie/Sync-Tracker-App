@@ -7,7 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     Search, Activity as ActivityIcon, Clock, Ban, HelpCircle,
     CheckCircle2, ArrowRightLeft, Flag, RefreshCcw, History,
-    ExternalLink, LifeBuoy, Unlock, CheckCircle, X
+    ExternalLink, LifeBuoy, Unlock, CheckCircle, X,
+    MessageSquare, Bell, Users
 } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -59,6 +60,12 @@ const getStatusConfig = (badge: string) => {
             return { color: '#14B8A6', bg: '#F0FDFA', border: '#99F6E4', label: 'TIME LOG' };
         case 'ACTIVE':
             return { color: '#10B981', bg: '#F0FDF4', border: '#BBF7D0', label: 'ACCEPTED' };
+        case 'COMMENT':
+            return { color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE', label: 'COMMENT' };
+        case 'NUDGE':
+            return { color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', label: 'NUDGE' };
+        case 'PARTICIPANT':
+            return { color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE', label: 'TEAM' };
         default:
             return { color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB', label: badge?.replace('_', ' ') || 'UNKNOWN' };
     }
@@ -74,6 +81,9 @@ const getStatusIcon = (badge: string, size: number = 22) => {
         case 'ACTIVE': return <CheckCircle2 size={size} color="#10B981" strokeWidth={2.5} />;
         case 'IN_SYNC': return <CheckCircle size={size} color="#10B981" strokeWidth={2.5} />;
         case 'NEEDS_UPDATE': return <RefreshCcw size={size} color="#F59E0B" strokeWidth={2.5} />;
+        case 'COMMENT': return <MessageSquare size={size} color="#3B82F6" strokeWidth={2.5} />;
+        case 'NUDGE': return <Bell size={size} color="#F59E0B" strokeWidth={2.5} />;
+        case 'PARTICIPANT': return <Users size={size} color="#8B5CF6" strokeWidth={2.5} />;
         default: return <ActivityIcon size={size} color="#6B7280" strokeWidth={2.5} />;
     }
 };
@@ -87,13 +97,15 @@ const FILTERS = [
     { id: 'Responsibility Accepted', label: 'Accepted', color: '#10B981', bg: '#F0FDF4' },
     { id: 'Transfers', label: 'Transfers', color: '#F59E0B', bg: '#FFFBEB' },
     { id: 'Milestones', label: 'Milestones', color: '#8B5CF6', bg: '#F5F3FF' },
-    { id: 'Time Logged', label: 'Time Logged', color: '#14B8A6', bg: '#F0FDFA' }
+    { id: 'Time Logged', label: 'Time Logged', color: '#14B8A6', bg: '#F0FDFA' },
+    { id: 'Communication', label: 'Comm', color: '#3B82F6', bg: '#EFF6FF' },
+    { id: 'Team', label: 'Team', color: '#8B5CF6', bg: '#F5F3FF' }
 ];
 
 // ─── MAIN COMPONENT ─────────────────────────────────────
 const ActivityScreen = ({ navigation }: any) => {
     const { user } = useAuthStore();
-    const [scope, setScope] = useState<'my_tasks' | 'delegated' | 'all'>('all');
+    const [scope, setScope] = useState<'my_tasks' | 'delegated' | 'all' | 'workspace'>('all');
     const [activities, setActivities] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -101,10 +113,10 @@ const ActivityScreen = ({ navigation }: any) => {
     const [selectedFilter, setSelectedFilter] = useState('All');
 
     // ─── FETCH ──────────────────────────────────────────
-    const fetchActivities = useCallback(async (showLoading = true) => {
+    const fetchActivities = useCallback(async (showLoading = true, search = '') => {
         if (showLoading) setLoading(true);
         try {
-            const res = await api.get(`/activities?scope=${scope}`);
+            const res = await api.get(`/activities?scope=${scope}&search=${search}`);
             setActivities(res.data);
         } catch (err) {
             console.error('Failed to fetch activities', err);
@@ -115,25 +127,62 @@ const ActivityScreen = ({ navigation }: any) => {
     }, [scope]);
 
     useEffect(() => {
-        fetchActivities();
+        const delayDebounceFn = setTimeout(() => {
+            fetchActivities(true, searchQuery);
+        }, 500);
 
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery, scope, fetchActivities]);
+
+    // ─── REAL-TIME SYNC ────────────────────────────────
+    useEffect(() => {
         const socket = getSocket();
         const refresh = () => fetchActivities(false);
 
+        // Listeners
         socket.on('sync:update', refresh);
         socket.on('timelog:created', refresh);
+        socket.on('milestone:created', refresh);
         socket.on('milestone:updated', refresh);
+        socket.on('milestone:deleted', refresh);
+        socket.on('task:created', refresh);
+        socket.on('task:updated', refresh);
+        socket.on('task:deleted', refresh);
         socket.on('task:accepted', refresh);
+        socket.on('task:completed', refresh);
         socket.on('task:transfer', refresh);
+        socket.on('task:join', refresh);
+        socket.on('task:leave', refresh);
+        socket.on('comment:new', refresh);
+        socket.on('task:nudge', refresh);
 
         return () => {
             socket.off('sync:update', refresh);
             socket.off('timelog:created', refresh);
+            socket.off('milestone:created', refresh);
             socket.off('milestone:updated', refresh);
+            socket.off('milestone:deleted', refresh);
+            socket.off('task:created', refresh);
+            socket.off('task:updated', refresh);
+            socket.off('task:deleted', refresh);
             socket.off('task:accepted', refresh);
+            socket.off('task:completed', refresh);
             socket.off('task:transfer', refresh);
+            socket.off('task:join', refresh);
+            socket.off('task:leave', refresh);
+            socket.off('comment:new', refresh);
+            socket.off('task:nudge', refresh);
         };
     }, [fetchActivities]);
+
+    // Join rooms for all tasks in the feed
+    useEffect(() => {
+        const socket = getSocket();
+        if (activities.length > 0) {
+            const taskIds = [...new Set(activities.map(a => a.taskId).filter(Boolean))];
+            socket.emit('joinTasks', { taskIds });
+        }
+    }, [activities]);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -148,17 +197,8 @@ const ActivityScreen = ({ navigation }: any) => {
             result = result.filter(a => a.type === selectedFilter);
         }
 
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase().trim();
-            result = result.filter(a =>
-                a.taskTitle?.toLowerCase().includes(query) ||
-                a.actorName?.toLowerCase().includes(query) ||
-                a.action?.toLowerCase().includes(query)
-            );
-        }
-
         return result;
-    }, [activities, selectedFilter, searchQuery]);
+    }, [activities, selectedFilter]);
 
     // ─── GROUPING ───────────────────────────────────────
     const groupedActivities = useMemo(() => {
@@ -291,6 +331,18 @@ const ActivityScreen = ({ navigation }: any) => {
                     </View>
                 </View>
 
+                {/* Detail text if available */}
+                {activity.detail ? (
+                    <View style={{
+                        marginTop: 12, padding: 12, backgroundColor: '#F9FAFB',
+                        borderRadius: 12, borderLeftWidth: 3, borderLeftColor: config.color
+                    }}>
+                        <Text style={{ color: '#4B5563', fontSize: 13, fontStyle: 'italic', lineHeight: 18 }}>
+                            "{activity.detail}"
+                        </Text>
+                    </View>
+                ) : null}
+
                 {/* Action Buttons */}
                 <View style={{ marginTop: 16 }}>
                     {getActionButton(activity)}
@@ -327,31 +379,30 @@ const ActivityScreen = ({ navigation }: any) => {
             {/* ═══ SCOPE CONTROL (3-Segment Pill) ════════════ */}
             <View style={{ paddingHorizontal: 24, marginTop: 16, marginBottom: 16 }}>
                 <View style={{
-                    backgroundColor: '#F3F4F6', padding: 4, borderRadius: 14, flexDirection: 'row',
+                    flexDirection: 'row', backgroundColor: '#F3F4F6', borderRadius: 12, padding: 4, marginBottom: 16
                 }}>
                     {[
-                        { key: 'all' as const, label: 'All Activity' },
-                        { key: 'delegated' as const, label: 'Delegated' },
-                        { key: 'my_tasks' as const, label: 'My Tasks' },
-                    ].map(tab => {
-                        const isActive = scope === tab.key;
-                        return (
-                            <TouchableOpacity key={tab.key}
-                                onPress={() => setScope(tab.key)}
-                                activeOpacity={0.8}
-                                style={{
-                                    flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10,
-                                    backgroundColor: isActive ? '#111827' : 'transparent',
-                                }}>
-                                <Text style={{
-                                    fontSize: 12, fontWeight: isActive ? '700' : '600',
-                                    color: isActive ? '#FFFFFF' : '#6B7280',
-                                }}>
-                                    {tab.label}
-                                </Text>
-                            </TouchableOpacity>
-                        );
-                    })}
+                        { id: 'all', label: 'Members' },
+                        { id: 'workspace', label: 'Workspace' },
+                        { id: 'my_tasks', label: 'Owned' },
+                        { id: 'delegated', label: 'Delegated' }
+                    ].map((opt) => (
+                        <TouchableOpacity
+                            key={opt.id}
+                            onPress={() => setScope(opt.id as any)}
+                            style={{
+                                flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10,
+                                backgroundColor: scope === opt.id ? '#FFF' : 'transparent',
+                                shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: scope === opt.id ? 0.05 : 0, shadowRadius: 2, elevation: scope === opt.id ? 1 : 0
+                            }}
+                        >
+                            <Text style={{
+                                fontSize: 13, fontWeight: scope === opt.id ? '600' : '500',
+                                color: scope === opt.id ? '#111827' : '#6B7280'
+                            }}>{opt.label}</Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
             </View>
 

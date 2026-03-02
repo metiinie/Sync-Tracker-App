@@ -2,15 +2,15 @@ import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from '../db/db.module';
 import * as schema from '../db/schema';
-import { eq, or, desc, and, ne, sql } from 'drizzle-orm';
+import { eq, or, desc, and, ne, sql, ilike } from 'drizzle-orm';
 
 @Injectable()
 export class ActivitiesService {
     constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) { }
 
-    async getActivities(userId: string, scope: 'my_tasks' | 'delegated' | 'all') {
+    async getActivities(userId: string, scope: 'my_tasks' | 'delegated' | 'all' | 'workspace', limit = 200, search?: string) {
         // Determine the tasks in scope
-        let taskIdsQuery: string[] = [];
+        let taskIdsQuery: string[] | null = [];
 
         if (scope === 'my_tasks') {
             const owned = await this.db.query.tasks.findMany({
@@ -30,8 +30,7 @@ export class ActivitiesService {
                 columns: { id: true }
             });
             taskIdsQuery = delegated.map(t => t.id);
-        } else {
-            // scope === 'all'
+        } else if (scope === 'all') {
             const owned = await this.db.query.tasks.findMany({
                 where: or(
                     eq(schema.tasks.responsibleOwner, userId),
@@ -45,12 +44,24 @@ export class ActivitiesService {
             });
             const ids = [...owned.map(t => t.id), ...participated.map(p => p.taskId)];
             taskIdsQuery = [...new Set(ids)];
+        } else {
+            // scope === 'workspace' - show everything
+            taskIdsQuery = null;
         }
 
-        if (taskIdsQuery.length === 0) return [];
+        if (taskIdsQuery !== null && taskIdsQuery.length === 0) return [];
 
         const logs = await this.db.query.syncLogs.findMany({
-            where: (logs, { sql }) => sql`${logs.taskId} = ANY(${taskIdsQuery})`,
+            where: (l, { and, sql }) => {
+                const conditions: any[] = [];
+                if (taskIdsQuery) {
+                    conditions.push(sql`${l.taskId} = ANY(${taskIdsQuery})`);
+                }
+                if (search) {
+                    conditions.push(ilike(l.action, `%${search}%`));
+                }
+                return conditions.length > 0 ? and(...conditions) : undefined;
+            },
             with: {
                 task: {
                     with: {
@@ -62,7 +73,7 @@ export class ActivitiesService {
                 user: true,
             },
             orderBy: [desc(schema.syncLogs.timestamp)],
-            limit: 200,
+            limit: limit,
         });
 
         return logs.map(log => {
@@ -90,6 +101,15 @@ export class ActivitiesService {
             } else if (actionLower.includes('accepted')) {
                 type = 'Responsibility Accepted';
                 stateBadge = 'ACTIVE';
+            } else if (actionLower.includes('comment')) {
+                type = 'Communication';
+                stateBadge = 'COMMENT';
+            } else if (actionLower.includes('nudge')) {
+                type = 'Communication';
+                stateBadge = 'NUDGE';
+            } else if (actionLower.includes('added') || actionLower.includes('removed') || actionLower.includes('participant')) {
+                type = 'Team';
+                stateBadge = 'PARTICIPANT';
             } else if (actionLower.includes('created')) {
                 type = 'Sync Updates';
                 stateBadge = 'PENDING';
@@ -113,12 +133,23 @@ export class ActivitiesService {
                 }
             }
 
+            // Extract detail from action string (anything after a colon)
+            let detail = '';
+            if (log.action.includes(':')) {
+                detail = log.action.split(':').slice(1).join(':').trim();
+            } else if (log.action.toLowerCase().includes('milestone')) {
+                // fallback for milestone added if not colon-formatted (though it usually is)
+                const parts = log.action.split(' ');
+                if (parts.length > 2) detail = parts.slice(2).join(' ');
+            }
+
             return {
                 id: log.id,
                 taskId: log.taskId,
                 actorId: log.userId,
                 actorName: log.user.name,
                 action: log.action,
+                detail,
                 taskTitle: log.task ? log.task.title : 'Deleted Task',
                 taskState: log.task ? log.task.syncState : 'UNKNOWN',
                 timestamp: log.timestamp,

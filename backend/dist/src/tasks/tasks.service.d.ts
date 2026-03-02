@@ -11,10 +11,10 @@ export declare class TasksService {
         userId: string;
         role: string;
     }[], milestones?: string[], priority?: string): Promise<{
-        description: string | null;
         id: string;
-        createdAt: Date;
         title: string;
+        description: string | null;
+        createdAt: Date;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -25,8 +25,8 @@ export declare class TasksService {
     }>;
     addMilestone(taskId: string, title: string, userId: string, dueDate?: string): Promise<{
         id: string;
-        createdAt: Date;
         title: string;
+        createdAt: Date;
         taskId: string;
         isCompleted: string;
         dueDate: Date | null;
@@ -55,12 +55,12 @@ export declare class TasksService {
         createdAt: Date;
     }>;
     logTime(taskId: string, userId: string, durationMinutes: number | string, description: string): Promise<{
-        description: string | null;
         id: string;
+        description: string | null;
         taskId: string;
         userId: string;
-        timestamp: Date;
         durationMinutes: string;
+        timestamp: Date;
     }>;
     accept(taskId: string, userId: string): Promise<{
         id: string;
@@ -171,10 +171,10 @@ export declare class TasksService {
         };
     }[]>;
     findOne(taskId: string): Promise<{
-        description: string | null;
         id: string;
-        createdAt: Date;
         title: string;
+        description: string | null;
+        createdAt: Date;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -182,6 +182,44 @@ export declare class TasksService {
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
         completedAt: Date | null;
+        milestones: {
+            id: string;
+            title: string;
+            createdAt: Date;
+            taskId: string;
+            isCompleted: string;
+            dueDate: Date | null;
+        }[];
+        syncLogs: {
+            id: string;
+            taskId: string | null;
+            userId: string;
+            timestamp: Date;
+            action: string;
+            metadata: unknown;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
+        timeLogs: {
+            id: string;
+            description: string | null;
+            taskId: string;
+            userId: string;
+            durationMinutes: string;
+            timestamp: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
         assigner: {
             id: string;
             name: string;
@@ -204,43 +242,6 @@ export declare class TasksService {
             userId: string;
             role: "contributor" | "helper" | "reviewer" | "observer";
             joinedAt: Date;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                isSuspended: boolean;
-                createdAt: Date;
-            };
-        }[];
-        syncLogs: {
-            id: string;
-            taskId: string | null;
-            userId: string;
-            action: string;
-            timestamp: Date;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                isSuspended: boolean;
-                createdAt: Date;
-            };
-        }[];
-        milestones: {
-            id: string;
-            createdAt: Date;
-            title: string;
-            taskId: string;
-            isCompleted: string;
-            dueDate: Date | null;
-        }[];
-        timeLogs: {
-            description: string | null;
-            id: string;
-            taskId: string;
-            userId: string;
-            timestamp: Date;
-            durationMinutes: string;
             user: {
                 id: string;
                 name: string;

@@ -104,6 +104,7 @@ exports.syncLogs = (0, pg_core_1.pgTable)('sync_logs', {
         .references(() => exports.users.id)
         .notNull(),
     action: (0, pg_core_1.text)('action').notNull(),
+    metadata: (0, pg_core_1.jsonb)('metadata'),
     timestamp: (0, pg_core_1.timestamp)('timestamp').defaultNow().notNull(),
 });
 exports.syncLogsRelations = (0, drizzle_orm_1.relations)(exports.syncLogs, ({ one }) => ({
