@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../services/supabase';
@@ -11,6 +11,9 @@ import {
     Briefcase
 } from 'lucide-react-native';
 import api from '../services/api';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type TabButtonProps = {
     icon: any;
@@ -48,6 +51,8 @@ const ProfileScreen = ({ navigation }: any) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [view, setView] = useState<'profile' | 'settings'>('profile');
+    const [isExporting, setIsExporting] = useState(false);
+    const [isClearingCache, setIsClearingCache] = useState(false);
 
     const fetchProfileData = async () => {
         try {
@@ -77,6 +82,79 @@ const ProfileScreen = ({ navigation }: any) => {
     const handleLogout = async () => {
         await supabase.auth.signOut();
         setSession(null);
+    };
+
+    const handleRealTimeSyncToggle = () => {
+        const newValue = !settings?.realTimeSync;
+        updateSettings({ realTimeSync: newValue });
+        Alert.alert(
+            "Real-time Sync",
+            newValue ? "Real-time updates are now enabled." : "Real-time updates have been paused."
+        );
+    };
+
+    const handleExportLogs = async () => {
+        setIsExporting(true);
+        try {
+            const [tasksRes, activitiesRes] = await Promise.all([
+                api.get('/tasks'),
+                api.get('/activities?scope=all&limit=100')
+            ]);
+
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                user: user?.email,
+                tasks: tasksRes.data,
+                activities: activitiesRes.data
+            };
+
+            const fileUri = `${FileSystem.cacheDirectory}sync_tracker_export.json`;
+            await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(exportData, null, 2));
+
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(fileUri, {
+                    mimeType: 'application/json',
+                    dialogTitle: 'Export Sync Tracker Logs'
+                });
+            } else {
+                Alert.alert("Export Error", "Sharing is not available on this device.");
+            }
+        } catch (error) {
+            console.error("Export logs error:", error);
+            Alert.alert("Error", "Failed to export logs.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleClearCache = async () => {
+        Alert.alert(
+            "Clear Cache",
+            "Are you sure you want to clear the local application cache? You will need to re-login.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Clear",
+                    style: "destructive",
+                    onPress: async () => {
+                        setIsClearingCache(true);
+                        try {
+                            // Leave supabase session alone, clear everything else
+                            const keys = await AsyncStorage.getAllKeys();
+                            const keysToKeep = keys.filter(k => k.includes('supabase'));
+                            const multiSet = keysToKeep.map(k => [k, ''] as [string, string]); // We actually want to KEEP these. 
+                            // It's safer to just clear specific app keys or clear all and force relogin
+                            await AsyncStorage.clear();
+                            Alert.alert("Success", "Cache cleared. Signing out...", [{ text: "OK", onPress: handleLogout }]);
+                        } catch (e) {
+                            Alert.alert("Error", "Failed to clear cache.");
+                        } finally {
+                            setIsClearingCache(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const displayName = user?.user_metadata?.name || user?.user_metadata?.full_name || 'Responsible User';
@@ -244,21 +322,31 @@ const ProfileScreen = ({ navigation }: any) => {
                         <Text className="ml-4 font-bold text-gray-800 text-base">Real-time Sync</Text>
                     </View>
                     <TouchableOpacity
-                        onPress={() => updateSettings({ realTimeSync: !settings?.realTimeSync })}
+                        onPress={handleRealTimeSyncToggle}
                         className={`w-11 h-6 rounded-full p-1 transition-colors ${settings?.realTimeSync ? 'bg-blue-600' : 'bg-gray-200'}`}
                     >
                         <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${settings?.realTimeSync ? 'ml-auto' : ''}`} />
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
-                    <Share2 size={20} color="#4B5563" />
-                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Export Logs</Text>
-                    <Text className="text-blue-600 font-bold text-xs uppercase">CSV/JSON</Text>
+                <TouchableOpacity
+                    onPress={handleExportLogs}
+                    disabled={isExporting}
+                    className="flex-row items-center px-6 py-5 border-b border-gray-50"
+                >
+                    {isExporting ? <ActivityIndicator size="small" color="#4B5563" className="mr-1" /> : <Share2 size={20} color="#4B5563" />}
+                    <Text className={`ml-4 font-bold flex-1 text-base ${isExporting ? 'text-gray-400' : 'text-gray-800'}`}>
+                        {isExporting ? 'Exporting...' : 'Export Logs'}
+                    </Text>
+                    <Text className="text-blue-600 font-bold text-xs uppercase">JSON</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-100">
-                    <Database size={20} color="#4B5563" />
+                <TouchableOpacity
+                    onPress={handleClearCache}
+                    disabled={isClearingCache}
+                    className="flex-row items-center px-6 py-5 border-b border-gray-100"
+                >
+                    {isClearingCache ? <ActivityIndicator size="small" color="#4B5563" className="mr-1" /> : <Database size={20} color="#4B5563" />}
                     <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Clear Cache</Text>
-                    <Text className="text-gray-400 font-bold text-xs">24.5 MB</Text>
+                    <Text className="text-gray-400 font-bold text-xs">Clear Local</Text>
                 </TouchableOpacity>
 
                 {/* Sign Out - Integrated closely at the bottom of the list */}

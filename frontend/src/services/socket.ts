@@ -33,6 +33,16 @@ export const getSocket = () => {
     return socket || mockSocket;
 };
 
+export const connectSocket = () => {
+    const { token, settings } = useAuthStore.getState();
+    if (settings?.realTimeSync && token && !socket) {
+        socket = io(SOCKET_URL, {
+            auth: { token },
+        });
+    }
+    return socket || mockSocket;
+};
+
 export const disconnectSocket = () => {
     if (socket) {
         socket.disconnect();

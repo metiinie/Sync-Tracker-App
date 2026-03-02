@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Session, User } from '@supabase/supabase-js';
 import api from '../services/api';
-import { disconnectSocket } from '../services/socket';
+import { disconnectSocket, connectSocket } from '../services/socket';
 
 interface UserSettings {
     theme: 'light' | 'dark';
@@ -56,9 +56,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const newSettings = { ...settings, ...data };
         set({ settings: newSettings });
 
-        // If realTimeSync is turned off, disconnect immediately
+        // Handle Socket connection explicitly based on realTimeSync
         if (data.realTimeSync === false) {
             disconnectSocket();
+        } else if (data.realTimeSync === true) {
+            connectSocket();
         }
 
         try {
