@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
 import { Bell, Shield, X, Clock, ChevronRight } from 'lucide-react-native';
-import { isStale } from '../utils/timeAgo';
+import { isStale, getGreeting } from '../utils/timeAgo';
 
 import AttentionPanel from '../components/dashboard/AttentionPanel';
 import ResponsibilitySection from '../components/dashboard/ResponsibilitySection';

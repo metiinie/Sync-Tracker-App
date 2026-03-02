@@ -22,7 +22,7 @@ const statusConfig: Record<string, { dot: string; label: string; icon: string }>
     inSync: { dot: '#10B981', label: 'In Sync', icon: '🟢' },
 };
 
-const ResponsibilitySection: React.FC<ResponsibilitySectionProps> = ({ groups, onTaskPress, onUpdateSync }) => {
+const ResponsibilitySection: React.FC<ResponsibilitySectionProps> = ({ groups, onTaskPress, onUpdateSync, onHeaderPress }) => {
     const hasAny = groups.blocked.length + groups.help.length + groups.needsUpdate.length + groups.inSync.length > 0;
 
     if (!hasAny) return null;
