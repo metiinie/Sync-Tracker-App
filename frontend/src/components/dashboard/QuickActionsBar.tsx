@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { PlusCircle, RefreshCw, Clock } from 'lucide-react-native';
+import { useAuthStore } from '../../store/authStore';
 
 interface QuickActionsBarProps {
     onCreateTask: () => void;
@@ -9,10 +10,13 @@ interface QuickActionsBarProps {
 }
 
 const QuickActionsBar: React.FC<QuickActionsBarProps> = ({ onCreateTask, onGlobalSync, onLogTime }) => {
+    const { settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
+
     const actions = [
-        { label: 'Create', icon: PlusCircle, onPress: onCreateTask, color: '#3B82F6' },
-        { label: 'Global Sync', icon: RefreshCw, onPress: onGlobalSync, color: '#8B5CF6' },
-        { label: 'Log Time', icon: Clock, onPress: onLogTime, color: '#F59E0B' },
+        { label: 'Create', icon: PlusCircle, onPress: onCreateTask, color: isDark ? '#60A5FA' : '#3B82F6' },
+        { label: 'Global Sync', icon: RefreshCw, onPress: onGlobalSync, color: isDark ? '#A78BFA' : '#8B5CF6' },
+        { label: 'Log Time', icon: Clock, onPress: onLogTime, color: isDark ? '#FBBF24' : '#F59E0B' },
     ];
 
     return (
@@ -20,7 +24,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({ onCreateTask, onGloba
             flexDirection: 'row',
             justifyContent: 'space-around',
             alignItems: 'center',
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            backgroundColor: isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)',
             borderRadius: 24,
             marginHorizontal: 0,
             marginTop: 24,
@@ -28,10 +32,10 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({ onCreateTask, onGloba
             paddingVertical: 12,
             paddingHorizontal: 8,
             borderWidth: 1,
-            borderColor: '#F3F4F6',
+            borderColor: isDark ? '#374151' : '#F3F4F6',
             shadowColor: '#000',
             shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.05,
+            shadowOpacity: isDark ? 0.3 : 0.05,
             shadowRadius: 10,
             elevation: 3,
         }}>
