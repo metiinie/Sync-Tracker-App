@@ -162,15 +162,16 @@ export class TasksService {
   async logTime(
     taskId: string,
     userId: string,
-    durationMinutes: string,
+    durationMinutes: number | string,
     description: string,
   ) {
+    const duration = durationMinutes.toString();
     const [log] = await this.db
       .insert(schema.timeLogs)
       .values({
         taskId,
         userId,
-        durationMinutes,
+        durationMinutes: duration,
         description,
       })
       .returning();
@@ -178,7 +179,7 @@ export class TasksService {
     await this.logAction(
       taskId,
       userId,
-      `Logged ${durationMinutes} mins: ${description}`,
+      `Logged ${duration} mins: ${description}`,
     );
     this.syncGateway.emitToTask(taskId, 'timelog:created', log);
     return log;

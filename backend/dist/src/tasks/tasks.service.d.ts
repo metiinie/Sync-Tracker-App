@@ -37,7 +37,7 @@ export declare class TasksService {
         dueDate: Date | null;
         createdAt: Date;
     }>;
-    logTime(taskId: string, userId: string, durationMinutes: string, description: string): Promise<{
+    logTime(taskId: string, userId: string, durationMinutes: number | string, description: string): Promise<{
         id: string;
         description: string | null;
         taskId: string;

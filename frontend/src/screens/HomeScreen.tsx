@@ -26,6 +26,8 @@ const HomeScreen = ({ navigation }: any) => {
     const [showLogTimeModal, setShowLogTimeModal] = useState(false);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [timeLog, setTimeLog] = useState({ hours: '', minutes: '', note: '' });
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [isLoggingTime, setIsLoggingTime] = useState(false);
     const user = useAuthStore(state => state.user);
 
     const fetchTasks = async () => {
@@ -173,6 +175,8 @@ const HomeScreen = ({ navigation }: any) => {
     };
 
     const handleGlobalSync = async () => {
+        if (isSyncing) return;
+        setIsSyncing(true);
         try {
             const response = await api.patch('/tasks/sync-all');
             const { ownedCount, participationCount } = response.data;
@@ -185,6 +189,8 @@ const HomeScreen = ({ navigation }: any) => {
         } catch (error) {
             console.error('Error in global sync:', error);
             Alert.alert("Error", "Failed to perform global sync.");
+        } finally {
+            setIsSyncing(false);
         }
     };
 
@@ -207,6 +213,7 @@ const HomeScreen = ({ navigation }: any) => {
             return;
         }
 
+        setIsLoggingTime(true);
         try {
             await api.post(`/tasks/${selectedTaskId}/time-logs`, {
                 durationMinutes: totalMinutes,
@@ -220,6 +227,8 @@ const HomeScreen = ({ navigation }: any) => {
         } catch (err) {
             console.error('Error logging time:', err);
             Alert.alert("Error", "Failed to log time.");
+        } finally {
+            setIsLoggingTime(false);
         }
     };
 
@@ -530,11 +539,12 @@ const HomeScreen = ({ navigation }: any) => {
                             <TouchableOpacity
                                 onPress={submitLogTime}
                                 activeOpacity={0.8}
+                                disabled={isLoggingTime}
                                 style={{
                                     flex: 2,
                                     paddingVertical: 18,
                                     borderRadius: 18,
-                                    backgroundColor: '#111827',
+                                    backgroundColor: isLoggingTime ? '#9CA3AF' : '#111827',
                                     flexDirection: 'row',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -545,8 +555,14 @@ const HomeScreen = ({ navigation }: any) => {
                                     elevation: 5
                                 }}
                             >
-                                <Clock size={16} color="#FFF" style={{ marginRight: 8 }} />
-                                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFF' }}>Log Time</Text>
+                                {isLoggingTime ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <>
+                                        <Clock size={16} color="#FFF" style={{ marginRight: 8 }} />
+                                        <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFF' }}>Log Time</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>

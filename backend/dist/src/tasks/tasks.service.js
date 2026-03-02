@@ -154,16 +154,17 @@ let TasksService = class TasksService {
         return milestone;
     }
     async logTime(taskId, userId, durationMinutes, description) {
+        const duration = durationMinutes.toString();
         const [log] = await this.db
             .insert(schema.timeLogs)
             .values({
             taskId,
             userId,
-            durationMinutes,
+            durationMinutes: duration,
             description,
         })
             .returning();
-        await this.logAction(taskId, userId, `Logged ${durationMinutes} mins: ${description}`);
+        await this.logAction(taskId, userId, `Logged ${duration} mins: ${description}`);
         this.syncGateway.emitToTask(taskId, 'timelog:created', log);
         return log;
     }
