@@ -111,4 +111,9 @@ export class TasksController {
   async syncAll(@Request() req: any) {
     return this.tasksService.syncAll(req.user.userId);
   }
+
+  @Post(':id/nudge')
+  async nudge(@Param('id') id: string, @Request() req: any) {
+    return this.tasksService.nudge(id, req.user.userId);
+  }
 }

@@ -72,8 +72,8 @@ export declare class TasksController {
             description: string | null;
             taskId: string;
             userId: string;
-            durationMinutes: string;
             timestamp: Date;
+            durationMinutes: string;
             user: {
                 id: string;
                 name: string;
@@ -134,12 +134,15 @@ export declare class TasksController {
         description: string | null;
         taskId: string;
         userId: string;
-        durationMinutes: string;
         timestamp: Date;
+        durationMinutes: string;
     }>;
     syncAll(req: any): Promise<{
         success: boolean;
         ownedCount: number;
         participationCount: number;
+    }>;
+    nudge(id: string, req: any): Promise<{
+        success: boolean;
     }>;
 }

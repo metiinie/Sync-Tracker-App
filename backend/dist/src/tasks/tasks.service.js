@@ -255,6 +255,27 @@ let TasksService = class TasksService {
         await this.notificationsService.create(newOwnerId, taskId, 'TRANSFER_INITIATED', `Responsibility for "${task.title}" has been transferred to you.`);
         return updatedTask;
     }
+    async nudge(taskId, userId) {
+        const task = await this.db.query.tasks.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
+            with: {
+                owner: true,
+            },
+        });
+        if (!task)
+            throw new common_1.NotFoundException('Task not found');
+        if (task.assignedBy !== userId) {
+            throw new common_1.UnauthorizedException('Only the assigner can nudge the responsible owner');
+        }
+        await this.notificationsService.create(task.responsibleOwner, taskId, 'NUDGE', `You've been nudged on "${task.title}" by the assigner.`);
+        await this.logAction(taskId, userId, `Nudged responsible owner (${task.owner?.name})`);
+        this.syncGateway.emitToTask(taskId, 'task:nudge', {
+            taskId,
+            nudgedBy: userId,
+            nudgedUser: task.responsibleOwner,
+        });
+        return { success: true };
+    }
     async addParticipant(taskId, userId, role, addedBy) {
         const [participant] = await this.db
             .insert(schema.taskParticipants)

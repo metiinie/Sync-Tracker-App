@@ -54,6 +54,9 @@ let TasksController = class TasksController {
     async syncAll(req) {
         return this.tasksService.syncAll(req.user.userId);
     }
+    async nudge(id, req) {
+        return this.tasksService.nudge(id, req.user.userId);
+    }
 };
 exports.TasksController = TasksController;
 __decorate([
@@ -147,6 +150,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "syncAll", null);
+__decorate([
+    (0, common_1.Post)(':id/nudge'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "nudge", null);
 exports.TasksController = TasksController = __decorate([
     (0, common_1.Controller)('tasks'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

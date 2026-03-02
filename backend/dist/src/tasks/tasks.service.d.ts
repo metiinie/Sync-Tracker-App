@@ -71,6 +71,9 @@ export declare class TasksService {
         lastUpdatedAt: Date;
         createdAt: Date;
     }>;
+    nudge(taskId: string, userId: string): Promise<{
+        success: boolean;
+    }>;
     addParticipant(taskId: string, userId: string, role: string, addedBy: string): Promise<{
         id: string;
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";

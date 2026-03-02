@@ -325,6 +325,45 @@ export class TasksService {
     return updatedTask;
   }
 
+  async nudge(taskId: string, userId: string) {
+    const task = await this.db.query.tasks.findFirst({
+      where: eq(schema.tasks.id, taskId),
+      with: {
+        owner: true,
+      },
+    });
+
+    if (!task) throw new NotFoundException('Task not found');
+    if (task.assignedBy !== userId) {
+      throw new UnauthorizedException(
+        'Only the assigner can nudge the responsible owner',
+      );
+    }
+
+    // 1. Create Notification
+    await this.notificationsService.create(
+      task.responsibleOwner,
+      taskId,
+      'NUDGE',
+      `You've been nudged on "${task.title}" by the assigner.`,
+    );
+
+    // 2. Log Action
+    await this.logAction(
+      taskId,
+      userId,
+      `Nudged responsible owner (${task.owner?.name})`,
+    );
+
+    // 3. Emit Realtime Event
+    this.syncGateway.emitToTask(taskId, 'task:nudge', {
+      taskId,
+      nudgedBy: userId,
+      nudgedUser: task.responsibleOwner,
+    });
+
+    return { success: true };
+  }
   async addParticipant(
     taskId: string,
     userId: string,

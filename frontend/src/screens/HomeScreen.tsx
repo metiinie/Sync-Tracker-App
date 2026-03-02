@@ -165,9 +165,15 @@ const HomeScreen = ({ navigation }: any) => {
         navigation.navigate('TaskDetail', { taskId });
     };
 
-    const handleNudge = (taskId: string) => {
-        // TODO: Implement nudge notification
-        console.log('Nudge task:', taskId);
+    const handleNudge = async (taskId: string) => {
+        try {
+            await api.post(`/tasks/${taskId}/nudge`);
+            Alert.alert("Nudge Sent", "The responsible owner has been notified.");
+            fetchTasks(); // Refresh to see audit log updates if needed
+        } catch (error) {
+            console.error('Error nudging task:', error);
+            Alert.alert("Error", "Failed to send nudge.");
+        }
     };
 
     const handleCreateTask = () => {
