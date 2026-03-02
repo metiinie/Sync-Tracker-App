@@ -217,37 +217,25 @@ const ProfileScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
 
                 {/* Workspace Group */}
-                <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('Workspaces')}
+                    className="flex-row items-center px-6 py-5 border-b border-gray-50"
+                >
                     <Briefcase size={20} color="#4B5563" />
                     <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Workspaces</Text>
                     <ChevronRight size={18} color="#D1D5DB" />
                 </TouchableOpacity>
 
                 {/* Notifications Group */}
-                <View className="flex-row justify-between items-center px-6 py-5 border-b border-gray-50">
-                    <View className="flex-row items-center">
-                        <Bell size={20} color="#4B5563" />
-                        <Text className="ml-4 font-bold text-gray-800 text-base">In-app Alerts</Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => updateSettings({ inAppNotif: !settings?.inAppNotif })}
-                        className={`w-11 h-6 rounded-full p-1 transition-colors ${settings?.inAppNotif ? 'bg-blue-600' : 'bg-gray-200'}`}
-                    >
-                        <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${settings?.inAppNotif ? 'ml-auto' : ''}`} />
-                    </TouchableOpacity>
-                </View>
-                <View className="flex-row justify-between items-center px-6 py-5 border-b border-gray-50">
-                    <View className="flex-row items-center">
-                        <Mail size={20} color="#4B5563" />
-                        <Text className="ml-4 font-bold text-gray-800 text-base">Email Digest</Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => updateSettings({ emailDigest: !settings?.emailDigest })}
-                        className={`w-11 h-6 rounded-full p-1 transition-colors ${settings?.emailDigest ? 'bg-blue-600' : 'bg-gray-200'}`}
-                    >
-                        <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${settings?.emailDigest ? 'ml-auto' : ''}`} />
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('NotificationSettings')}
+                    className="flex-row items-center px-6 py-5 border-b border-gray-50"
+                >
+                    <Bell size={20} color="#4B5563" />
+                    <Text className="ml-4 font-bold text-gray-800 flex-1 text-base">Notifications</Text>
+                    <ChevronRight size={18} color="#D1D5DB" />
+                </TouchableOpacity>
+
 
                 {/* Sync & Data Group */}
                 <View className="flex-row justify-between items-center px-6 py-5 border-b border-gray-50">

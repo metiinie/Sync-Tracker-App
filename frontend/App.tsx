@@ -17,6 +17,8 @@ import SplashScreen from './src/screens/SplashScreen';
 import NotificationScreen from './src/screens/NotificationScreen';
 import EditProfileScreen from './src/screens/EditProfileScreen';
 import SecurityScreen from './src/screens/SecurityScreen';
+import WorkspacesScreen from './src/screens/WorkspacesScreen';
+import NotificationSettingsScreen from './src/screens/NotificationSettingsScreen';
 
 const Stack = createNativeStackNavigator();
 const queryClient = new QueryClient();
@@ -88,6 +90,16 @@ export default function App() {
             <Stack.Screen
               name="Security"
               component={SecurityScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Workspaces"
+              component={WorkspacesScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="NotificationSettings"
+              component={NotificationSettingsScreen}
               options={{ headerShown: false }}
             />
           </>
