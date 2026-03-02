@@ -62,7 +62,7 @@ let TasksService = class TasksService {
         this.syncGateway = syncGateway;
         this.notificationsService = notificationsService;
     }
-    async create(title, description, assignedBy, responsibleOwner, participants = [], milestones = []) {
+    async create(title, description, assignedBy, responsibleOwner, participants = [], milestones = [], priority = 'MEDIUM') {
         const taskDetails = await this.db.transaction(async (tx) => {
             const [task] = await tx
                 .insert(schema.tasks)
@@ -72,6 +72,7 @@ let TasksService = class TasksService {
                 assignedBy,
                 responsibleOwner,
                 status: 'PENDING',
+                priority: priority || 'MEDIUM',
             })
                 .returning();
             await tx.insert(schema.notifications).values({
@@ -214,7 +215,29 @@ let TasksService = class TasksService {
         this.syncGateway.emitToTask(taskId, 'task:accepted', updatedTask);
         return updatedTask;
     }
-    async updateSyncState(taskId, userId, syncState) {
+    async complete(taskId, userId) {
+        const task = await this.db.query.tasks.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
+        });
+        if (!task)
+            throw new common_1.NotFoundException('Task not found');
+        if (task.assignedBy !== userId) {
+            throw new common_1.UnauthorizedException('Only the assigner can mark the track as complete');
+        }
+        const [updatedTask] = await this.db
+            .update(schema.tasks)
+            .set({
+            status: 'COMPLETED',
+            completedAt: new Date(),
+            lastUpdatedAt: new Date(),
+        })
+            .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
+            .returning();
+        await this.logAction(taskId, userId, 'Track marked as COMPLETED');
+        this.syncGateway.emitToTask(taskId, 'task:completed', updatedTask);
+        return updatedTask;
+    }
+    async updateSyncState(taskId, userId, syncState, note) {
         const participant = await this.db.query.taskParticipants.findFirst({
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema.taskParticipants.taskId, taskId), (0, drizzle_orm_1.eq)(schema.taskParticipants.userId, userId)),
         });
@@ -245,7 +268,7 @@ let TasksService = class TasksService {
                 }
             }
         }
-        await this.logAction(taskId, userId, `Sync state updated to ${syncState}`);
+        await this.logAction(taskId, userId, `Sync state updated to ${syncState}${note ? `: ${note}` : ''}`);
         this.syncGateway.emitToTask(taskId, 'sync:update', {
             taskId,
             userId,
@@ -319,6 +342,17 @@ let TasksService = class TasksService {
         }
         return participant;
     }
+    async removeParticipant(taskId, userId, removedBy) {
+        const [participant] = await this.db
+            .delete(schema.taskParticipants)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema.taskParticipants.taskId, taskId), (0, drizzle_orm_1.eq)(schema.taskParticipants.userId, userId)))
+            .returning();
+        if (participant) {
+            await this.logAction(taskId, removedBy, `User ${userId} removed from task`);
+            this.syncGateway.emitToTask(taskId, 'task:leave', { userId });
+        }
+        return { success: true };
+    }
     async findAllForUser(userId) {
         const ownedTasks = await this.db.query.tasks.findMany({
             where: (0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(schema.tasks.responsibleOwner, userId), (0, drizzle_orm_1.eq)(schema.tasks.assignedBy, userId)),
@@ -369,6 +403,75 @@ let TasksService = class TasksService {
         });
         return Array.from(taskMap.values());
     }
+    async update(taskId, userId, data) {
+        const task = await this.db.query.tasks.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
+        });
+        if (!task)
+            throw new common_1.NotFoundException('Task not found');
+        if (task.assignedBy !== userId && task.responsibleOwner !== userId) {
+            throw new common_1.UnauthorizedException('Not authorized to update this task');
+        }
+        const [updatedTask] = await this.db
+            .update(schema.tasks)
+            .set({
+            ...data,
+            lastUpdatedAt: new Date(),
+        })
+            .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
+            .returning();
+        await this.logAction(taskId, userId, `Task updated: ${Object.keys(data).join(', ')}`);
+        this.syncGateway.emitToTask(taskId, 'task:updated', updatedTask);
+        return updatedTask;
+    }
+    async delete(taskId, userId) {
+        const task = await this.db.query.tasks.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
+        });
+        if (!task)
+            throw new common_1.NotFoundException('Task not found');
+        if (task.assignedBy !== userId) {
+            throw new common_1.UnauthorizedException('Only the assigner can delete the task');
+        }
+        await this.db.transaction(async (tx) => {
+            await tx.delete(schema.milestones).where((0, drizzle_orm_1.eq)(schema.milestones.taskId, taskId));
+            await tx.delete(schema.taskParticipants).where((0, drizzle_orm_1.eq)(schema.taskParticipants.taskId, taskId));
+            await tx.delete(schema.timeLogs).where((0, drizzle_orm_1.eq)(schema.timeLogs.taskId, taskId));
+            await tx.delete(schema.syncLogs).where((0, drizzle_orm_1.eq)(schema.syncLogs.taskId, taskId));
+            await tx.delete(schema.notifications).where((0, drizzle_orm_1.eq)(schema.notifications.taskId, taskId));
+            await tx.delete(schema.taskComments).where((0, drizzle_orm_1.eq)(schema.taskComments.taskId, taskId));
+            await tx.delete(schema.tasks).where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId));
+        });
+        this.syncGateway.emitToTask(taskId, 'task:deleted', { id: taskId });
+        return { success: true };
+    }
+    async addComment(taskId, userId, content) {
+        const [comment] = await this.db
+            .insert(schema.taskComments)
+            .values({
+            taskId,
+            userId,
+            content,
+        })
+            .returning();
+        const fullComment = await this.db.query.taskComments.findFirst({
+            where: (0, drizzle_orm_1.eq)(schema.taskComments.id, comment.id),
+            with: {
+                user: true,
+            },
+        });
+        this.syncGateway.emitToTask(taskId, 'comment:new', fullComment);
+        return fullComment;
+    }
+    async getComments(taskId) {
+        return this.db.query.taskComments.findMany({
+            where: (0, drizzle_orm_1.eq)(schema.taskComments.taskId, taskId),
+            with: {
+                user: true,
+            },
+            orderBy: (comments, { asc }) => [asc(comments.createdAt)],
+        });
+    }
     async findOne(taskId) {
         return this.db.query.tasks.findFirst({
             where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
@@ -382,6 +485,16 @@ let TasksService = class TasksService {
                 },
                 milestones: true,
                 timeLogs: {
+                    with: {
+                        user: true,
+                    },
+                },
+                comments: {
+                    with: {
+                        user: true,
+                    },
+                },
+                syncLogs: {
                     with: {
                         user: true,
                     },

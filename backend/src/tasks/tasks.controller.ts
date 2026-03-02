@@ -26,6 +26,7 @@ export class TasksController {
       body.responsibleOwner,
       body.participants,
       body.milestones,
+      body.priority,
     );
   }
 
@@ -37,10 +38,10 @@ export class TasksController {
   @Patch(':id/sync')
   async updateSync(
     @Param('id') id: string,
-    @Body('syncState') syncState: any,
+    @Body() body: { syncState: any; note?: string },
     @Request() req: any,
   ) {
-    return this.tasksService.updateSyncState(id, req.user.userId, syncState);
+    return this.tasksService.updateSyncState(id, req.user.userId, body.syncState, body.note);
   }
 
   @Patch(':id/transfer')
@@ -64,6 +65,15 @@ export class TasksController {
       body.role,
       req.user.userId,
     );
+  }
+
+  @Delete(':id/participants/:userId')
+  async removeParticipant(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Request() req: any,
+  ) {
+    return this.tasksService.removeParticipant(id, userId, req.user.userId);
   }
 
   @Get()
@@ -132,8 +142,37 @@ export class TasksController {
     return this.tasksService.syncParticipant(id, req.user.userId);
   }
 
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    return this.tasksService.update(id, req.user.userId, body);
+  }
+
+  @Delete(':id')
+  async delete(@Param('id') id: string, @Request() req: any) {
+    return this.tasksService.delete(id, req.user.userId);
+  }
+
+  @Post(':id/comments')
+  async addComment(
+    @Param('id') id: string,
+    @Body('content') content: string,
+    @Request() req: any,
+  ) {
+    return this.tasksService.addComment(id, req.user.userId, content);
+  }
+
+  @Get(':id/comments')
+  async getComments(@Param('id') id: string) {
+    return this.tasksService.getComments(id);
+  }
+
   @Post(':id/nudge')
   async nudge(@Param('id') id: string, @Request() req: any) {
     return this.tasksService.nudge(id, req.user.userId);
+  }
+
+  @Patch(':id/complete')
+  async complete(@Param('id') id: string, @Request() req: any) {
+    return this.tasksService.complete(id, req.user.userId);
   }
 }

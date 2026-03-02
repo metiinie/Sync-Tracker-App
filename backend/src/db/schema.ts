@@ -22,6 +22,12 @@ export const taskStatusEnum = pgEnum('task_status', [
   'CANCELLED',
   'FROZEN',
 ]);
+export const taskPriorityEnum = pgEnum('task_priority', [
+  'LOW',
+  'MEDIUM',
+  'HIGH',
+  'CRITICAL',
+]);
 export const syncStateEnum = pgEnum('sync_state', [
   'IN_SYNC',
   'NEEDS_UPDATE',
@@ -54,8 +60,10 @@ export const tasks = pgTable('tasks', {
     .references(() => users.id)
     .notNull(),
   status: taskStatusEnum('status').default('PENDING').notNull(),
+  priority: taskPriorityEnum('priority').default('MEDIUM').notNull(),
   syncState: syncStateEnum('sync_state').default('IN_SYNC').notNull(),
   lastUpdatedAt: timestamp('last_updated_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -74,6 +82,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   syncLogs: many(syncLogs),
   milestones: many(milestones),
   timeLogs: many(timeLogs),
+  comments: many(taskComments),
 }));
 
 export const taskParticipants = pgTable('task_participants', {
@@ -199,3 +208,26 @@ export const workspaceSettings = pgTable('workspace_settings', {
   enableHelperRole: boolean('enable_helper_role').default(true).notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+export const taskComments = pgTable('task_comments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id')
+    .references(() => tasks.id)
+    .notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id)
+    .notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const taskCommentsRelations = relations(taskComments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskComments.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [taskComments.userId],
+    references: [users.id],
+  }),
+}));

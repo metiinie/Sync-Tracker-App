@@ -22,19 +22,22 @@ let TasksController = class TasksController {
         this.tasksService = tasksService;
     }
     async create(body, req) {
-        return this.tasksService.create(body.title, body.description, req.user.userId, body.responsibleOwner, body.participants, body.milestones);
+        return this.tasksService.create(body.title, body.description, req.user.userId, body.responsibleOwner, body.participants, body.milestones, body.priority);
     }
     async accept(id, req) {
         return this.tasksService.accept(id, req.user.userId);
     }
-    async updateSync(id, syncState, req) {
-        return this.tasksService.updateSyncState(id, req.user.userId, syncState);
+    async updateSync(id, body, req) {
+        return this.tasksService.updateSyncState(id, req.user.userId, body.syncState, body.note);
     }
     async transfer(id, newOwnerId, req) {
         return this.tasksService.transfer(id, req.user.userId, newOwnerId);
     }
     async addParticipant(id, body, req) {
         return this.tasksService.addParticipant(id, body.userId, body.role, req.user.userId);
+    }
+    async removeParticipant(id, userId, req) {
+        return this.tasksService.removeParticipant(id, userId, req.user.userId);
     }
     async findAll(req) {
         return this.tasksService.findAllForUser(req.user.userId);
@@ -63,8 +66,23 @@ let TasksController = class TasksController {
     async syncParticipant(id, req) {
         return this.tasksService.syncParticipant(id, req.user.userId);
     }
+    async update(id, body, req) {
+        return this.tasksService.update(id, req.user.userId, body);
+    }
+    async delete(id, req) {
+        return this.tasksService.delete(id, req.user.userId);
+    }
+    async addComment(id, content, req) {
+        return this.tasksService.addComment(id, req.user.userId, content);
+    }
+    async getComments(id) {
+        return this.tasksService.getComments(id);
+    }
     async nudge(id, req) {
         return this.tasksService.nudge(id, req.user.userId);
+    }
+    async complete(id, req) {
+        return this.tasksService.complete(id, req.user.userId);
     }
 };
 exports.TasksController = TasksController;
@@ -87,7 +105,7 @@ __decorate([
 __decorate([
     (0, common_1.Patch)(':id/sync'),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)('syncState')),
+    __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object, Object]),
@@ -111,6 +129,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "addParticipant", null);
+__decorate([
+    (0, common_1.Delete)(':id/participants/:userId'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('userId')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "removeParticipant", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),
@@ -185,6 +212,39 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "syncParticipant", null);
 __decorate([
+    (0, common_1.Patch)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "update", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "delete", null);
+__decorate([
+    (0, common_1.Post)(':id/comments'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('content')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "addComment", null);
+__decorate([
+    (0, common_1.Get)(':id/comments'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "getComments", null);
+__decorate([
     (0, common_1.Post)(':id/nudge'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
@@ -192,6 +252,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "nudge", null);
+__decorate([
+    (0, common_1.Patch)(':id/complete'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "complete", null);
 exports.TasksController = TasksController = __decorate([
     (0, common_1.Controller)('tasks'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

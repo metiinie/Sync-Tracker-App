@@ -43,6 +43,22 @@ const getRoleConfig = (role: string) => {
     }
 };
 
+// ─── PRIORITY CONFIG ──────────────────────────────────
+const getPriorityConfig = (priority: string) => {
+    switch (priority) {
+        case 'CRITICAL':
+            return { color: '#EF4444', bg: '#FEF2F2', label: 'Critical' };
+        case 'HIGH':
+            return { color: '#F59E0B', bg: '#FFFBEB', label: 'High' };
+        case 'MEDIUM':
+            return { color: '#3B82F6', bg: '#EFF6FF', label: 'Medium' };
+        case 'LOW':
+            return { color: '#10B981', bg: '#F0FDF4', label: 'Low' };
+        default:
+            return { color: '#6B7280', bg: '#F3F4F6', label: 'Medium' };
+    }
+};
+
 // ─── OWNER INITIALS ─────────────────────────────────
 const getInitials = (name: string) => {
     if (!name) return '??';
@@ -72,7 +88,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
     const ownerName = task.owner?.name || task.owner?.email?.split('@')[0] || 'Unassigned';
     const assignerName = task.assigner?.name || task.assigner?.email?.split('@')[0] || 'System';
     const participantCount = task.participants?.length || 0;
-    const completedMilestones = task.milestones?.filter((m: any) => m.completed)?.length || task.completedMilestones || 0;
+    const completedMilestones = task.milestones?.filter((m: any) => m.isCompleted === 'true')?.length || task.completedMilestones || 0;
     const totalMilestones = task.milestones?.length || task.totalMilestones || 0;
     const isHelpRequested = task.syncState === 'HELP_REQUESTED';
     const isTransferPending = task.status === 'TRANSFERRING' || task.transferPending;
@@ -130,6 +146,24 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onPress, userRole }) => {
                             textTransform: 'uppercase',
                         }}>
                             {role === 'Assigner' ? 'ASSIGNER' : role === 'Participant' ? 'PARTICIPANT' : role === 'Transferring' ? 'TRANSFERRING' : 'OWNER'}
+                        </Text>
+                    </View>
+
+                    {/* Priority Badge */}
+                    <View style={{
+                        backgroundColor: getPriorityConfig(task.priority).bg,
+                        borderRadius: 6,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderWidth: 1,
+                        borderColor: getPriorityConfig(task.priority).color + '20',
+                    }}>
+                        <Text style={{
+                            fontSize: 10,
+                            fontWeight: '700',
+                            color: getPriorityConfig(task.priority).color,
+                        }}>
+                            {getPriorityConfig(task.priority).label}
                         </Text>
                     </View>
 

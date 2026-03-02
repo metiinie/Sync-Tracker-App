@@ -28,6 +28,7 @@ export class TasksService {
     responsibleOwner: string,
     participants: { userId: string; role: string }[] = [],
     milestones: string[] = [],
+    priority: string = 'MEDIUM',
   ) {
     const taskDetails = await this.db.transaction(async (tx) => {
       const [task] = await tx
@@ -38,6 +39,7 @@ export class TasksService {
           assignedBy,
           responsibleOwner,
           status: 'PENDING',
+          priority: (priority as any) || 'MEDIUM',
         })
         .returning();
 
@@ -250,10 +252,39 @@ export class TasksService {
     return updatedTask;
   }
 
+  async complete(taskId: string, userId: string) {
+    const task = await this.db.query.tasks.findFirst({
+      where: eq(schema.tasks.id, taskId),
+    });
+
+    if (!task) throw new NotFoundException('Task not found');
+    if (task.assignedBy !== userId) {
+      throw new UnauthorizedException(
+        'Only the assigner can mark the track as complete',
+      );
+    }
+
+    const [updatedTask] = await this.db
+      .update(schema.tasks)
+      .set({
+        status: 'COMPLETED' as any,
+        completedAt: new Date(),
+        lastUpdatedAt: new Date(),
+      })
+      .where(eq(schema.tasks.id, taskId))
+      .returning();
+
+    await this.logAction(taskId, userId, 'Track marked as COMPLETED');
+    this.syncGateway.emitToTask(taskId, 'task:completed', updatedTask);
+
+    return updatedTask;
+  }
+
   async updateSyncState(
     taskId: string,
     userId: string,
     syncState: 'IN_SYNC' | 'NEEDS_UPDATE' | 'BLOCKED' | 'HELP_REQUESTED',
+    note?: string,
   ) {
     const participant = await this.db.query.taskParticipants.findFirst({
       where: and(
@@ -302,7 +333,7 @@ export class TasksService {
       }
     }
 
-    await this.logAction(taskId, userId, `Sync state updated to ${syncState}`);
+    await this.logAction(taskId, userId, `Sync state updated to ${syncState}${note ? `: ${note}` : ''}`);
 
     this.syncGateway.emitToTask(taskId, 'sync:update', {
       taskId,
@@ -400,6 +431,7 @@ export class TasksService {
 
     return { success: true };
   }
+
   async addParticipant(
     taskId: string,
     userId: string,
@@ -435,6 +467,25 @@ export class TasksService {
     return participant;
   }
 
+  async removeParticipant(taskId: string, userId: string, removedBy: string) {
+    const [participant] = await this.db
+      .delete(schema.taskParticipants)
+      .where(
+        and(
+          eq(schema.taskParticipants.taskId, taskId),
+          eq(schema.taskParticipants.userId, userId),
+        ),
+      )
+      .returning();
+
+    if (participant) {
+      await this.logAction(taskId, removedBy, `User ${userId} removed from task`);
+      this.syncGateway.emitToTask(taskId, 'task:leave', { userId });
+    }
+
+    return { success: true };
+  }
+
   async findAllForUser(userId: string) {
     const ownedTasks = await this.db.query.tasks.findMany({
       where: or(
@@ -455,8 +506,6 @@ export class TasksService {
             user: true,
           },
         },
-        // The relation name in schema.ts is 'syncLogs' or there is no relation
-        // 'logs' is not defined on tasksRelations
       },
     });
 
@@ -495,6 +544,89 @@ export class TasksService {
     return Array.from(taskMap.values());
   }
 
+  async update(taskId: string, userId: string, data: { title?: string; description?: string; status?: string; priority?: string }) {
+    const task = await this.db.query.tasks.findFirst({
+      where: eq(schema.tasks.id, taskId),
+    });
+
+    if (!task) throw new NotFoundException('Task not found');
+    if (task.assignedBy !== userId && task.responsibleOwner !== userId) {
+      throw new UnauthorizedException('Not authorized to update this task');
+    }
+
+    const [updatedTask] = await this.db
+      .update(schema.tasks)
+      .set({
+        ...data,
+        lastUpdatedAt: new Date(),
+      } as any)
+      .where(eq(schema.tasks.id, taskId))
+      .returning();
+
+    await this.logAction(taskId, userId, `Task updated: ${Object.keys(data).join(', ')}`);
+    this.syncGateway.emitToTask(taskId, 'task:updated', updatedTask);
+    return updatedTask;
+  }
+
+  async delete(taskId: string, userId: string) {
+    const task = await this.db.query.tasks.findFirst({
+      where: eq(schema.tasks.id, taskId),
+    });
+
+    if (!task) throw new NotFoundException('Task not found');
+    if (task.assignedBy !== userId) {
+      throw new UnauthorizedException('Only the assigner can delete the task');
+    }
+
+    await this.db.transaction(async (tx) => {
+      // Delete dependent records
+      await tx.delete(schema.milestones).where(eq(schema.milestones.taskId, taskId));
+      await tx.delete(schema.taskParticipants).where(eq(schema.taskParticipants.taskId, taskId));
+      await tx.delete(schema.timeLogs).where(eq(schema.timeLogs.taskId, taskId));
+      await tx.delete(schema.syncLogs).where(eq(schema.syncLogs.taskId, taskId));
+      await tx.delete(schema.notifications).where(eq(schema.notifications.taskId, taskId));
+      await tx.delete(schema.taskComments).where(eq(schema.taskComments.taskId, taskId));
+
+      // Delete the task
+      await tx.delete(schema.tasks).where(eq(schema.tasks.id, taskId));
+    });
+
+    this.syncGateway.emitToTask(taskId, 'task:deleted', { id: taskId });
+    return { success: true };
+  }
+
+  async addComment(taskId: string, userId: string, content: string) {
+    const [comment] = await this.db
+      .insert(schema.taskComments)
+      .values({
+        taskId,
+        userId,
+        content,
+      })
+      .returning();
+
+    // Fetch full comment with user data
+    const fullComment = await this.db.query.taskComments.findFirst({
+      where: eq(schema.taskComments.id, comment.id),
+      with: {
+        user: true,
+      },
+    });
+
+    this.syncGateway.emitToTask(taskId, 'comment:new', fullComment);
+    return fullComment;
+  }
+
+  async getComments(taskId: string) {
+    return this.db.query.taskComments.findMany({
+      where: eq(schema.taskComments.taskId, taskId),
+      with: {
+        user: true,
+      },
+      orderBy: (comments, { asc }) => [asc(comments.createdAt)],
+    });
+  }
+
   async findOne(taskId: string) {
     return this.db.query.tasks.findFirst({
       where: eq(schema.tasks.id, taskId),
@@ -508,6 +640,16 @@ export class TasksService {
         },
         milestones: true,
         timeLogs: {
+          with: {
+            user: true,
+          },
+        },
+        comments: {
+          with: {
+            user: true,
+          },
+        },
+        syncLogs: {
           with: {
             user: true,
           },

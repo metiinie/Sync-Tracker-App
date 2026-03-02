@@ -224,6 +224,10 @@ const HomeScreen = ({ navigation }: any) => {
         navigation.navigate('CreateTask');
     };
 
+    const navigateToSegment = (segmentId: string) => {
+        navigation.navigate('Tasks', { segmentId });
+    };
+
     const handleGlobalSync = async () => {
         if (isSyncing) return;
         setIsSyncing(true);
@@ -389,6 +393,7 @@ const HomeScreen = ({ navigation }: any) => {
                     groups={dashboard.myResponsibility}
                     onTaskPress={navigateToTask}
                     onUpdateSync={handleUpdateSync}
+                    onHeaderPress={() => navigateToSegment('owned')}
                 />
 
                 {/* 3️⃣ DELEGATED BY ME */}
@@ -396,6 +401,7 @@ const HomeScreen = ({ navigation }: any) => {
                     tasks={dashboard.delegated}
                     onTaskPress={navigateToTask}
                     onNudge={handleNudge}
+                    onHeaderPress={() => navigateToSegment('delegated')}
                 />
 
                 {/* 4️⃣ PARTICIPATING IN */}
@@ -403,6 +409,7 @@ const HomeScreen = ({ navigation }: any) => {
                     items={dashboard.participating}
                     onTaskPress={navigateToTask}
                     onQuickSync={handleParticipantSync}
+                    onHeaderPress={() => navigateToSegment('participating')}
                 />
 
                 {/* 5️⃣ QUICK ACTIONS */}

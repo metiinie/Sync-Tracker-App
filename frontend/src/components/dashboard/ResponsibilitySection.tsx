@@ -12,6 +12,7 @@ interface ResponsibilitySectionProps {
     };
     onTaskPress: (taskId: string) => void;
     onUpdateSync: (taskId: string) => void;
+    onHeaderPress?: () => void;
 }
 
 const statusConfig: Record<string, { dot: string; label: string; icon: string }> = {
@@ -29,16 +30,17 @@ const ResponsibilitySection: React.FC<ResponsibilitySectionProps> = ({ groups, o
     return (
         <View style={{ marginTop: 28, marginBottom: 8 }}>
             {/* Section Header */}
-            <Text style={{
-                fontSize: 12,
-                fontWeight: '800',
-                color: '#9CA3AF',
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                marginBottom: 16,
-            }}>
-                MY RESPONSIBILITY
-            </Text>
+            <TouchableOpacity onPress={onHeaderPress} disabled={!onHeaderPress} style={{ marginBottom: 16 }}>
+                <Text style={{
+                    fontSize: 12,
+                    fontWeight: '800',
+                    color: '#9CA3AF',
+                    letterSpacing: 2,
+                    textTransform: 'uppercase',
+                }}>
+                    MY RESPONSIBILITY
+                </Text>
+            </TouchableOpacity>
 
             {/* Grouped Tasks */}
             {(['blocked', 'help', 'needsUpdate', 'inSync'] as const).map((key) => {

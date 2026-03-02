@@ -7,6 +7,9 @@ export declare class SyncGateway implements OnGatewayConnection, OnGatewayDiscon
     handleJoinTask(data: {
         taskId: string;
     }, client: Socket): void;
+    handleJoinTasks(data: {
+        taskIds: string[];
+    }, client: Socket): void;
     handleLeaveTask(data: {
         taskId: string;
     }, client: Socket): void;

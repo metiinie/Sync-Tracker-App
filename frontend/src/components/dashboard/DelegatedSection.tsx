@@ -7,6 +7,7 @@ interface DelegatedSectionProps {
     tasks: any[];
     onTaskPress: (taskId: string) => void;
     onNudge: (taskId: string) => void;
+    onHeaderPress?: () => void;
 }
 
 const getSyncDot = (syncState: string) => {
@@ -29,22 +30,23 @@ const getSyncLabel = (syncState: string) => {
     }
 };
 
-const DelegatedSection: React.FC<DelegatedSectionProps> = ({ tasks, onTaskPress, onNudge }) => {
+const DelegatedSection: React.FC<DelegatedSectionProps> = ({ tasks, onTaskPress, onNudge, onHeaderPress }) => {
     if (tasks.length === 0) return null;
 
     return (
         <View style={{ marginTop: 28, marginBottom: 8 }}>
             {/* Section Header */}
-            <Text style={{
-                fontSize: 12,
-                fontWeight: '800',
-                color: '#9CA3AF',
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                marginBottom: 16,
-            }}>
-                DELEGATED BY ME
-            </Text>
+            <TouchableOpacity onPress={onHeaderPress} disabled={!onHeaderPress} style={{ marginBottom: 16 }}>
+                <Text style={{
+                    fontSize: 12,
+                    fontWeight: '800',
+                    color: '#9CA3AF',
+                    letterSpacing: 2,
+                    textTransform: 'uppercase',
+                }}>
+                    DELEGATED BY ME
+                </Text>
+            </TouchableOpacity>
 
             {/* Delegated Task Cards */}
             {tasks.map((task: any) => {

@@ -26,6 +26,11 @@ let SyncGateway = class SyncGateway {
     handleJoinTask(data, client) {
         client.join(`task_${data.taskId}`);
     }
+    handleJoinTasks(data, client) {
+        data.taskIds.forEach(id => {
+            client.join(`task_${id}`);
+        });
+    }
     handleLeaveTask(data, client) {
         client.leave(`task_${data.taskId}`);
     }
@@ -46,6 +51,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
     __metadata("design:returntype", void 0)
 ], SyncGateway.prototype, "handleJoinTask", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('joinTasks'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", void 0)
+], SyncGateway.prototype, "handleJoinTasks", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('leaveTask'),
     __param(0, (0, websockets_1.MessageBody)()),

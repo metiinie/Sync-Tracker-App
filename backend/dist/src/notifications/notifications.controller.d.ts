@@ -7,19 +7,21 @@ export declare class NotificationsController {
         createdAt: Date;
         taskId: string | null;
         userId: string;
-        type: string;
         content: string;
+        type: string;
         isRead: string;
         task: {
+            description: string | null;
             id: string;
             createdAt: Date;
-            description: string | null;
             title: string;
             assignedBy: string;
             responsibleOwner: string;
             status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+            priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
             syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
             lastUpdatedAt: Date;
+            completedAt: Date | null;
         } | null;
     }[]>;
     markAsRead(id: string, req: any): Promise<{

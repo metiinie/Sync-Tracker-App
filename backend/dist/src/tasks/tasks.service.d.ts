@@ -10,16 +10,18 @@ export declare class TasksService {
     create(title: string, description: string, assignedBy: string, responsibleOwner: string, participants?: {
         userId: string;
         role: string;
-    }[], milestones?: string[]): Promise<{
+    }[], milestones?: string[], priority?: string): Promise<{
+        description: string | null;
         id: string;
         createdAt: Date;
-        description: string | null;
         title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
+        completedAt: Date | null;
     }>;
     addMilestone(taskId: string, title: string, userId: string, dueDate?: string): Promise<{
         id: string;
@@ -53,8 +55,8 @@ export declare class TasksService {
         createdAt: Date;
     }>;
     logTime(taskId: string, userId: string, durationMinutes: number | string, description: string): Promise<{
-        id: string;
         description: string | null;
+        id: string;
         taskId: string;
         userId: string;
         timestamp: Date;
@@ -67,11 +69,26 @@ export declare class TasksService {
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
+        completedAt: Date | null;
         createdAt: Date;
     }>;
-    updateSyncState(taskId: string, userId: string, syncState: 'IN_SYNC' | 'NEEDS_UPDATE' | 'BLOCKED' | 'HELP_REQUESTED'): Promise<{
+    complete(taskId: string, userId: string): Promise<{
+        id: string;
+        title: string;
+        description: string | null;
+        assignedBy: string;
+        responsibleOwner: string;
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
+        completedAt: Date | null;
+        createdAt: Date;
+    }>;
+    updateSyncState(taskId: string, userId: string, syncState: 'IN_SYNC' | 'NEEDS_UPDATE' | 'BLOCKED' | 'HELP_REQUESTED', note?: string): Promise<{
         success: boolean;
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
     }>;
@@ -82,8 +99,10 @@ export declare class TasksService {
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
+        completedAt: Date | null;
         createdAt: Date;
     }>;
     nudge(taskId: string, userId: string): Promise<{
@@ -98,17 +117,71 @@ export declare class TasksService {
         role: "contributor" | "helper" | "reviewer" | "observer";
         joinedAt: Date;
     }>;
+    removeParticipant(taskId: string, userId: string, removedBy: string): Promise<{
+        success: boolean;
+    }>;
     findAllForUser(userId: string): Promise<any[]>;
-    findOne(taskId: string): Promise<{
+    update(taskId: string, userId: string, data: {
+        title?: string;
+        description?: string;
+        status?: string;
+        priority?: string;
+    }): Promise<{
+        id: string;
+        title: string;
+        description: string | null;
+        assignedBy: string;
+        responsibleOwner: string;
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
+        completedAt: Date | null;
+        createdAt: Date;
+    }>;
+    delete(taskId: string, userId: string): Promise<{
+        success: boolean;
+    }>;
+    addComment(taskId: string, userId: string, content: string): Promise<{
         id: string;
         createdAt: Date;
+        taskId: string;
+        userId: string;
+        content: string;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+    } | undefined>;
+    getComments(taskId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        taskId: string;
+        userId: string;
+        content: string;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+    }[]>;
+    findOne(taskId: string): Promise<{
         description: string | null;
+        id: string;
+        createdAt: Date;
         title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
+        completedAt: Date | null;
         assigner: {
             id: string;
             name: string;
@@ -139,6 +212,20 @@ export declare class TasksService {
                 createdAt: Date;
             };
         }[];
+        syncLogs: {
+            id: string;
+            taskId: string | null;
+            userId: string;
+            action: string;
+            timestamp: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
         milestones: {
             id: string;
             createdAt: Date;
@@ -148,12 +235,26 @@ export declare class TasksService {
             dueDate: Date | null;
         }[];
         timeLogs: {
-            id: string;
             description: string | null;
+            id: string;
             taskId: string;
             userId: string;
             timestamp: Date;
             durationMinutes: string;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
+        comments: {
+            id: string;
+            createdAt: Date;
+            taskId: string;
+            userId: string;
+            content: string;
             user: {
                 id: string;
                 name: string;

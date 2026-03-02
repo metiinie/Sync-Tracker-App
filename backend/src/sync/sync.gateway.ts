@@ -36,6 +36,16 @@ export class SyncGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(`task_${data.taskId}`);
   }
 
+  @SubscribeMessage('joinTasks')
+  handleJoinTasks(
+    @MessageBody() data: { taskIds: string[] },
+    @ConnectedSocket() client: Socket,
+  ) {
+    data.taskIds.forEach(id => {
+      client.join(`task_${id}`);
+    });
+  }
+
   @SubscribeMessage('leaveTask')
   handleLeaveTask(
     @MessageBody() data: { taskId: string },

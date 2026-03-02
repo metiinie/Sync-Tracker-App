@@ -1,5 +1,6 @@
 export declare const userRoleEnum: import("drizzle-orm/pg-core").PgEnum<["contributor", "helper", "reviewer", "observer"]>;
 export declare const taskStatusEnum: import("drizzle-orm/pg-core").PgEnum<["PENDING", "ACTIVE", "COMPLETED", "CANCELLED", "FROZEN"]>;
+export declare const taskPriorityEnum: import("drizzle-orm/pg-core").PgEnum<["LOW", "MEDIUM", "HIGH", "CRITICAL"]>;
 export declare const syncStateEnum: import("drizzle-orm/pg-core").PgEnum<["IN_SYNC", "NEEDS_UPDATE", "BLOCKED", "HELP_REQUESTED"]>;
 export declare const users: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "users";
@@ -204,6 +205,23 @@ export declare const tasks: import("drizzle-orm/pg-core").PgTableWithColumns<{
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        priority: import("drizzle-orm/pg-core").PgColumn<{
+            name: "priority";
+            tableName: "tasks";
+            dataType: "string";
+            columnType: "PgEnumColumn";
+            data: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         syncState: import("drizzle-orm/pg-core").PgColumn<{
             name: "sync_state";
             tableName: "tasks";
@@ -230,6 +248,23 @@ export declare const tasks: import("drizzle-orm/pg-core").PgTableWithColumns<{
             driverParam: string;
             notNull: true;
             hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        completedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "completed_at";
+            tableName: "tasks";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
@@ -265,6 +300,7 @@ export declare const tasksRelations: import("drizzle-orm").Relations<"tasks", {
     syncLogs: import("drizzle-orm").Many<"sync_logs">;
     milestones: import("drizzle-orm").Many<"milestones">;
     timeLogs: import("drizzle-orm").Many<"time_logs">;
+    comments: import("drizzle-orm").Many<"task_comments">;
 }>;
 export declare const taskParticipants: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "task_participants";
@@ -938,4 +974,100 @@ export declare const workspaceSettings: import("drizzle-orm/pg-core").PgTableWit
         }, {}, {}>;
     };
     dialect: "pg";
+}>;
+export declare const taskComments: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "task_comments";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "task_comments";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        taskId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "task_id";
+            tableName: "task_comments";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "user_id";
+            tableName: "task_comments";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        content: import("drizzle-orm/pg-core").PgColumn<{
+            name: "content";
+            tableName: "task_comments";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "task_comments";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const taskCommentsRelations: import("drizzle-orm").Relations<"task_comments", {
+    task: import("drizzle-orm").One<"tasks", true>;
+    user: import("drizzle-orm").One<"users", true>;
 }>;

@@ -34,12 +34,24 @@ const SYNC_PRIORITY: Record<string, number> = {
     'IN_SYNC': 4,
 };
 
-const TasksScreen = ({ navigation }: any) => {
+const TasksScreen = ({ navigation, route }: any) => {
     const { token, user } = useAuthStore();
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [activeSegment, setActiveSegment] = useState('all');
     const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
+
+    // Handle deep-linking params
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            if (route.params?.segmentId) {
+                setActiveSegment(route.params.segmentId);
+                // Clear params after applying to avoid sticky behavior
+                navigation.setParams({ segmentId: undefined });
+            }
+        });
+        return unsubscribe;
+    }, [navigation, route.params]);
 
     // ─── DATA FETCHING ─────────────────────────────
     const { data: tasks = [], isLoading, refetch } = useQuery({
@@ -50,6 +62,15 @@ const TasksScreen = ({ navigation }: any) => {
         },
         enabled: !!token,
     });
+
+    // ─── JOIN REAL-TIME ROOMS ──────────────────────
+    useEffect(() => {
+        if (tasks && tasks.length > 0) {
+            const socket = getSocket();
+            const taskIds = tasks.map((t: any) => t.id);
+            socket.emit('joinTasks', { taskIds });
+        }
+    }, [tasks.length]);
 
     // ─── REAL-TIME SOCKET UPDATES ──────────────────
     useEffect(() => {
@@ -97,6 +118,8 @@ const TasksScreen = ({ navigation }: any) => {
         socket.on('task:helpRequested', handleHelpRequested);
         socket.on('task:assigned', handleRefetch);
         socket.on('task:transferred', handleRefetch);
+        socket.on('task:updated', handleRefetch);
+        socket.on('task:deleted', handleRefetch);
         socket.on('milestone:completed', handleRefetch);
 
         return () => {
@@ -105,6 +128,8 @@ const TasksScreen = ({ navigation }: any) => {
             socket.off('task:helpRequested', handleHelpRequested);
             socket.off('task:assigned', handleRefetch);
             socket.off('task:transferred', handleRefetch);
+            socket.off('task:updated', handleRefetch);
+            socket.off('task:deleted', handleRefetch);
             socket.off('milestone:completed', handleRefetch);
         };
     }, [queryClient, refetch]);

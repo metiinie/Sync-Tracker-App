@@ -27,6 +27,16 @@ const getAvatarColor = (name: string) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
+const getPriorityConfig = (priority: string) => {
+    switch (priority) {
+        case 'CRITICAL': return { color: '#EF4444', bg: '#FEF2F2', label: 'Critical' };
+        case 'HIGH': return { color: '#F59E0B', bg: '#FFFBEB', label: 'High' };
+        case 'MEDIUM': return { color: '#3B82F6', bg: '#EFF6FF', label: 'Medium' };
+        case 'LOW': return { color: '#10B981', bg: '#F0FDF4', label: 'Low' };
+        default: return { color: '#6B7280', bg: '#F3F4F6', label: 'Medium' };
+    }
+};
+
 const CreateTaskScreen = ({ navigation }: any) => {
     const { token, user } = useAuthStore();
     const [title, setTitle] = useState('');
@@ -35,6 +45,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
     const [participants, setParticipants] = useState<{ userId: string; role: string }[]>([]);
     const [milestones, setMilestones] = useState<string[]>([]);
     const [newMilestone, setNewMilestone] = useState('');
+    const [priority, setPriority] = useState('MEDIUM');
     const [submitting, setSubmitting] = useState(false);
 
     // Active section for step indicator
@@ -99,6 +110,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                 responsibleOwner: responsibleOwnerId,
                 participants,
                 milestones,
+                priority,
             });
             Alert.alert('Track Launched', 'Responsibility assigned. Awaiting acceptance.');
             navigation.goBack();
@@ -266,6 +278,46 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                 multiline
                                 onFocus={() => setActiveSection(0)}
                             />
+                        </View>
+
+                        {/* Priority Selection */}
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 12, marginTop: 8 }}>
+                            PRIORITY LEVEL
+                        </Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                            {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(p => {
+                                const isSelected = priority === p;
+                                const cfg = getPriorityConfig(p);
+                                return (
+                                    <TouchableOpacity
+                                        key={p}
+                                        onPress={() => {
+                                            setPriority(p);
+                                            setActiveSection(0);
+                                        }}
+                                        style={{
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 10,
+                                            borderRadius: 12,
+                                            backgroundColor: isSelected ? cfg.bg : '#FFFFFF',
+                                            borderWidth: 1,
+                                            borderColor: isSelected ? cfg.color : '#E5E7EB',
+                                            flex: 1,
+                                            marginRight: p === 'CRITICAL' ? 0 : 8,
+                                            alignItems: 'center',
+                                            shadowColor: '#000',
+                                            shadowOffset: { width: 0, height: 1 },
+                                            shadowOpacity: isSelected ? 0 : 0.02,
+                                            shadowRadius: 2,
+                                            elevation: isSelected ? 0 : 1,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: isSelected ? cfg.color : '#6B7280' }}>
+                                            {p}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
                     </View>
 

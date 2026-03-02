@@ -3,15 +3,17 @@ export declare class TasksController {
     private readonly tasksService;
     constructor(tasksService: TasksService);
     create(body: any, req: any): Promise<{
+        description: string | null;
         id: string;
         createdAt: Date;
-        description: string | null;
         title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
+        completedAt: Date | null;
     }>;
     accept(id: string, req: any): Promise<{
         id: string;
@@ -20,11 +22,16 @@ export declare class TasksController {
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
+        completedAt: Date | null;
         createdAt: Date;
     }>;
-    updateSync(id: string, syncState: any, req: any): Promise<{
+    updateSync(id: string, body: {
+        syncState: any;
+        note?: string;
+    }, req: any): Promise<{
         success: boolean;
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
     }>;
@@ -35,8 +42,10 @@ export declare class TasksController {
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
+        completedAt: Date | null;
         createdAt: Date;
     }>;
     addParticipant(id: string, body: any, req: any): Promise<{
@@ -48,17 +57,22 @@ export declare class TasksController {
         role: "contributor" | "helper" | "reviewer" | "observer";
         joinedAt: Date;
     }>;
+    removeParticipant(id: string, userId: string, req: any): Promise<{
+        success: boolean;
+    }>;
     findAll(req: any): Promise<any[]>;
     findOne(id: string): Promise<{
+        description: string | null;
         id: string;
         createdAt: Date;
-        description: string | null;
         title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
+        completedAt: Date | null;
         assigner: {
             id: string;
             name: string;
@@ -89,6 +103,20 @@ export declare class TasksController {
                 createdAt: Date;
             };
         }[];
+        syncLogs: {
+            id: string;
+            taskId: string | null;
+            userId: string;
+            action: string;
+            timestamp: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
         milestones: {
             id: string;
             createdAt: Date;
@@ -98,12 +126,26 @@ export declare class TasksController {
             dueDate: Date | null;
         }[];
         timeLogs: {
-            id: string;
             description: string | null;
+            id: string;
             taskId: string;
             userId: string;
             timestamp: Date;
             durationMinutes: string;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
+        comments: {
+            id: string;
+            createdAt: Date;
+            taskId: string;
+            userId: string;
+            content: string;
             user: {
                 id: string;
                 name: string;
@@ -144,8 +186,8 @@ export declare class TasksController {
         createdAt: Date;
     }>;
     logTime(id: string, body: any, req: any): Promise<{
-        id: string;
         description: string | null;
+        id: string;
         taskId: string;
         userId: string;
         timestamp: Date;
@@ -159,7 +201,64 @@ export declare class TasksController {
     syncParticipant(id: string, req: any): Promise<{
         success: boolean;
     }>;
+    update(id: string, body: any, req: any): Promise<{
+        id: string;
+        title: string;
+        description: string | null;
+        assignedBy: string;
+        responsibleOwner: string;
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
+        completedAt: Date | null;
+        createdAt: Date;
+    }>;
+    delete(id: string, req: any): Promise<{
+        success: boolean;
+    }>;
+    addComment(id: string, content: string, req: any): Promise<{
+        id: string;
+        createdAt: Date;
+        taskId: string;
+        userId: string;
+        content: string;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+    } | undefined>;
+    getComments(id: string): Promise<{
+        id: string;
+        createdAt: Date;
+        taskId: string;
+        userId: string;
+        content: string;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+            isSuspended: boolean;
+            createdAt: Date;
+        };
+    }[]>;
     nudge(id: string, req: any): Promise<{
         success: boolean;
+    }>;
+    complete(id: string, req: any): Promise<{
+        id: string;
+        title: string;
+        description: string | null;
+        assignedBy: string;
+        responsibleOwner: string;
+        status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
+        priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+        syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        lastUpdatedAt: Date;
+        completedAt: Date | null;
+        createdAt: Date;
     }>;
 }

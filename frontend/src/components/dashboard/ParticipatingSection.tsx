@@ -11,6 +11,7 @@ interface ParticipatingSectionProps {
     items: ParticipatingTask[];
     onTaskPress: (taskId: string) => void;
     onQuickSync: (taskId: string) => void;
+    onHeaderPress?: () => void;
 }
 
 const getSyncDot = (syncState: string) => {
@@ -33,22 +34,23 @@ const getRoleBadgeColor = (role: string) => {
     }
 };
 
-const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTaskPress, onQuickSync }) => {
+const ParticipatingSection: React.FC<ParticipatingSectionProps> = ({ items, onTaskPress, onQuickSync, onHeaderPress }) => {
     if (items.length === 0) return null;
 
     return (
         <View style={{ marginTop: 28, marginBottom: 8 }}>
             {/* Section Header */}
-            <Text style={{
-                fontSize: 12,
-                fontWeight: '800',
-                color: '#9CA3AF',
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                marginBottom: 16,
-            }}>
-                PARTICIPATING IN
-            </Text>
+            <TouchableOpacity onPress={onHeaderPress} disabled={!onHeaderPress} style={{ marginBottom: 16 }}>
+                <Text style={{
+                    fontSize: 12,
+                    fontWeight: '800',
+                    color: '#9CA3AF',
+                    letterSpacing: 2,
+                    textTransform: 'uppercase',
+                }}>
+                    PARTICIPATING IN
+                </Text>
+            </TouchableOpacity>
 
             {/* Compact chip-style items */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
