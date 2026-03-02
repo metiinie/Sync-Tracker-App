@@ -14,7 +14,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @Controller('tasks')
 @UseGuards(JwtAuthGuard)
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(private readonly tasksService: TasksService) { }
 
   @Post()
   async create(@Body() body: any, @Request() req: any) {
@@ -105,5 +105,10 @@ export class TasksController {
       body.durationMinutes,
       body.description,
     );
+  }
+
+  @Patch('sync-all')
+  async syncAll(@Request() req: any) {
+    return this.tasksService.syncAll(req.user.userId);
   }
 }

@@ -51,6 +51,9 @@ let TasksController = class TasksController {
     async logTime(id, body, req) {
         return this.tasksService.logTime(id, req.user.userId, body.durationMinutes, body.description);
     }
+    async syncAll(req) {
+        return this.tasksService.syncAll(req.user.userId);
+    }
 };
 exports.TasksController = TasksController;
 __decorate([
@@ -137,6 +140,13 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "logTime", null);
+__decorate([
+    (0, common_1.Patch)('sync-all'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], TasksController.prototype, "syncAll", null);
 exports.TasksController = TasksController = __decorate([
     (0, common_1.Controller)('tasks'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

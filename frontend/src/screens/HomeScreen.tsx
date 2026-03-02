@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
-import { Bell, Shield } from 'lucide-react-native';
+import { Bell, Shield, X, Clock, ChevronRight } from 'lucide-react-native';
 import { isStale } from '../utils/timeAgo';
 
 import AttentionPanel from '../components/dashboard/AttentionPanel';
@@ -23,6 +23,9 @@ const getGreeting = (): string => {
 const HomeScreen = ({ navigation }: any) => {
     const [tasks, setTasks] = useState<any[]>([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [showLogTimeModal, setShowLogTimeModal] = useState(false);
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+    const [timeLog, setTimeLog] = useState({ hours: '', minutes: '', note: '' });
     const user = useAuthStore(state => state.user);
 
     const fetchTasks = async () => {
@@ -169,14 +172,55 @@ const HomeScreen = ({ navigation }: any) => {
         navigation.navigate('CreateTask');
     };
 
-    const handleGlobalSync = () => {
-        // TODO: Implement global sync update
-        console.log('Global sync');
+    const handleGlobalSync = async () => {
+        try {
+            const response = await api.patch('/tasks/sync-all');
+            const { ownedCount, participationCount } = response.data;
+            Alert.alert(
+                "Global Sync Complete",
+                `Synchronized ${ownedCount} owned tracks and ${participationCount} participations to IN_SYNC state.`,
+                [{ text: "Great" }]
+            );
+            fetchTasks();
+        } catch (error) {
+            console.error('Error in global sync:', error);
+            Alert.alert("Error", "Failed to perform global sync.");
+        }
     };
 
     const handleLogTime = () => {
-        // TODO: Navigate to time logging
-        console.log('Log time');
+        setShowLogTimeModal(true);
+    };
+
+    const submitLogTime = async () => {
+        if (!selectedTaskId) {
+            Alert.alert("Select Task", "Please select a task to log time for.");
+            return;
+        }
+
+        const h = parseInt(timeLog.hours || '0', 10);
+        const m = parseInt(timeLog.minutes || '0', 10);
+        const totalMinutes = (h * 60) + m;
+
+        if (totalMinutes <= 0) {
+            Alert.alert("Invalid Time", "Please enter a valid duration.");
+            return;
+        }
+
+        try {
+            await api.post(`/tasks/${selectedTaskId}/time-logs`, {
+                durationMinutes: totalMinutes,
+                description: timeLog.note,
+            });
+            setShowLogTimeModal(false);
+            setSelectedTaskId(null);
+            setTimeLog({ hours: '', minutes: '', note: '' });
+            Alert.alert("Success", "Time logged successfully.");
+            fetchTasks();
+        } catch (err) {
+            console.error('Error logging time:', err);
+            Alert.alert("Error", "Failed to log time.");
+        }
     };
 
     // ─── DISPLAY NAME ──────────────────────
@@ -318,6 +362,196 @@ const HomeScreen = ({ navigation }: any) => {
                     </View>
                 )}
             </ScrollView>
+
+            {/* ─── LOG TIME MODAL ────────────────── */}
+            <Modal
+                visible={showLogTimeModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowLogTimeModal(false)}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}
+                >
+                    <View style={{
+                        backgroundColor: '#FFF',
+                        padding: 24,
+                        borderTopLeftRadius: 32,
+                        borderTopRightRadius: 32,
+                        maxHeight: '80%'
+                    }}>
+                        {/* Header */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: '#111827' }}>Log Time</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowLogTimeModal(false)}
+                                style={{ padding: 8, backgroundColor: '#F3F4F6', borderRadius: 12 }}
+                            >
+                                <X size={20} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Task Selector */}
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#9CA3AF', marginBottom: 12, letterSpacing: 0.5 }}>
+                            FOR WHICH TRACK?
+                        </Text>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={{ marginBottom: 24 }}
+                            contentContainerStyle={{ gap: 10 }}
+                        >
+                            {tasks.filter(t => t.status === 'ACTIVE' || t.status === 'PENDING').length > 0 ? (
+                                tasks.filter(t => t.status === 'ACTIVE' || t.status === 'PENDING').map(t => (
+                                    <TouchableOpacity
+                                        key={t.id}
+                                        onPress={() => setSelectedTaskId(t.id)}
+                                        style={{
+                                            paddingHorizontal: 16,
+                                            paddingVertical: 12,
+                                            borderRadius: 16,
+                                            backgroundColor: selectedTaskId === t.id ? '#1A1A2E' : '#F3F4F6',
+                                            borderWidth: 1,
+                                            borderColor: selectedTaskId === t.id ? '#1A1A2E' : '#E5E7EB',
+                                            minWidth: 120,
+                                        }}
+                                    >
+                                        <Text
+                                            numberOfLines={1}
+                                            style={{
+                                                fontSize: 14,
+                                                fontWeight: '700',
+                                                color: selectedTaskId === t.id ? '#FFFFFF' : '#374151'
+                                            }}
+                                        >
+                                            {t.title}
+                                        </Text>
+                                        <Text style={{
+                                            fontSize: 10,
+                                            fontWeight: '500',
+                                            color: selectedTaskId === t.id ? 'rgba(255,255,255,0.6)' : '#9CA3AF',
+                                            marginTop: 2
+                                        }}>
+                                            ID: {t.id.substring(0, 4).toUpperCase()}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))
+                            ) : (
+                                <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', paddingVertical: 10 }}>
+                                    No active tracks found to log time for.
+                                </Text>
+                            )}
+                        </ScrollView>
+
+                        {/* Time Inputs */}
+                        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 20 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginLeft: 4 }}>HOURS</Text>
+                                <TextInput
+                                    style={{
+                                        backgroundColor: '#F9FAFB',
+                                        padding: 16,
+                                        borderRadius: 16,
+                                        fontSize: 18,
+                                        fontWeight: '700',
+                                        color: '#111827',
+                                        textAlign: 'center',
+                                        borderWidth: 1,
+                                        borderColor: '#F3F4F6'
+                                    }}
+                                    placeholder="0"
+                                    placeholderTextColor="#D1D5DB"
+                                    keyboardType="numeric"
+                                    value={timeLog.hours}
+                                    onChangeText={t => setTimeLog({ ...timeLog, hours: t })}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginLeft: 4 }}>MINUTES</Text>
+                                <TextInput
+                                    style={{
+                                        backgroundColor: '#F9FAFB',
+                                        padding: 16,
+                                        borderRadius: 16,
+                                        fontSize: 18,
+                                        fontWeight: '700',
+                                        color: '#111827',
+                                        textAlign: 'center',
+                                        borderWidth: 1,
+                                        borderColor: '#F3F4F6'
+                                    }}
+                                    placeholder="0"
+                                    placeholderTextColor="#D1D5DB"
+                                    keyboardType="numeric"
+                                    maxLength={2}
+                                    value={timeLog.minutes}
+                                    onChangeText={t => setTimeLog({ ...timeLog, minutes: t })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Note Input */}
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginLeft: 4 }}>WORK DESCRIPTION</Text>
+                        <TextInput
+                            style={{
+                                backgroundColor: '#F9FAFB',
+                                padding: 16,
+                                borderRadius: 16,
+                                fontSize: 14,
+                                color: '#111827',
+                                marginBottom: 32,
+                                minHeight: 100,
+                                textAlignVertical: 'top',
+                                borderWidth: 1,
+                                borderColor: '#F3F4F6'
+                            }}
+                            placeholder="What did you achieve? (Optional)"
+                            placeholderTextColor="#9CA3AF"
+                            multiline
+                            value={timeLog.note}
+                            onChangeText={t => setTimeLog({ ...timeLog, note: t })}
+                        />
+
+                        {/* Actions */}
+                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: Platform.OS === 'ios' ? 20 : 0 }}>
+                            <TouchableOpacity
+                                onPress={() => setShowLogTimeModal(false)}
+                                style={{
+                                    flex: 1,
+                                    paddingVertical: 18,
+                                    borderRadius: 18,
+                                    backgroundColor: '#F3F4F6',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <Text style={{ fontSize: 15, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={submitLogTime}
+                                activeOpacity={0.8}
+                                style={{
+                                    flex: 2,
+                                    paddingVertical: 18,
+                                    borderRadius: 18,
+                                    backgroundColor: '#111827',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: 0.15,
+                                    shadowRadius: 12,
+                                    elevation: 5
+                                }}
+                            >
+                                <Clock size={16} color="#FFF" style={{ marginRight: 8 }} />
+                                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFF' }}>Log Time</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </SafeAreaView>
     );
 };

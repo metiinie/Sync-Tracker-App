@@ -479,6 +479,74 @@ export class TasksService {
     return stats;
   }
 
+  async syncAll(userId: string) {
+    // 1. Sync owned tasks
+    const ownedTasks = await this.db.query.tasks.findMany({
+      where: eq(schema.tasks.responsibleOwner, userId),
+    });
+
+    const ownedSyncs = ownedTasks.map(async (task) => {
+      if (task.syncState === 'IN_SYNC') return;
+
+      await this.db
+        .update(schema.tasks)
+        .set({
+          syncState: 'IN_SYNC',
+          lastUpdatedAt: new Date(),
+        })
+        .where(eq(schema.tasks.id, task.id));
+
+      await this.logAction(
+        task.id,
+        userId,
+        'Global Sync: Owner state updated to IN_SYNC',
+      );
+
+      this.syncGateway.emitToTask(task.id, 'sync:update', {
+        taskId: task.id,
+        userId,
+        syncState: 'IN_SYNC',
+      });
+    });
+
+    // 2. Sync participated tasks
+    const participations = await this.db.query.taskParticipants.findMany({
+      where: eq(schema.taskParticipants.userId, userId),
+    });
+
+    const participantSyncs = participations.map(async (p) => {
+      if (p.syncState === 'IN_SYNC') return;
+
+      await this.db
+        .update(schema.taskParticipants)
+        .set({
+          syncState: 'IN_SYNC',
+          lastUpdatedAt: new Date(),
+        })
+        .where(eq(schema.taskParticipants.id, p.id));
+
+      await this.logAction(
+        p.taskId,
+        userId,
+        `Global Sync: Participant (${p.role}) state updated to IN_SYNC`,
+      );
+
+      this.syncGateway.emitToTask(p.taskId, 'sync:update', {
+        taskId: p.taskId,
+        userId,
+        syncState: 'IN_SYNC',
+      });
+    });
+
+    await Promise.all([...ownedSyncs, ...participantSyncs]);
+
+    return {
+      success: true,
+      ownedCount: ownedTasks.length,
+      participationCount: participations.length
+    };
+  }
+
   private async logAction(taskId: string, userId: string, action: string) {
     await this.db.insert(schema.syncLogs).values({
       taskId,
