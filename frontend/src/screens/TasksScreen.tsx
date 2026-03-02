@@ -35,7 +35,8 @@ const SYNC_PRIORITY: Record<string, number> = {
 };
 
 const TasksScreen = ({ navigation, route }: any) => {
-    const { token, user } = useAuthStore();
+    const { token, user, settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [activeSegment, setActiveSegment] = useState('all');
@@ -236,10 +237,10 @@ const TasksScreen = ({ navigation, route }: any) => {
     // ─── LOADING STATE ─────────────────────────────
     if (isLoading) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color="#111827" />
-                    <Text style={{ marginTop: 12, fontSize: 14, color: '#9CA3AF', fontWeight: '500' }}>
+                    <ActivityIndicator size="large" color={isDark ? '#F9FAFB' : '#111827'} />
+                    <Text style={{ marginTop: 12, fontSize: 14, color: isDark ? '#9CA3AF' : '#9CA3AF', fontWeight: '500' }}>
                         Loading tasks...
                     </Text>
                 </View>
@@ -248,8 +249,8 @@ const TasksScreen = ({ navigation, route }: any) => {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? '#111827' : '#FAFAFA'} />
 
             {/* ═══ HEADER ═══════════════════════════════ */}
             <View style={{
@@ -263,7 +264,7 @@ const TasksScreen = ({ navigation, route }: any) => {
                 <Text style={{
                     fontSize: 28,
                     fontWeight: '800',
-                    color: '#111827',
+                    color: isDark ? '#F9FAFB' : '#111827',
                     letterSpacing: -0.5,
                 }}>
                     Tasks
@@ -274,12 +275,12 @@ const TasksScreen = ({ navigation, route }: any) => {
                         width: 42,
                         height: 42,
                         borderRadius: 14,
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: isDark ? '#374151' : '#F3F4F6',
                         alignItems: 'center',
                         justifyContent: 'center',
                     }}
                 >
-                    <Bell size={20} color="#374151" />
+                    <Bell size={20} color={isDark ? '#E5E7EB' : '#374151'} />
                 </TouchableOpacity>
             </View>
 
@@ -288,31 +289,31 @@ const TasksScreen = ({ navigation, route }: any) => {
                 <View style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    backgroundColor: '#F3F4F6',
+                    backgroundColor: isDark ? '#1F2937' : '#F3F4F6',
                     borderRadius: 14,
                     paddingHorizontal: 16,
                     paddingVertical: 12,
                     borderWidth: 1,
-                    borderColor: '#E5E7EB',
+                    borderColor: isDark ? '#374151' : '#E5E7EB',
                 }}>
-                    <Search size={18} color="#9CA3AF" />
+                    <Search size={18} color={isDark ? '#6B7280' : '#9CA3AF'} />
                     <TextInput
                         style={{
                             flex: 1,
                             marginLeft: 10,
                             fontSize: 15,
-                            color: '#111827',
+                            color: isDark ? '#F9FAFB' : '#111827',
                             fontWeight: '500',
                             padding: 0,
                         }}
                         placeholder="Search tasks, owners, or IDs..."
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                         value={search}
                         onChangeText={setSearch}
                     />
                     {search.length > 0 && (
                         <TouchableOpacity onPress={() => setSearch('')}>
-                            <X size={18} color="#9CA3AF" />
+                            <X size={18} color={isDark ? '#6B7280' : '#9CA3AF'} />
                         </TouchableOpacity>
                     )}
                 </View>
