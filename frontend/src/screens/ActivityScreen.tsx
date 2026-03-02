@@ -380,7 +380,7 @@ const ActivityScreen = ({ navigation }: any) => {
             {/* ═══ SCOPE CONTROL (3-Segment Pill) ════════════ */}
             <View style={{ paddingHorizontal: 24, marginTop: 16, marginBottom: 16 }}>
                 <View style={{
-                    flexDirection: 'row', backgroundColor: '#F3F4F6', borderRadius: 12, padding: 4, marginBottom: 16
+                    flexDirection: 'row', backgroundColor: isDark ? '#1F2937' : '#F3F4F6', borderRadius: 12, padding: 4, marginBottom: 16
                 }}>
                     {[
                         { id: 'all', label: 'Members' },
@@ -393,14 +393,14 @@ const ActivityScreen = ({ navigation }: any) => {
                             onPress={() => setScope(opt.id as any)}
                             style={{
                                 flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10,
-                                backgroundColor: scope === opt.id ? '#FFF' : 'transparent',
+                                backgroundColor: scope === opt.id ? (isDark ? '#374151' : '#FFF') : 'transparent',
                                 shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-                                shadowOpacity: scope === opt.id ? 0.05 : 0, shadowRadius: 2, elevation: scope === opt.id ? 1 : 0
+                                shadowOpacity: scope === opt.id ? (isDark ? 0.3 : 0.05) : 0, shadowRadius: 2, elevation: scope === opt.id ? 1 : 0
                             }}
                         >
                             <Text style={{
                                 fontSize: 13, fontWeight: scope === opt.id ? '600' : '500',
-                                color: scope === opt.id ? '#111827' : '#6B7280'
+                                color: scope === opt.id ? (isDark ? '#F9FAFB' : '#111827') : (isDark ? '#9CA3AF' : '#6B7280')
                             }}>{opt.label}</Text>
                         </TouchableOpacity>
                     ))}
@@ -410,21 +410,21 @@ const ActivityScreen = ({ navigation }: any) => {
             {/* ═══ SEARCH BAR ════════════════════════════════ */}
             <View style={{ paddingHorizontal: 24, marginBottom: 16 }}>
                 <View style={{
-                    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB',
+                    backgroundColor: isDark ? '#1F2937' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? '#374151' : '#E5E7EB',
                     borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
                     flexDirection: 'row', alignItems: 'center',
                 }}>
-                    <Search size={18} color="#9CA3AF" />
+                    <Search size={18} color={isDark ? '#6B7280' : '#9CA3AF'} />
                     <TextInput
-                        style={{ flex: 1, marginLeft: 10, fontSize: 15, color: '#111827', fontWeight: '500', padding: 0 }}
+                        style={{ flex: 1, marginLeft: 10, fontSize: 15, color: isDark ? '#F9FAFB' : '#111827', fontWeight: '500', padding: 0 }}
                         placeholder="Search logs, actors, or events..."
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
                     {searchQuery.length > 0 && (
                         <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <X size={18} color="#9CA3AF" />
+                            <X size={18} color={isDark ? '#6B7280' : '#9CA3AF'} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -444,8 +444,8 @@ const ActivityScreen = ({ navigation }: any) => {
                                     flexDirection: 'row', alignItems: 'center',
                                     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
                                     borderWidth: 1,
-                                    backgroundColor: isActive ? (filter.id === 'All' ? '#111827' : filter.bg) : '#FFFFFF',
-                                    borderColor: isActive ? (filter.id === 'All' ? '#111827' : filter.color) : '#E5E7EB',
+                                    backgroundColor: isActive ? (filter.id === 'All' ? (isDark ? '#374151' : '#111827') : (isDark ? `${filter.color}1A` : filter.bg)) : (isDark ? '#1F2937' : '#FFFFFF'),
+                                    borderColor: isActive ? (filter.id === 'All' ? (isDark ? '#4B5563' : '#111827') : filter.color) : (isDark ? '#374151' : '#E5E7EB'),
                                 }}>
                                 {filter.id !== 'All' && (
                                     <View style={{
@@ -455,7 +455,7 @@ const ActivityScreen = ({ navigation }: any) => {
                                 )}
                                 <Text style={{
                                     fontSize: 13, fontWeight: isActive ? '700' : '500',
-                                    color: isActive ? (filter.id === 'All' ? '#FFFFFF' : filter.color) : '#6B7280',
+                                    color: isActive ? (filter.id === 'All' ? '#FFFFFF' : filter.color) : (isDark ? '#9CA3AF' : '#6B7280'),
                                 }}>
                                     {filter.label}
                                 </Text>
@@ -468,8 +468,8 @@ const ActivityScreen = ({ navigation }: any) => {
             {/* ═══ TIMELINE FEED ══════════════════════════════ */}
             {loading ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator color="#111827" size="large" />
-                    <Text style={{ marginTop: 12, color: '#9CA3AF', fontSize: 13, fontWeight: '500' }}>
+                    <ActivityIndicator color={isDark ? '#F9FAFB' : '#111827'} size="large" />
+                    <Text style={{ marginTop: 12, color: isDark ? '#9CA3AF' : '#9CA3AF', fontSize: 13, fontWeight: '500' }}>
                         Loading feed...
                     </Text>
                 </View>
@@ -477,14 +477,14 @@ const ActivityScreen = ({ navigation }: any) => {
                 <ScrollView
                     style={{ flex: 1 }}
                     contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#111827" />}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#F9FAFB' : '#111827'} />}
                     showsVerticalScrollIndicator={false}
                 >
                     {Object.keys(groupedActivities).map(dateGroup => (
                         groupedActivities[dateGroup].length > 0 && (
                             <View key={dateGroup} style={{ marginTop: 16 }}>
                                 <Text style={{
-                                    color: '#9CA3AF', fontSize: 11, fontWeight: '800',
+                                    color: isDark ? '#6B7280' : '#9CA3AF', fontSize: 11, fontWeight: '800',
                                     textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12,
                                 }}>
                                     {dateGroup}
@@ -497,15 +497,15 @@ const ActivityScreen = ({ navigation }: any) => {
                     {filteredActivities.length === 0 && (
                         <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
                             <View style={{
-                                width: 72, height: 72, borderRadius: 36, backgroundColor: '#F3F4F6',
+                                width: 72, height: 72, borderRadius: 36, backgroundColor: isDark ? '#374151' : '#F3F4F6',
                                 alignItems: 'center', justifyContent: 'center', marginBottom: 16,
                             }}>
-                                <History size={32} color="#D1D5DB" />
+                                <History size={32} color={isDark ? '#4B5563' : '#D1D5DB'} />
                             </View>
-                            <Text style={{ fontSize: 16, fontWeight: '700', color: '#9CA3AF', marginBottom: 4 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#9CA3AF' : '#9CA3AF', marginBottom: 4 }}>
                                 No activity found
                             </Text>
-                            <Text style={{ fontSize: 13, color: '#D1D5DB', fontWeight: '500', textAlign: 'center' }}>
+                            <Text style={{ fontSize: 13, color: isDark ? '#6B7280' : '#D1D5DB', fontWeight: '500', textAlign: 'center' }}>
                                 Activity on your tracks will appear here.
                             </Text>
                         </View>
