@@ -106,7 +106,11 @@ exports.syncLogs = (0, pg_core_1.pgTable)('sync_logs', {
     action: (0, pg_core_1.text)('action').notNull(),
     metadata: (0, pg_core_1.jsonb)('metadata'),
     timestamp: (0, pg_core_1.timestamp)('timestamp').defaultNow().notNull(),
-});
+}, (table) => ({
+    taskIdx: (0, pg_core_1.index)('sync_logs_task_idx').on(table.taskId),
+    userIdx: (0, pg_core_1.index)('sync_logs_user_idx').on(table.userId),
+    timeIdx: (0, pg_core_1.index)('sync_logs_time_idx').on(table.timestamp),
+}));
 exports.syncLogsRelations = (0, drizzle_orm_1.relations)(exports.syncLogs, ({ one }) => ({
     task: one(exports.tasks, {
         fields: [exports.syncLogs.taskId],
@@ -161,11 +165,15 @@ exports.notifications = (0, pg_core_1.pgTable)('notifications', {
         .references(() => exports.users.id)
         .notNull(),
     taskId: (0, pg_core_1.uuid)('task_id').references(() => exports.tasks.id),
+    activityId: (0, pg_core_1.uuid)('activity_id').references(() => exports.syncLogs.id),
     type: (0, pg_core_1.text)('type').notNull(),
     content: (0, pg_core_1.text)('content').notNull(),
     isRead: (0, pg_core_1.text)('is_read').default('false').notNull(),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+    userIdx: (0, pg_core_1.index)('notifications_user_idx').on(table.userId),
+    createdIdx: (0, pg_core_1.index)('notifications_created_idx').on(table.createdAt),
+}));
 exports.notificationsRelations = (0, drizzle_orm_1.relations)(exports.notifications, ({ one }) => ({
     user: one(exports.users, {
         fields: [exports.notifications.userId],
@@ -174,6 +182,10 @@ exports.notificationsRelations = (0, drizzle_orm_1.relations)(exports.notificati
     task: one(exports.tasks, {
         fields: [exports.notifications.taskId],
         references: [exports.tasks.id],
+    }),
+    activity: one(exports.syncLogs, {
+        fields: [exports.notifications.activityId],
+        references: [exports.syncLogs.id],
     }),
 }));
 exports.workspaceSettings = (0, pg_core_1.pgTable)('workspace_settings', {

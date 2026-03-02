@@ -7,6 +7,7 @@ import {
   foreignKey,
   boolean,
   jsonb,
+  index,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -123,7 +124,11 @@ export const syncLogs = pgTable('sync_logs', {
   action: text('action').notNull(),
   metadata: jsonb('metadata'),
   timestamp: timestamp('timestamp').defaultNow().notNull(),
-});
+}, (table) => ({
+  taskIdx: index('sync_logs_task_idx').on(table.taskId),
+  userIdx: index('sync_logs_user_idx').on(table.userId),
+  timeIdx: index('sync_logs_time_idx').on(table.timestamp),
+}));
 
 export const syncLogsRelations = relations(syncLogs, ({ one }) => ({
   task: one(tasks, {
@@ -184,11 +189,15 @@ export const notifications = pgTable('notifications', {
     .references(() => users.id)
     .notNull(),
   taskId: uuid('task_id').references(() => tasks.id),
+  activityId: uuid('activity_id').references(() => syncLogs.id),
   type: text('type').notNull(), // ASSIGNED, PARTICIPANT_ADDED, HELP_REQUESTED, TRANSFER_INITIATED, MILESTONE_COMPLETED
   content: text('content').notNull(),
   isRead: text('is_read').default('false').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdx: index('notifications_user_idx').on(table.userId),
+  createdIdx: index('notifications_created_idx').on(table.createdAt),
+}));
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, {
@@ -198,6 +207,10 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   task: one(tasks, {
     fields: [notifications.taskId],
     references: [tasks.id],
+  }),
+  activity: one(syncLogs, {
+    fields: [notifications.activityId],
+    references: [syncLogs.id],
   }),
 }));
 

@@ -825,6 +825,23 @@ export declare const notifications: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        activityId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "activity_id";
+            tableName: "notifications";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         type: import("drizzle-orm/pg-core").PgColumn<{
             name: "type";
             tableName: "notifications";
@@ -899,6 +916,7 @@ export declare const notifications: import("drizzle-orm/pg-core").PgTableWithCol
 export declare const notificationsRelations: import("drizzle-orm").Relations<"notifications", {
     user: import("drizzle-orm").One<"users", true>;
     task: import("drizzle-orm").One<"tasks", false>;
+    activity: import("drizzle-orm").One<"sync_logs", false>;
 }>;
 export declare const workspaceSettings: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "workspace_settings";

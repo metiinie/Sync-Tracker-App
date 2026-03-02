@@ -8,6 +8,7 @@ export declare class NotificationsController {
         taskId: string | null;
         userId: string;
         content: string;
+        activityId: string | null;
         type: string;
         isRead: string;
         task: {
@@ -28,6 +29,7 @@ export declare class NotificationsController {
         id: string;
         userId: string;
         taskId: string | null;
+        activityId: string | null;
         type: string;
         content: string;
         isRead: string;

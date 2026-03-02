@@ -106,6 +106,7 @@ let TasksService = class TasksService {
                 taskId: task.id,
                 userId: assignedBy,
                 action: `Task created and assigned to ${responsibleOwner}`,
+                metadata: { type: 'TASK_CREATED', responsibleOwner }
             });
             return task;
         });
@@ -141,7 +142,11 @@ let TasksService = class TasksService {
             dueDate: dueDate ? new Date(dueDate) : null,
         })
             .returning();
-        await this.logAction(taskId, userId, `Milestone added: ${title}${dueDate ? ` (Due: ${dueDate})` : ''}`);
+        await this.logAction(taskId, userId, `Milestone added: ${title}${dueDate ? ` (Due: ${dueDate})` : ''}`, {
+            type: 'MILESTONE_ADDED',
+            milestoneTitle: title,
+            dueDate: dueDate || null
+        });
         this.syncGateway.emitToTask(taskId, 'milestone:created', milestone);
         return milestone;
     }
@@ -158,7 +163,7 @@ let TasksService = class TasksService {
             .set(updateData)
             .where((0, drizzle_orm_1.eq)(schema.milestones.id, milestoneId))
             .returning();
-        await this.logAction(milestone.taskId, userId, `Milestone updated: ${milestone.title}`);
+        await this.logAction(milestone.taskId, userId, `Milestone updated: ${milestone.title}`, { type: 'MILESTONE_UPDATED', milestoneId, milestoneTitle: milestone.title, data });
         this.syncGateway.emitToTask(milestone.taskId, 'milestone:updated', milestone);
         return milestone;
     }
@@ -168,7 +173,7 @@ let TasksService = class TasksService {
             .where((0, drizzle_orm_1.eq)(schema.milestones.id, milestoneId))
             .returning();
         if (milestone) {
-            await this.logAction(milestone.taskId, userId, `Milestone deleted: ${milestone.title}`);
+            await this.logAction(milestone.taskId, userId, `Milestone deleted: ${milestone.title}`, { type: 'MILESTONE_DELETED', milestoneId, milestoneTitle: milestone.title });
             this.syncGateway.emitToTask(milestone.taskId, 'milestone:deleted', {
                 id: milestoneId,
             });
@@ -189,7 +194,7 @@ let TasksService = class TasksService {
             description,
         })
             .returning();
-        await this.logAction(taskId, userId, `Logged ${duration} mins: ${description}`);
+        await this.logAction(taskId, userId, `Logged ${duration} mins: ${description}`, { type: 'TIME_LOGGED', durationMinutes: duration, description });
         this.syncGateway.emitToTask(taskId, 'timelog:created', log);
         return log;
     }
@@ -211,7 +216,7 @@ let TasksService = class TasksService {
         })
             .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
             .returning();
-        await this.logAction(taskId, userId, 'Responsibility accepted');
+        await this.logAction(taskId, userId, 'Responsibility accepted', { type: 'TASK_ACCEPTED' });
         this.syncGateway.emitToTask(taskId, 'task:accepted', updatedTask);
         return updatedTask;
     }
@@ -233,7 +238,7 @@ let TasksService = class TasksService {
         })
             .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
             .returning();
-        await this.logAction(taskId, userId, 'Track marked as COMPLETED');
+        await this.logAction(taskId, userId, 'Track marked as COMPLETED', { type: 'TASK_COMPLETED' });
         this.syncGateway.emitToTask(taskId, 'task:completed', updatedTask);
         return updatedTask;
     }
@@ -264,17 +269,34 @@ let TasksService = class TasksService {
             if (syncState === 'HELP_REQUESTED') {
                 const fullTask = await this.findOne(taskId);
                 if (fullTask) {
-                    await this.notificationsService.create(fullTask.assignedBy, taskId, 'HELP_REQUESTED', `Help requested on "${fullTask.title}" by ${fullTask.owner?.name}`);
+                    const log = await this.logAction(taskId, userId, `Sync state updated to ${syncState}${note ? `: ${note}` : ''}`, {
+                        oldState: task?.syncState,
+                        newState: syncState,
+                        note: note || null
+                    });
+                    await this.notificationsService.create(fullTask.assignedBy, taskId, 'HELP_REQUESTED', `Help requested on "${fullTask.title}" by ${fullTask.owner?.name}`, log.id);
+                    this.syncGateway.emitToTask(taskId, 'sync:update', {
+                        taskId,
+                        userId,
+                        syncState,
+                        activityId: log.id
+                    });
+                    return { success: true, syncState, activityId: log.id };
                 }
             }
         }
-        await this.logAction(taskId, userId, `Sync state updated to ${syncState}${note ? `: ${note}` : ''}`);
+        const log = await this.logAction(taskId, userId, `Sync state updated to ${syncState}${note ? `: ${note}` : ''}`, {
+            oldState: task?.syncState,
+            newState: syncState,
+            note: note || null
+        });
         this.syncGateway.emitToTask(taskId, 'sync:update', {
             taskId,
             userId,
             syncState,
+            activityId: log.id
         });
-        return { success: true, syncState };
+        return { success: true, syncState, activityId: log.id };
     }
     async transfer(taskId, currentOwnerId, newOwnerId) {
         const task = await this.db.query.tasks.findFirst({
@@ -293,8 +315,8 @@ let TasksService = class TasksService {
         })
             .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
             .returning();
-        await this.logAction(taskId, currentOwnerId, `Transfer initiated to ${newOwnerId}`);
-        await this.logAction(taskId, newOwnerId, `Received responsibility (PENDING acceptance)`);
+        await this.logAction(taskId, currentOwnerId, `Transfer initiated to ${newOwnerId}`, { type: 'TRANSFER_INITIATED', toUserId: newOwnerId });
+        await this.logAction(taskId, newOwnerId, `Received responsibility (PENDING acceptance)`, { type: 'TRANSFER_RECEIVED', fromUserId: currentOwnerId });
         this.syncGateway.emitToTask(taskId, 'task:transfer', {
             from: currentOwnerId,
             to: newOwnerId,
@@ -314,12 +336,13 @@ let TasksService = class TasksService {
         if (task.assignedBy !== userId) {
             throw new common_1.UnauthorizedException('Only the assigner can nudge the responsible owner');
         }
-        await this.notificationsService.create(task.responsibleOwner, taskId, 'NUDGE', `You've been nudged on "${task.title}" by the assigner.`);
-        await this.logAction(taskId, userId, `Nudged responsible owner (${task.owner?.name})`);
+        const log = await this.logAction(taskId, userId, `Nudged responsible owner (${task.owner?.name})`, { type: 'NUDGE' });
+        await this.notificationsService.create(task.responsibleOwner, taskId, 'NUDGE', `You've been nudged on "${task.title}" by the assigner.`, log.id);
         this.syncGateway.emitToTask(taskId, 'task:nudge', {
             taskId,
             nudgedBy: userId,
             nudgedUser: task.responsibleOwner,
+            activityId: log.id
         });
         return { success: true };
     }
@@ -332,7 +355,11 @@ let TasksService = class TasksService {
             role: role,
         })
             .returning();
-        await this.logAction(taskId, addedBy, `User ${userId} added as ${role}`);
+        await this.logAction(taskId, addedBy, `User ${userId} added as ${role}`, {
+            type: 'PARTICIPANT_ADDED',
+            addedUserId: userId,
+            role
+        });
         this.syncGateway.emitToTask(taskId, 'task:join', { userId, role });
         const task = await this.db.query.tasks.findFirst({
             where: (0, drizzle_orm_1.eq)(schema.tasks.id, taskId),
@@ -348,7 +375,10 @@ let TasksService = class TasksService {
             .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema.taskParticipants.taskId, taskId), (0, drizzle_orm_1.eq)(schema.taskParticipants.userId, userId)))
             .returning();
         if (participant) {
-            await this.logAction(taskId, removedBy, `User ${userId} removed from task`);
+            await this.logAction(taskId, removedBy, `User ${userId} removed from task`, {
+                type: 'PARTICIPANT_REMOVED',
+                removedUserId: userId
+            });
             this.syncGateway.emitToTask(taskId, 'task:leave', { userId });
         }
         return { success: true };
@@ -420,7 +450,10 @@ let TasksService = class TasksService {
         })
             .where((0, drizzle_orm_1.eq)(schema.tasks.id, taskId))
             .returning();
-        await this.logAction(taskId, userId, `Task updated: ${Object.keys(data).join(', ')}`);
+        await this.logAction(taskId, userId, `Task updated: ${Object.keys(data).join(', ')}`, {
+            type: 'TASK_UPDATED',
+            updates: data
+        });
         this.syncGateway.emitToTask(taskId, 'task:updated', updatedTask);
         return updatedTask;
     }
@@ -460,8 +493,12 @@ let TasksService = class TasksService {
                 user: true,
             },
         });
-        await this.logAction(taskId, userId, `New comment added: ${content}`);
-        this.syncGateway.emitToTask(taskId, 'comment:new', fullComment);
+        const log = await this.logAction(taskId, userId, `New comment added: ${content}`, {
+            type: 'COMMENT_ADDED',
+            commentId: comment.id,
+            snippet: content.substring(0, 100)
+        });
+        this.syncGateway.emitToTask(taskId, 'comment:new', { ...fullComment, activityId: log.id });
         return fullComment;
     }
     async getComments(taskId) {
@@ -545,7 +582,7 @@ let TasksService = class TasksService {
             lastUpdatedAt: new Date(),
         })
             .where((0, drizzle_orm_1.eq)(schema.taskParticipants.id, participant.id));
-        await this.logAction(taskId, userId, `Quick Sync: Participant (${participant.role}) state updated to IN_SYNC`);
+        await this.logAction(taskId, userId, `Quick Sync: Participant (${participant.role}) state updated to IN_SYNC`, { type: 'SYNC_QUICK', role: participant.role });
         this.syncGateway.emitToTask(taskId, 'sync:update', {
             taskId,
             userId,
@@ -602,12 +639,13 @@ let TasksService = class TasksService {
         };
     }
     async logAction(taskId, userId, action, metadata) {
-        await this.db.insert(schema.syncLogs).values({
+        const [log] = await this.db.insert(schema.syncLogs).values({
             taskId,
             userId,
             action,
             metadata,
-        });
+        }).returning();
+        return log;
     }
 };
 exports.TasksService = TasksService;

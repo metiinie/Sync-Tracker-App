@@ -13,11 +13,18 @@ import DelegatedSection from '../components/dashboard/DelegatedSection';
 import ParticipatingSection from '../components/dashboard/ParticipatingSection';
 import QuickActionsBar from '../components/dashboard/QuickActionsBar';
 
-const getGreeting = (): string => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+const formatTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMins = Math.floor(diffInMs / 60000);
+    const diffInHours = Math.floor(diffInMins / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInMins < 1) return 'now';
+    if (diffInMins < 60) return `${diffInMins}m ago`;
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    return `${diffInDays}d ago`;
 };
 
 const HomeScreen = ({ navigation }: any) => {
@@ -440,11 +447,15 @@ const HomeScreen = ({ navigation }: any) => {
                                         <Clock size={16} color="#3B82F6" />
                                     </View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 13, color: '#111827', fontWeight: '600' }} numberOfLines={1}>
-                                            {act.actorName} {act.action.toLowerCase().includes('comment') ? 'commented' : act.action.split(':')[0]}
+                                        <Text style={{ fontSize: 13, color: '#374151', lineHeight: 18 }} numberOfLines={2}>
+                                            <Text style={{ fontWeight: '700', color: '#111827' }}>{act.actorName}</Text>
+                                            {' '}
+                                            {act.actionText}
+                                            {' on '}
+                                            <Text style={{ fontWeight: '700', color: '#111827' }}>{act.taskTitle}</Text>
                                         </Text>
-                                        <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }} numberOfLines={1}>
-                                            in {act.taskTitle}
+                                        <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4, fontWeight: '500' }}>
+                                            {formatTimeAgo(act.timestamp)}
                                         </Text>
                                     </View>
                                     <ChevronRight size={14} color="#D1D5DB" />

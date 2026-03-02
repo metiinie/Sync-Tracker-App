@@ -10,13 +10,14 @@ export class NotificationsService {
   constructor(
     @Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>,
     private syncGateway: SyncGateway,
-  ) {}
+  ) { }
 
   async create(
     userId: string,
     taskId: string | null,
     type: string,
     content: string,
+    activityId?: string,
   ) {
     const [notification] = await this.db
       .insert(schema.notifications)
@@ -25,6 +26,7 @@ export class NotificationsService {
         taskId,
         type,
         content,
+        activityId,
         isRead: 'false',
       })
       .returning();

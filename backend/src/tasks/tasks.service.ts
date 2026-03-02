@@ -89,6 +89,7 @@ export class TasksService {
         taskId: task.id,
         userId: assignedBy,
         action: `Task created and assigned to ${responsibleOwner}`,
+        metadata: { type: 'TASK_CREATED', responsibleOwner }
       });
 
       return task;
@@ -133,7 +134,11 @@ export class TasksService {
       })
       .returning();
 
-    await this.logAction(taskId, userId, `Milestone added: ${title}${dueDate ? ` (Due: ${dueDate})` : ''}`);
+    await this.logAction(taskId, userId, `Milestone added: ${title}${dueDate ? ` (Due: ${dueDate})` : ''}`, {
+      type: 'MILESTONE_ADDED',
+      milestoneTitle: title,
+      dueDate: dueDate || null
+    });
     this.syncGateway.emitToTask(taskId, 'milestone:created', milestone);
     return milestone;
   }
@@ -160,6 +165,7 @@ export class TasksService {
       milestone.taskId,
       userId,
       `Milestone updated: ${milestone.title}`,
+      { type: 'MILESTONE_UPDATED', milestoneId, milestoneTitle: milestone.title, data }
     );
     this.syncGateway.emitToTask(
       milestone.taskId,
@@ -180,6 +186,7 @@ export class TasksService {
         milestone.taskId,
         userId,
         `Milestone deleted: ${milestone.title}`,
+        { type: 'MILESTONE_DELETED', milestoneId, milestoneTitle: milestone.title }
       );
       this.syncGateway.emitToTask(milestone.taskId, 'milestone:deleted', {
         id: milestoneId,
@@ -218,6 +225,7 @@ export class TasksService {
       taskId,
       userId,
       `Logged ${duration} mins: ${description}`,
+      { type: 'TIME_LOGGED', durationMinutes: duration, description }
     );
     this.syncGateway.emitToTask(taskId, 'timelog:created', log);
     return log;
@@ -245,7 +253,7 @@ export class TasksService {
       .where(eq(schema.tasks.id, taskId))
       .returning();
 
-    await this.logAction(taskId, userId, 'Responsibility accepted');
+    await this.logAction(taskId, userId, 'Responsibility accepted', { type: 'TASK_ACCEPTED' });
 
     this.syncGateway.emitToTask(taskId, 'task:accepted', updatedTask);
 
@@ -274,7 +282,7 @@ export class TasksService {
       .where(eq(schema.tasks.id, taskId))
       .returning();
 
-    await this.logAction(taskId, userId, 'Track marked as COMPLETED');
+    await this.logAction(taskId, userId, 'Track marked as COMPLETED', { type: 'TASK_COMPLETED' });
     this.syncGateway.emitToTask(taskId, 'task:completed', updatedTask);
 
     return updatedTask;
@@ -323,25 +331,45 @@ export class TasksService {
       if (syncState === 'HELP_REQUESTED') {
         const fullTask = await this.findOne(taskId);
         if (fullTask) {
+          const log = await this.logAction(taskId, userId, `Sync state updated to ${syncState}${note ? `: ${note}` : ''}`, {
+            oldState: task?.syncState,
+            newState: syncState,
+            note: note || null
+          });
+
           await this.notificationsService.create(
             fullTask.assignedBy,
             taskId,
             'HELP_REQUESTED',
             `Help requested on "${fullTask.title}" by ${fullTask.owner?.name}`,
+            log.id
           );
+
+          this.syncGateway.emitToTask(taskId, 'sync:update', {
+            taskId,
+            userId,
+            syncState,
+            activityId: log.id
+          });
+          return { success: true, syncState, activityId: log.id };
         }
       }
     }
 
-    await this.logAction(taskId, userId, `Sync state updated to ${syncState}${note ? `: ${note}` : ''}`);
+    const log = await this.logAction(taskId, userId, `Sync state updated to ${syncState}${note ? `: ${note}` : ''}`, {
+      oldState: task?.syncState,
+      newState: syncState,
+      note: note || null
+    });
 
     this.syncGateway.emitToTask(taskId, 'sync:update', {
       taskId,
       userId,
       syncState,
+      activityId: log.id
     });
 
-    return { success: true, syncState };
+    return { success: true, syncState, activityId: log.id };
   }
 
   async transfer(taskId: string, currentOwnerId: string, newOwnerId: string) {
@@ -369,11 +397,13 @@ export class TasksService {
       taskId,
       currentOwnerId,
       `Transfer initiated to ${newOwnerId}`,
+      { type: 'TRANSFER_INITIATED', toUserId: newOwnerId }
     );
     await this.logAction(
       taskId,
       newOwnerId,
       `Received responsibility (PENDING acceptance)`,
+      { type: 'TRANSFER_RECEIVED', fromUserId: currentOwnerId }
     );
 
     this.syncGateway.emitToTask(taskId, 'task:transfer', {
@@ -407,19 +437,21 @@ export class TasksService {
       );
     }
 
-    // 1. Create Notification
+    // 2. Log Action
+    const log = await this.logAction(
+      taskId,
+      userId,
+      `Nudged responsible owner (${task.owner?.name})`,
+      { type: 'NUDGE' }
+    );
+
+    // 1. Create Notification (Moved after log to get activityId)
     await this.notificationsService.create(
       task.responsibleOwner,
       taskId,
       'NUDGE',
       `You've been nudged on "${task.title}" by the assigner.`,
-    );
-
-    // 2. Log Action
-    await this.logAction(
-      taskId,
-      userId,
-      `Nudged responsible owner (${task.owner?.name})`,
+      log.id
     );
 
     // 3. Emit Realtime Event
@@ -427,6 +459,7 @@ export class TasksService {
       taskId,
       nudgedBy: userId,
       nudgedUser: task.responsibleOwner,
+      activityId: log.id
     });
 
     return { success: true };
@@ -447,7 +480,11 @@ export class TasksService {
       })
       .returning();
 
-    await this.logAction(taskId, addedBy, `User ${userId} added as ${role}`);
+    await this.logAction(taskId, addedBy, `User ${userId} added as ${role}`, {
+      type: 'PARTICIPANT_ADDED',
+      addedUserId: userId,
+      role
+    });
 
     this.syncGateway.emitToTask(taskId, 'task:join', { userId, role });
 
@@ -479,7 +516,10 @@ export class TasksService {
       .returning();
 
     if (participant) {
-      await this.logAction(taskId, removedBy, `User ${userId} removed from task`);
+      await this.logAction(taskId, removedBy, `User ${userId} removed from task`, {
+        type: 'PARTICIPANT_REMOVED',
+        removedUserId: userId
+      });
       this.syncGateway.emitToTask(taskId, 'task:leave', { userId });
     }
 
@@ -563,7 +603,10 @@ export class TasksService {
       .where(eq(schema.tasks.id, taskId))
       .returning();
 
-    await this.logAction(taskId, userId, `Task updated: ${Object.keys(data).join(', ')}`);
+    await this.logAction(taskId, userId, `Task updated: ${Object.keys(data).join(', ')}`, {
+      type: 'TASK_UPDATED',
+      updates: data
+    });
     this.syncGateway.emitToTask(taskId, 'task:updated', updatedTask);
     return updatedTask;
   }
@@ -613,8 +656,12 @@ export class TasksService {
       },
     });
 
-    await this.logAction(taskId, userId, `New comment added: ${content}`);
-    this.syncGateway.emitToTask(taskId, 'comment:new', fullComment);
+    const log = await this.logAction(taskId, userId, `New comment added: ${content}`, {
+      type: 'COMMENT_ADDED',
+      commentId: comment.id,
+      snippet: content.substring(0, 100)
+    });
+    this.syncGateway.emitToTask(taskId, 'comment:new', { ...fullComment, activityId: log.id });
     return fullComment;
   }
 
@@ -720,6 +767,7 @@ export class TasksService {
       taskId,
       userId,
       `Quick Sync: Participant (${participant.role}) state updated to IN_SYNC`,
+      { type: 'SYNC_QUICK', role: participant.role }
     );
 
     this.syncGateway.emitToTask(taskId, 'sync:update', {
@@ -800,11 +848,12 @@ export class TasksService {
   }
 
   private async logAction(taskId: string, userId: string, action: string, metadata?: any) {
-    await this.db.insert(schema.syncLogs).values({
+    const [log] = await this.db.insert(schema.syncLogs).values({
       taskId,
       userId,
       action,
       metadata,
-    });
+    }).returning();
+    return log;
   }
 }

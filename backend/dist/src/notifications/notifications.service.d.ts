@@ -5,12 +5,13 @@ export declare class NotificationsService {
     private db;
     private syncGateway;
     constructor(db: NodePgDatabase<typeof schema>, syncGateway: SyncGateway);
-    create(userId: string, taskId: string | null, type: string, content: string): Promise<{
+    create(userId: string, taskId: string | null, type: string, content: string, activityId?: string): Promise<{
         id: string;
         createdAt: Date;
         taskId: string | null;
         userId: string;
         content: string;
+        activityId: string | null;
         type: string;
         isRead: string;
     }>;
@@ -20,6 +21,7 @@ export declare class NotificationsService {
         taskId: string | null;
         userId: string;
         content: string;
+        activityId: string | null;
         type: string;
         isRead: string;
         task: {
@@ -40,6 +42,7 @@ export declare class NotificationsService {
         id: string;
         userId: string;
         taskId: string | null;
+        activityId: string | null;
         type: string;
         content: string;
         isRead: string;

@@ -311,14 +311,14 @@ const ActivityScreen = ({ navigation }: any) => {
                     <View style={{ flex: 1, paddingRight: 16 }}>
                         <Text style={{ color: '#374151', fontSize: 14, lineHeight: 20 }}>
                             <Text style={{ fontWeight: '700', color: '#111827' }}>{activity.actorName}</Text>
-                            {' marked '}
+                            {' '}
+                            <Text style={{ color: '#4B5563' }}>{activity.actionText}</Text>
+                            {' on '}
                             <Text style={{ fontWeight: '700', color: '#111827' }}>{activity.taskTitle}</Text>
-                            {' as '}
-                            <Text style={{ fontWeight: '700', color: config.color }}>{activity.stateBadge?.replace('_', ' ')}</Text>
                         </Text>
                         {activity.userRole && (
                             <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4, fontWeight: '500' }}>
-                                Triggered by {activity.userRole}
+                                Your role: {activity.userRole}
                             </Text>
                         )}
                     </View>

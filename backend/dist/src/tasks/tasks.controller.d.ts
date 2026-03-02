@@ -4,9 +4,9 @@ export declare class TasksController {
     constructor(tasksService: TasksService);
     create(body: any, req: any): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -34,6 +34,7 @@ export declare class TasksController {
     }, req: any): Promise<{
         success: boolean;
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
+        activityId: string;
     }>;
     transfer(id: string, newOwnerId: string, req: any): Promise<{
         id: string;
@@ -63,9 +64,9 @@ export declare class TasksController {
     findAll(req: any): Promise<any[]>;
     findOne(id: string): Promise<{
         id: string;
-        title: string;
-        description: string | null;
         createdAt: Date;
+        description: string | null;
+        title: string;
         assignedBy: string;
         responsibleOwner: string;
         status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "FROZEN";
@@ -73,44 +74,6 @@ export declare class TasksController {
         syncState: "IN_SYNC" | "NEEDS_UPDATE" | "BLOCKED" | "HELP_REQUESTED";
         lastUpdatedAt: Date;
         completedAt: Date | null;
-        milestones: {
-            id: string;
-            title: string;
-            createdAt: Date;
-            taskId: string;
-            isCompleted: string;
-            dueDate: Date | null;
-        }[];
-        syncLogs: {
-            id: string;
-            taskId: string | null;
-            userId: string;
-            timestamp: Date;
-            action: string;
-            metadata: unknown;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                isSuspended: boolean;
-                createdAt: Date;
-            };
-        }[];
-        timeLogs: {
-            id: string;
-            description: string | null;
-            taskId: string;
-            userId: string;
-            durationMinutes: string;
-            timestamp: Date;
-            user: {
-                id: string;
-                name: string;
-                email: string;
-                isSuspended: boolean;
-                createdAt: Date;
-            };
-        }[];
         assigner: {
             id: string;
             name: string;
@@ -141,6 +104,44 @@ export declare class TasksController {
                 createdAt: Date;
             };
         }[];
+        syncLogs: {
+            id: string;
+            taskId: string | null;
+            userId: string;
+            action: string;
+            metadata: unknown;
+            timestamp: Date;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
+        milestones: {
+            id: string;
+            createdAt: Date;
+            title: string;
+            taskId: string;
+            isCompleted: string;
+            dueDate: Date | null;
+        }[];
+        timeLogs: {
+            id: string;
+            description: string | null;
+            taskId: string;
+            userId: string;
+            timestamp: Date;
+            durationMinutes: string;
+            user: {
+                id: string;
+                name: string;
+                email: string;
+                isSuspended: boolean;
+                createdAt: Date;
+            };
+        }[];
         comments: {
             id: string;
             createdAt: Date;
@@ -161,8 +162,8 @@ export declare class TasksController {
         dueDate?: string;
     }, req: any): Promise<{
         id: string;
-        title: string;
         createdAt: Date;
+        title: string;
         taskId: string;
         isCompleted: string;
         dueDate: Date | null;
@@ -191,8 +192,8 @@ export declare class TasksController {
         description: string | null;
         taskId: string;
         userId: string;
-        durationMinutes: string;
         timestamp: Date;
+        durationMinutes: string;
     }>;
     syncAll(req: any): Promise<{
         success: boolean;

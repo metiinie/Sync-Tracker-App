@@ -77,12 +77,15 @@ export class ActivitiesService {
         });
 
         return logs.map(log => {
-            // Determine Event Type based on action string
+            const metadata = log.metadata as any;
             let type = 'Sync Updates';
             let stateBadge = 'IN_SYNC';
+            let actionText = '';
+            let detail = '';
 
             const actionLower = log.action.toLowerCase();
 
+            // 1. Determine Type & Badge (Keep existing logic as fallback)
             if (actionLower.includes('blocked')) {
                 type = 'Blocked';
                 stateBadge = 'BLOCKED';
@@ -115,12 +118,84 @@ export class ActivitiesService {
                 stateBadge = 'PENDING';
             }
 
-            // Sync state badge fallback to current task state if it's a general sync update
             if (type === 'Sync Updates' && log.task) {
                 stateBadge = log.task.syncState;
             }
 
-            // determine your role in this task
+            // 2. Natural Language Action Text using Metadata
+            if (metadata && metadata.type) {
+                switch (metadata.type) {
+                    case 'TASK_CREATED':
+                        actionText = `created the track and assigned it to ${metadata.responsibleOwner === userId ? 'you' : 'someone'}`;
+                        break;
+                    case 'MILESTONE_ADDED':
+                        actionText = `added a new milestone: ${metadata.milestoneTitle}`;
+                        detail = metadata.dueDate ? `Due: ${metadata.dueDate}` : '';
+                        break;
+                    case 'MILESTONE_UPDATED':
+                        const isToggle = metadata.data && metadata.data.isCompleted !== undefined;
+                        actionText = isToggle
+                            ? `${metadata.data.isCompleted ? 'completed' : 'reopened'} the milestone: ${metadata.milestoneTitle}`
+                            : `updated the milestone: ${metadata.milestoneTitle}`;
+                        break;
+                    case 'TIME_LOGGED':
+                        actionText = `logged ${metadata.durationMinutes} mins of work`;
+                        detail = metadata.description;
+                        break;
+                    case 'TASK_ACCEPTED':
+                        actionText = `accepted responsibility for the track`;
+                        break;
+                    case 'TASK_COMPLETED':
+                        actionText = `marked the entire track as COMPLETED`;
+                        break;
+                    case 'NUDGE':
+                        actionText = `sent a nudge to the responsible owner`;
+                        break;
+                    case 'COMMENT_ADDED':
+                    case 'comment': // fallback from older logs
+                        actionText = `added a new comment`;
+                        detail = metadata.snippet || metadata.content || '';
+                        break;
+                    case 'PARTICIPANT_ADDED':
+                        actionText = `added a new ${metadata.role} to the team`;
+                        break;
+                    case 'PARTICIPANT_REMOVED':
+                        actionText = `removed a participant from the track`;
+                        break;
+                    case 'TRANSFER_INITIATED':
+                        actionText = `initiated a responsibility transfer`;
+                        break;
+                    case 'TRANSFER_RECEIVED':
+                        actionText = `received a responsibility transfer request`;
+                        break;
+                    case 'TASK_UPDATED':
+                        actionText = `updated the track details`;
+                        break;
+                    case 'SYNC_QUICK':
+                        actionText = `perfomed a quick-sync as ${metadata.role}`;
+                        break;
+                    case 'SYNC_GLOBAL':
+                        actionText = `synced all their responsible tracks to IN SYNC`;
+                        break;
+                }
+            }
+
+            // Fallback for actionText if no metadata or unrecognized
+            if (!actionText) {
+                if (actionLower.includes('sync state updated to')) {
+                    const newState = actionLower.split('updated to ')[1]?.split(':')[0]?.trim() || '';
+                    actionText = `updated the sync state to ${newState.toUpperCase()}`;
+                } else {
+                    actionText = log.action;
+                }
+            }
+
+            // Fallback for detail extraction
+            if (!detail && log.action.includes(':')) {
+                detail = log.action.split(':').slice(1).join(':').trim();
+            }
+
+            // determine your role
             let role = 'Contributor';
             if (log.task) {
                 if (log.task.responsibleOwner === userId) role = 'Responsible';
@@ -133,22 +208,13 @@ export class ActivitiesService {
                 }
             }
 
-            // Extract detail from action string (anything after a colon)
-            let detail = '';
-            if (log.action.includes(':')) {
-                detail = log.action.split(':').slice(1).join(':').trim();
-            } else if (log.action.toLowerCase().includes('milestone')) {
-                // fallback for milestone added if not colon-formatted (though it usually is)
-                const parts = log.action.split(' ');
-                if (parts.length > 2) detail = parts.slice(2).join(' ');
-            }
-
             return {
                 id: log.id,
                 taskId: log.taskId,
                 actorId: log.userId,
                 actorName: log.user.name,
-                action: log.action,
+                action: log.action, // keep original
+                actionText,
                 detail,
                 taskTitle: log.task ? log.task.title : 'Deleted Task',
                 taskState: log.task ? log.task.syncState : 'UNKNOWN',

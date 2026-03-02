@@ -59,7 +59,7 @@ let NotificationsService = class NotificationsService {
         this.db = db;
         this.syncGateway = syncGateway;
     }
-    async create(userId, taskId, type, content) {
+    async create(userId, taskId, type, content, activityId) {
         const [notification] = await this.db
             .insert(schema.notifications)
             .values({
@@ -67,6 +67,7 @@ let NotificationsService = class NotificationsService {
             taskId,
             type,
             content,
+            activityId,
             isRead: 'false',
         })
             .returning();
