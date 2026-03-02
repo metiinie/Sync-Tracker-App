@@ -104,7 +104,8 @@ const FILTERS = [
 
 // ─── MAIN COMPONENT ─────────────────────────────────────
 const ActivityScreen = ({ navigation }: any) => {
-    const { user } = useAuthStore();
+    const { user, settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
     const [scope, setScope] = useState<'my_tasks' | 'delegated' | 'all' | 'workspace'>('all');
     const [activities, setActivities] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -272,11 +273,11 @@ const ActivityScreen = ({ navigation }: any) => {
                     <TouchableOpacity onPress={goToTask} activeOpacity={0.8}
                         style={{
                             flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                            backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#F3F4F6',
+                            backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderWidth: 1, borderColor: isDark ? '#374151' : '#F3F4F6',
                             paddingVertical: 12, borderRadius: 12,
                         }}>
-                        <ExternalLink size={14} color="#6B7280" />
-                        <Text style={{ marginLeft: 6, color: '#6B7280', fontSize: 13, fontWeight: '600' }}>
+                        <ExternalLink size={14} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                        <Text style={{ marginLeft: 6, color: isDark ? '#D1D5DB' : '#6B7280', fontSize: 13, fontWeight: '600' }}>
                             View Task
                         </Text>
                     </TouchableOpacity>
@@ -290,13 +291,13 @@ const ActivityScreen = ({ navigation }: any) => {
 
         return (
             <View key={activity.id} style={{
-                marginBottom: 16, borderRadius: 16, backgroundColor: '#FFFFFF',
-                padding: 16, borderWidth: 1, borderColor: '#F3F4F6',
-                shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 1,
+                marginBottom: 16, borderRadius: 16, backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+                padding: 16, borderWidth: 1, borderColor: isDark ? '#374151' : '#F3F4F6',
+                shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: isDark ? 0.3 : 0.03, shadowRadius: 4, elevation: 1,
             }}>
                 {/* Top Row: Status Badge & Time */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <View style={{ backgroundColor: config.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                    <View style={{ backgroundColor: isDark ? `${config.color}20` : config.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
                         <Text style={{ color: config.color, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
                             {config.label}
                         </Text>
@@ -309,22 +310,22 @@ const ActivityScreen = ({ navigation }: any) => {
                 {/* Content Row: Description & Icon */}
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                     <View style={{ flex: 1, paddingRight: 16 }}>
-                        <Text style={{ color: '#374151', fontSize: 14, lineHeight: 20 }}>
-                            <Text style={{ fontWeight: '700', color: '#111827' }}>{activity.actorName}</Text>
+                        <Text style={{ color: isDark ? '#D1D5DB' : '#374151', fontSize: 14, lineHeight: 20 }}>
+                            <Text style={{ fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827' }}>{activity.actorName}</Text>
                             {' '}
-                            <Text style={{ color: '#4B5563' }}>{activity.actionText}</Text>
+                            <Text style={{ color: isDark ? '#9CA3AF' : '#4B5563' }}>{activity.actionText}</Text>
                             {' on '}
-                            <Text style={{ fontWeight: '700', color: '#111827' }}>{activity.taskTitle}</Text>
+                            <Text style={{ fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827' }}>{activity.taskTitle}</Text>
                         </Text>
                         {activity.userRole && (
-                            <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4, fontWeight: '500' }}>
+                            <Text style={{ color: isDark ? '#6B7280' : '#9CA3AF', fontSize: 12, marginTop: 4, fontWeight: '500' }}>
                                 Your role: {activity.userRole}
                             </Text>
                         )}
                     </View>
 
                     <View style={{
-                        width: 44, height: 44, borderRadius: 12, backgroundColor: config.bg,
+                        width: 44, height: 44, borderRadius: 12, backgroundColor: isDark ? `${config.color}20` : config.bg,
                         alignItems: 'center', justifyContent: 'center',
                     }}>
                         {getStatusIcon(activity.stateBadge, 20)}
@@ -334,10 +335,10 @@ const ActivityScreen = ({ navigation }: any) => {
                 {/* Detail text if available */}
                 {activity.detail ? (
                     <View style={{
-                        marginTop: 12, padding: 12, backgroundColor: '#F9FAFB',
+                        marginTop: 12, padding: 12, backgroundColor: isDark ? '#374151' : '#F9FAFB',
                         borderRadius: 12, borderLeftWidth: 3, borderLeftColor: config.color
                     }}>
-                        <Text style={{ color: '#4B5563', fontSize: 13, fontStyle: 'italic', lineHeight: 18 }}>
+                        <Text style={{ color: isDark ? '#D1D5DB' : '#4B5563', fontSize: 13, fontStyle: 'italic', lineHeight: 18 }}>
                             "{activity.detail}"
                         </Text>
                     </View>
@@ -353,26 +354,26 @@ const ActivityScreen = ({ navigation }: any) => {
 
     // ─── MAIN RENDER ────────────────────────────────────
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? '#111827' : '#FAFAFA'} />
 
             {/* ═══ HEADER ═══════════════════════════════════ */}
             <View style={{
                 paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4,
                 flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
             }}>
-                <Text style={{ fontSize: 28, fontWeight: '800', color: '#111827', letterSpacing: -0.5 }}>
+                <Text style={{ fontSize: 28, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', letterSpacing: -0.5 }}>
                     Activity
                 </Text>
                 <View style={{
-                    width: 42, height: 42, borderRadius: 14, backgroundColor: '#F3F4F6',
+                    width: 42, height: 42, borderRadius: 14, backgroundColor: isDark ? '#374151' : '#F3F4F6',
                     alignItems: 'center', justifyContent: 'center'
                 }}>
                     <View style={{
                         position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4,
-                        backgroundColor: '#EF4444', borderWidth: 2, borderColor: '#F3F4F6', zIndex: 1,
+                        backgroundColor: '#EF4444', borderWidth: 2, borderColor: isDark ? '#374151' : '#F3F4F6', zIndex: 1,
                     }} />
-                    <History size={20} color="#374151" />
+                    <History size={20} color={isDark ? '#E5E7EB' : '#374151'} />
                 </View>
             </View>
 
