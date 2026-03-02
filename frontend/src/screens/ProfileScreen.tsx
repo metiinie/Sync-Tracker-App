@@ -42,23 +42,23 @@ const KPICard = ({ label, value, valueColor = '#111827' }: { label: string, valu
 );
 
 const ProfileScreen = ({ navigation }: any) => {
-    const { user, setSession } = useAuthStore();
+    const { user, setSession, settings, updateSettings } = useAuthStore();
     const [stats, setStats] = useState<any>(null);
+    const [recentActivities, setRecentActivities] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [view, setView] = useState<'profile' | 'settings'>('profile');
 
-    const [isDarkMode, setIsDarkMode] = useState(false);
-    const [bgSync, setBgSync] = useState(true);
-    const [inAppNotif, setInAppNotif] = useState(true);
-    const [emailDigest, setEmailDigest] = useState(false);
-
-    const fetchStats = async () => {
+    const fetchProfileData = async () => {
         try {
-            const res = await api.get('/users/stats');
-            setStats(res.data);
+            const [statsRes, activityRes] = await Promise.all([
+                api.get('/users/stats'),
+                api.get('/activities?scope=my_tasks&limit=3')
+            ]);
+            setStats(statsRes.data);
+            setRecentActivities(activityRes.data);
         } catch (err) {
-            console.error('Failed to fetch stats', err);
+            console.error('Failed to fetch profile data', err);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -66,12 +66,12 @@ const ProfileScreen = ({ navigation }: any) => {
     };
 
     useEffect(() => {
-        fetchStats();
+        fetchProfileData();
     }, []);
 
     const onRefresh = () => {
         setRefreshing(true);
-        fetchStats();
+        fetchProfileData();
     };
 
     const handleLogout = async () => {
@@ -144,8 +144,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 <QuickActionButton
                     icon={Clock}
                     label="Log"
-                    onPress={() => { }}
-                    active={true}
+                    onPress={() => navigation.navigate('Tasks')}
                 />
             </View>
 
@@ -154,10 +153,10 @@ const ProfileScreen = ({ navigation }: any) => {
                 Key Performance Indicators
             </Text>
             <View className="flex-row flex-wrap justify-between mb-2">
-                <KPICard label="Tasks Owned" value={stats?.active || '4'} />
-                <KPICard label="Tasks Blocked" value={stats?.blocked || '2'} valueColor="#EF4444" />
-                <KPICard label="Help Requests" value={stats?.helpRequested || '1'} valueColor="#3B82F6" />
-                <KPICard label="Time Logged" value={`${stats?.totalTimeMins ? Math.floor(stats.totalTimeMins / 60) + 'h ' + (stats.totalTimeMins % 60) + 'm' : '12h 45m'}`} />
+                <KPICard label="Tasks Owned" value={stats?.active ?? '0'} />
+                <KPICard label="Tasks Blocked" value={stats?.blocked ?? '0'} valueColor="#EF4444" />
+                <KPICard label="Help Requests" value={stats?.helpRequested ?? '0'} valueColor="#3B82F6" />
+                <KPICard label="Time Logged" value={`${stats?.totalTimeMins ? Math.floor(stats.totalTimeMins / 60) + 'h ' + (stats.totalTimeMins % 60) + 'm' : '0h 0m'}`} />
             </View>
 
             {/* Recent Activity */}
@@ -170,20 +169,24 @@ const ProfileScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
             </View>
             <View className="bg-white rounded-3xl mb-8 border border-gray-100 overflow-hidden shadow-sm pt-2 pb-2">
-                {[
-                    { id: '1', title: 'Update API Auth Logic', role: 'Lead Developer', color: '#10b981' },
-                    { id: '2', title: 'Drafting Q3 Security Audit', role: 'Reviewer', color: '#ef4444' },
-                    { id: '3', title: 'Legacy Migration Plan', role: 'Contributor', color: '#f59e0b' }
-                ].map((act, idx, arr) => (
-                    <TouchableOpacity key={act.id} className={`flex-row items-center p-5 ${idx !== arr.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                        <View className="w-2 h-2 rounded-full mr-4" style={{ backgroundColor: act.color }} />
+                {recentActivities.length > 0 ? recentActivities.map((act, idx, arr) => (
+                    <TouchableOpacity
+                        key={act.id}
+                        onPress={() => navigation.navigate('TaskDetail', { taskId: act.taskId })}
+                        className={`flex-row items-center p-5 ${idx !== arr.length - 1 ? 'border-b border-gray-50' : ''}`}
+                    >
+                        <View className="w-2 h-2 rounded-full mr-4" style={{ backgroundColor: act.stateBadge === 'BLOCKED' ? '#ef4444' : act.stateBadge === 'HELP_REQUESTED' ? '#3b82f6' : '#10b981' }} />
                         <View className="flex-1">
-                            <Text className="text-gray-900 font-bold text-sm mb-1">{act.title}</Text>
-                            <Text className="text-gray-400 text-xs font-medium">{act.role}</Text>
+                            <Text className="text-gray-900 font-bold text-sm mb-1" numberOfLines={1}>{act.taskTitle}</Text>
+                            <Text className="text-gray-400 text-xs font-medium">{act.actionText}</Text>
                         </View>
                         <ChevronRight size={16} color="#D1D5DB" />
                     </TouchableOpacity>
-                ))}
+                )) : (
+                    <View className="p-8 items-center">
+                        <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">No Recent Activity</Text>
+                    </View>
+                )}
             </View>
         </ScrollView>
     );
@@ -221,10 +224,10 @@ const ProfileScreen = ({ navigation }: any) => {
                         <Text className="ml-4 font-bold text-gray-800 text-base">In-app Alerts</Text>
                     </View>
                     <TouchableOpacity
-                        onPress={() => setInAppNotif(!inAppNotif)}
-                        className={`w-11 h-6 rounded-full p-1 transition-colors ${inAppNotif ? 'bg-blue-600' : 'bg-gray-200'}`}
+                        onPress={() => updateSettings({ inAppNotif: !settings?.inAppNotif })}
+                        className={`w-11 h-6 rounded-full p-1 transition-colors ${settings?.inAppNotif ? 'bg-blue-600' : 'bg-gray-200'}`}
                     >
-                        <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${inAppNotif ? 'ml-auto' : ''}`} />
+                        <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${settings?.inAppNotif ? 'ml-auto' : ''}`} />
                     </TouchableOpacity>
                 </View>
                 <View className="flex-row justify-between items-center px-6 py-5 border-b border-gray-50">
@@ -233,10 +236,10 @@ const ProfileScreen = ({ navigation }: any) => {
                         <Text className="ml-4 font-bold text-gray-800 text-base">Email Digest</Text>
                     </View>
                     <TouchableOpacity
-                        onPress={() => setEmailDigest(!emailDigest)}
-                        className={`w-11 h-6 rounded-full p-1 transition-colors ${emailDigest ? 'bg-blue-600' : 'bg-gray-200'}`}
+                        onPress={() => updateSettings({ emailDigest: !settings?.emailDigest })}
+                        className={`w-11 h-6 rounded-full p-1 transition-colors ${settings?.emailDigest ? 'bg-blue-600' : 'bg-gray-200'}`}
                     >
-                        <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${emailDigest ? 'ml-auto' : ''}`} />
+                        <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${settings?.emailDigest ? 'ml-auto' : ''}`} />
                     </TouchableOpacity>
                 </View>
 
@@ -247,10 +250,10 @@ const ProfileScreen = ({ navigation }: any) => {
                         <Text className="ml-4 font-bold text-gray-800 text-base">Real-time Sync</Text>
                     </View>
                     <TouchableOpacity
-                        onPress={() => setBgSync(!bgSync)}
-                        className={`w-11 h-6 rounded-full p-1 transition-colors ${bgSync ? 'bg-blue-600' : 'bg-gray-200'}`}
+                        onPress={() => updateSettings({ realTimeSync: !settings?.realTimeSync })}
+                        className={`w-11 h-6 rounded-full p-1 transition-colors ${settings?.realTimeSync ? 'bg-blue-600' : 'bg-gray-200'}`}
                     >
-                        <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${bgSync ? 'ml-auto' : ''}`} />
+                        <View className={`w-4 h-4 bg-white rounded-full shadow-sm ${settings?.realTimeSync ? 'ml-auto' : ''}`} />
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity className="flex-row items-center px-6 py-5 border-b border-gray-50">
@@ -272,6 +275,19 @@ const ProfileScreen = ({ navigation }: any) => {
                     <LogOut size={20} color="#EF4444" />
                     <Text className="ml-4 font-black text-red-500 uppercase tracking-widest text-sm">Sign Out</Text>
                 </TouchableOpacity>
+
+                {/* System Info */}
+                <View className="px-6 py-10 items-center">
+                    <View className="bg-gray-50 px-3 py-1 rounded-full mb-3">
+                        <Text className="text-[10px] font-black text-gray-400 uppercase tracking-widest">System Info</Text>
+                    </View>
+                    <Text className="text-gray-400 text-xs font-medium">Sync Tracker v1.0.4 (Alpha)</Text>
+                    <Text className="text-gray-300 text-[10px] mt-1 font-mono">ENV: PRODUCTION • BUILD: 2026.03.02</Text>
+                    <View className="flex-row items-center mt-4 opacity-30">
+                        <Info size={12} color="#9CA3AF" />
+                        <Text className="ml-1 text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Powered by Antigravity OS</Text>
+                    </View>
+                </View>
             </View>
         </ScrollView>
     );
@@ -295,10 +311,10 @@ const ProfileScreen = ({ navigation }: any) => {
                     </TouchableOpacity>
                 ) : (
                     <TouchableOpacity
-                        onPress={() => setIsDarkMode(!isDarkMode)}
+                        onPress={() => updateSettings({ theme: settings?.theme === 'dark' ? 'light' : 'dark' })}
                         className="p-2 -mr-2"
                     >
-                        {isDarkMode ? <Sun size={24} color="#F59E0B" /> : <Moon size={24} color="#3B82F6" />}
+                        {settings?.theme === 'dark' ? <Sun size={24} color="#F59E0B" /> : <Moon size={24} color="#3B82F6" />}
                     </TouchableOpacity>
                 )}
             </View>

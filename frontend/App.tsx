@@ -20,7 +20,7 @@ const Stack = createNativeStackNavigator();
 const queryClient = new QueryClient();
 
 export default function App() {
-  const { token, setSession } = useAuthStore();
+  const { token, setSession, settings } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
 
@@ -86,10 +86,12 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <NavigationContainer>
-        <StatusBar style="auto" />
-        {renderContent()}
-      </NavigationContainer>
+      <View style={{ flex: 1, backgroundColor: settings?.theme === 'dark' ? '#111827' : '#F9FAFB' }}>
+        <NavigationContainer>
+          <StatusBar style={settings?.theme === 'dark' ? 'light' : 'dark'} />
+          {renderContent()}
+        </NavigationContainer>
+      </View>
     </QueryClientProvider>
   );
 }

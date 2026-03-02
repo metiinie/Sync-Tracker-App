@@ -1,19 +1,32 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session, User } from '@supabase/supabase-js';
+import api from '../services/api';
+import { disconnectSocket } from '../services/socket';
+
+interface UserSettings {
+    theme: 'light' | 'dark';
+    inAppNotif: boolean;
+    emailDigest: boolean;
+    realTimeSync: boolean;
+}
+
 
 interface AuthState {
     session: Session | null;
     user: User | null;
     token: string | null;
+    settings: UserSettings | null;
     setSession: (session: Session | null) => Promise<void>;
+    fetchSettings: () => Promise<void>;
+    updateSettings: (data: Partial<UserSettings>) => Promise<void>;
     logout: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
     session: null,
     user: null,
     token: null,
+    settings: null,
     setSession: async (session) => {
         if (session) {
             set({
@@ -21,11 +34,44 @@ export const useAuthStore = create<AuthState>((set) => ({
                 user: session.user,
                 token: session.access_token
             });
+            // Fetch settings after session is established
+            await get().fetchSettings();
         } else {
-            set({ session: null, user: null, token: null });
+            set({ session: null, user: null, token: null, settings: null });
         }
     },
+    fetchSettings: async () => {
+        try {
+            const res = await api.get('/users/settings');
+            set({ settings: res.data });
+        } catch (err) {
+            console.error('Failed to fetch user settings', err);
+        }
+    },
+    updateSettings: async (data) => {
+        const { settings } = get();
+        if (!settings) return;
+
+        // Optimistic update
+        const newSettings = { ...settings, ...data };
+        set({ settings: newSettings });
+
+        // If realTimeSync is turned off, disconnect immediately
+        if (data.realTimeSync === false) {
+            disconnectSocket();
+        }
+
+        try {
+            await api.patch('/users/settings', data);
+        } catch (err) {
+            console.error('Failed to sync settings with backend', err);
+            // Revert on error
+            set({ settings });
+        }
+    },
+
     logout: async () => {
-        set({ session: null, user: null, token: null });
+        set({ session: null, user: null, token: null, settings: null });
     },
 }));
+

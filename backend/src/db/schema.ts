@@ -246,3 +246,22 @@ export const taskCommentsRelations = relations(taskComments, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const userSettings = pgTable('user_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id),
+  theme: text('theme').default('light').notNull(),
+  inAppNotif: boolean('in_app_notif').default(true).notNull(),
+  emailDigest: boolean('email_digest').default(false).notNull(),
+  realTimeSync: boolean('real_time_sync').default(true).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const userSettingsRelations = relations(userSettings, ({ one }) => ({
+  user: one(users, {
+    fields: [userSettings.userId],
+    references: [users.id],
+  }),
+}));
+
