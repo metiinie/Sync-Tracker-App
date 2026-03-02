@@ -327,7 +327,7 @@ const TasksScreen = ({ navigation, route }: any) => {
                 <View style={{
                     flexDirection: 'row',
                     borderBottomWidth: 1,
-                    borderBottomColor: '#E5E7EB',
+                    borderBottomColor: isDark ? '#374151' : '#E5E7EB',
                 }}>
                     {SEGMENTS.map(seg => {
                         const isActive = activeSegment === seg.id;
@@ -346,7 +346,7 @@ const TasksScreen = ({ navigation, route }: any) => {
                                 <Text style={{
                                     fontSize: 14,
                                     fontWeight: isActive ? '700' : '500',
-                                    color: isActive ? '#3B82F6' : '#9CA3AF',
+                                    color: isActive ? '#3B82F6' : (isDark ? '#9CA3AF' : '#9CA3AF'),
                                 }}>
                                     {seg.label}
                                 </Text>
@@ -376,9 +376,9 @@ const TasksScreen = ({ navigation, route }: any) => {
                                     paddingHorizontal: 14,
                                     paddingVertical: 8,
                                     borderRadius: 20,
-                                    backgroundColor: isActive ? filter.bg : '#FFFFFF',
+                                    backgroundColor: isActive ? (isDark ? `${filter.color}1A` : filter.bg) : (isDark ? '#1F2937' : '#FFFFFF'),
                                     borderWidth: 1.5,
-                                    borderColor: isActive ? filter.color : '#E5E7EB',
+                                    borderColor: isActive ? filter.color : (isDark ? '#374151' : '#E5E7EB'),
                                 }}
                             >
                                 {/* Color Dot */}
@@ -392,7 +392,7 @@ const TasksScreen = ({ navigation, route }: any) => {
                                 <Text style={{
                                     fontSize: 13,
                                     fontWeight: isActive ? '700' : '500',
-                                    color: isActive ? filter.color : '#6B7280',
+                                    color: isActive ? filter.color : (isDark ? '#9CA3AF' : '#6B7280'),
                                 }}>
                                     {filter.label}
                                 </Text>
@@ -426,24 +426,24 @@ const TasksScreen = ({ navigation, route }: any) => {
                             width: 72,
                             height: 72,
                             borderRadius: 36,
-                            backgroundColor: '#F3F4F6',
+                            backgroundColor: isDark ? '#374151' : '#F3F4F6',
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginBottom: 16,
                         }}>
-                            <Search size={32} color="#D1D5DB" />
+                            <Search size={32} color={isDark ? '#4B5563' : '#D1D5DB'} />
                         </View>
                         <Text style={{
                             fontSize: 16,
                             fontWeight: '700',
-                            color: '#9CA3AF',
+                            color: isDark ? '#9CA3AF' : '#9CA3AF',
                             marginBottom: 4,
                         }}>
                             No tasks found
                         </Text>
                         <Text style={{
                             fontSize: 13,
-                            color: '#D1D5DB',
+                            color: isDark ? '#6B7280' : '#D1D5DB',
                             fontWeight: '500',
                             textAlign: 'center',
                             paddingHorizontal: 40,
