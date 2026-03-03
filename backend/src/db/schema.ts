@@ -23,6 +23,13 @@ export const taskStatusEnum = pgEnum('task_status', [
   'COMPLETED',
   'CANCELLED',
   'FROZEN',
+  'TRANSFER_PENDING',
+]);
+export const transferStatusEnum = pgEnum('transfer_status', [
+  'PENDING',
+  'ACCEPTED',
+  'REJECTED',
+  'CANCELLED',
 ]);
 export const taskPriorityEnum = pgEnum('task_priority', [
   'LOW',
@@ -85,6 +92,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   milestones: many(milestones),
   timeLogs: many(timeLogs),
   comments: many(taskComments),
+  responsibilityTransfers: many(responsibilityTransfers),
 }));
 
 export const taskParticipants = pgTable('task_participants', {
@@ -246,6 +254,48 @@ export const taskCommentsRelations = relations(taskComments, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ─── RESPONSIBILITY TRANSFERS ───────────────────────────
+export const responsibilityTransfers = pgTable('responsibility_transfers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id')
+    .references(() => tasks.id)
+    .notNull(),
+  fromUserId: uuid('from_user_id')
+    .references(() => users.id)
+    .notNull(),
+  toUserId: uuid('to_user_id')
+    .references(() => users.id)
+    .notNull(),
+  status: transferStatusEnum('status').default('PENDING').notNull(),
+  reason: text('reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  resolvedAt: timestamp('resolved_at'),
+}, (table) => ({
+  taskIdx: index('rt_task_idx').on(table.taskId),
+  toUserIdx: index('rt_to_user_idx').on(table.toUserId),
+  statusIdx: index('rt_status_idx').on(table.status),
+}));
+
+export const responsibilityTransfersRelations = relations(
+  responsibilityTransfers,
+  ({ one }) => ({
+    task: one(tasks, {
+      fields: [responsibilityTransfers.taskId],
+      references: [tasks.id],
+    }),
+    fromUser: one(users, {
+      fields: [responsibilityTransfers.fromUserId],
+      references: [users.id],
+      relationName: 'transfersFrom',
+    }),
+    toUser: one(users, {
+      fields: [responsibilityTransfers.toUserId],
+      references: [users.id],
+      relationName: 'transfersTo',
+    }),
+  }),
+);
 
 export const userSettings = pgTable('user_settings', {
   userId: uuid('user_id')
