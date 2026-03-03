@@ -839,6 +839,248 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         )}
                     </View>
                 )}
+                {activeTab === 'overview' && (
+                    <>
+                        {/* 2️⃣ RESPONSIBILITY SUMMARY BAR */}
+                        <View style={{ padding: 20 }}>
+                            <View style={{
+                                backgroundColor: '#FFF',
+                                borderRadius: 16,
+                                padding: 16,
+                                borderWidth: 1,
+                                borderColor: '#F3F4F6',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.05,
+                                shadowRadius: 2,
+                                elevation: 2,
+                            }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                                    <View>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 4 }}>RESPONSIBLE OWNER</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncConfig.color, marginRight: 8 }} />
+                                            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{ownerName}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: getAvatarColor(ownerName), alignItems: 'center', justifyContent: 'center' }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>{getInitials(ownerName)}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={{ height: 1, backgroundColor: '#F3F4F6', marginBottom: 15 }} />
+
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <View>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 0.5, marginBottom: 4 }}>SYNC STATE</Text>
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: syncConfig.color }}>{syncConfig.label.toUpperCase()}</Text>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 0.5, marginBottom: 4 }}>LAST SYNC</Text>
+                                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563' }}>{lastSyncTime ? lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Never'}</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* 3️⃣ VISUAL HIERARCHY (COMPACT) */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>Authority Status</Text>
+                                <TouchableOpacity onPress={() => setShowVisionModal(true)}>
+                                    <Text style={{ fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>Expand Vision</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                {/* ORIGINATOR */}
+                                <View style={{ alignItems: 'center', marginRight: 15 }}>
+                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', borderStyle: 'dashed', borderWidth: 1, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280' }}>{getInitials(assignerName)}</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 10, color: '#9CA3AF', fontWeight: '700' }}>ORIGIN</Text>
+                                </View>
+
+                                <ArrowRight size={16} color="#D1D5DB" style={{ marginRight: 15, marginTop: -15 }} />
+
+                                {/* RESPONSIBLE */}
+                                <View style={{ alignItems: 'center' }}>
+                                    <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#FFF', borderWidth: 3, borderColor: syncConfig.color, alignItems: 'center', justifyContent: 'center', marginBottom: 6, shadowColor: syncConfig.color, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 }}>
+                                        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: getAvatarColor(ownerName), alignItems: 'center', justifyContent: 'center' }}>
+                                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>{getInitials(ownerName)}</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 10, color: syncConfig.color, fontWeight: '800' }}>RESPONSIBLE</Text>
+                                </View>
+
+                                {task.participants?.length > 0 && (
+                                    <>
+                                        <ArrowRight size={16} color="#D1D5DB" style={{ marginHorizontal: 15, marginTop: -15 }} />
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            {task.participants.slice(0, 3).map((p: any, i: number) => (
+                                                <View key={p.id} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: getAvatarColor(p.user?.name), marginLeft: i === 0 ? 0 : -10, borderWidth: 2, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
+                                                </View>
+                                            ))}
+                                            {task.participants.length > 3 && (
+                                                <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#F3F4F6', marginLeft: -10, borderWidth: 2, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#6B7280' }}>+{task.participants.length - 3}</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    </>
+                                )}
+                            </View>
+                        </View>
+
+                        {/* 4️⃣ QUICK STATS */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <View style={{ flex: 1, backgroundColor: '#EFF6FF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#DBEAFE' }}>
+                                    <Clock size={18} color="#3B82F6" style={{ marginBottom: 8 }} />
+                                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#1E40AF' }}>{formatDuration(totalMinutesLogged)}</Text>
+                                    <Text style={{ fontSize: 10, color: '#3B82F6', fontWeight: '700' }}>LOGGED</Text>
+                                </View>
+                                <View style={{ flex: 1, backgroundColor: '#EEF2FF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E0E7FF' }}>
+                                    <Target size={18} color="#4F46E5" style={{ marginBottom: 8 }} />
+                                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#3730A3' }}>{task.milestones?.filter((m: any) => m.isCompleted).length}/{task.milestones?.length}</Text>
+                                    <Text style={{ fontSize: 10, color: '#4F46E5', fontWeight: '700' }}>MILESTONES</Text>
+                                </View>
+                                <View style={{ flex: 1, backgroundColor: '#F0FDF4', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#DCFCE7' }}>
+                                    <MessageSquare size={18} color="#16A34A" style={{ marginBottom: 8 }} />
+                                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#166534' }}>{comments.length}</Text>
+                                    <Text style={{ fontSize: 10, color: '#16A34A', fontWeight: '700' }}>REMARKS</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* 5️⃣ DESCRIPTION */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 10 }}>Track Vision & Mission</Text>
+                            <View style={{ backgroundColor: '#FFF', borderRadius: 12, padding: 15, borderWidth: 1, borderColor: '#F3F4F6' }}>
+                                <Text style={{ fontSize: 14, color: '#4B5563', lineHeight: 22 }}>
+                                    {task.description || 'No description provided for this track.'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* 6️⃣ CORE LOGS (MINI) */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>Recent Audit Chain</Text>
+                                <TouchableOpacity onPress={() => setActiveTab('logs')}>
+                                    <Text style={{ fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>Full Trail</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={{ backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#F3F4F6' }}>
+                                {task.syncLogs?.slice(0, 5).map((log: any, i: number) => (
+                                    <View key={log.id} style={{
+                                        flexDirection: 'row',
+                                        padding: 12,
+                                        borderBottomWidth: i === 4 || i === task.syncLogs.length - 1 ? 0 : 1,
+                                        borderBottomColor: '#F9FAFB',
+                                        alignItems: 'center'
+                                    }}>
+                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getSyncConfig(log.syncState || (log.details?.type === 'SYNC_UPDATE' ? log.details.newState : 'STABLE')).color, marginRight: 12 }} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 13, color: '#1F2937', fontWeight: '500' }}>{log.action}</Text>
+                                            <Text style={{ fontSize: 11, color: '#9CA3AF' }}>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {log.user?.name}</Text>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    </>
+                )}
+
+                {activeTab === 'comments' && (
+                    <View style={{ padding: 20 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 20 }}>Internal Communications</Text>
+
+                        {comments.length === 0 ? (
+                            <View style={{ alignItems: 'center', padding: 40 }}>
+                                <MessageCircle size={48} color="#E5E7EB" />
+                                <Text style={{ color: '#9CA3AF', marginTop: 10, fontWeight: '600' }}>No remarks yet.</Text>
+                            </View>
+                        ) : (
+                            comments.map((comment: any) => (
+                                <View key={comment.id} style={{ marginBottom: 16, flexDirection: 'row' }}>
+                                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: getAvatarColor(comment.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                        <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>{getInitials(comment.user?.name)}</Text>
+                                    </View>
+                                    <View style={{ flex: 1, backgroundColor: comment.userId === user?.id ? '#EFF6FF' : '#F9FAFB', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: comment.userId === user?.id ? '#DBEAFE' : '#F3F4F6' }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#1F2937' }}>{comment.user?.name}</Text>
+                                            <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                                        </View>
+                                        <Text style={{ fontSize: 14, color: '#4B5563', lineHeight: 20 }}>{comment.content}</Text>
+
+                                        {comment.userId === user?.id && (
+                                            <TouchableOpacity
+                                                onPress={() => handleDeleteComment(comment.id)}
+                                                style={{ alignSelf: 'flex-end', marginTop: 8 }}
+                                            >
+                                                <Trash2 size={14} color="#EF4444" />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                </View>
+                            ))
+                        )}
+
+                        <View style={{ height: 100 }} />
+                    </View>
+                )}
+
+                {activeTab === 'logs' && (
+                    <View style={{ padding: 20 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 20 }}>Audit Trail</Text>
+                        <View style={{ borderLeftWidth: 1, borderLeftColor: '#E5E7EB', marginLeft: 10, paddingLeft: 20 }}>
+                            {task.syncLogs?.map((log: any, i: number) => (
+                                <View key={log.id} style={{ marginBottom: 24, position: 'relative' }}>
+                                    <View style={{
+                                        position: 'absolute',
+                                        left: -26,
+                                        top: 4,
+                                        width: 12,
+                                        height: 12,
+                                        borderRadius: 6,
+                                        backgroundColor: '#FFF',
+                                        borderWidth: 2,
+                                        borderColor: '#3B82F6',
+                                    }} />
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4 }}>
+                                        {new Date(log.timestamp).toLocaleDateString()} at {new Date(log.timestamp).toLocaleTimeString()}
+                                    </Text>
+                                    <View style={{ backgroundColor: '#F9FAFB', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#F3F4F6' }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{log.action}</Text>
+                                        <Text style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>Stakeholder: {log.user?.name}</Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {(activeTab === 'tree' || activeTab === 'graph') && (
+                    <View style={{ height: 600, backgroundColor: '#FFF' }}>
+                        <View style={{ padding: 20 }}>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Structural Vision</Text>
+                            <Text style={{ fontSize: 12, color: '#6B7280' }}>Click "Expand Vision" in Overview for full interaction</Text>
+                        </View>
+                        {activeTab === 'graph' ? (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                <BarChart2 size={48} color="#E5E7EB" />
+                                <Text style={{ color: '#9CA3AF', marginTop: 10 }}>Graph logic is in modal for optimal performance.</Text>
+                            </View>
+                        ) : (
+                            <View style={{ flex: 1, padding: 20 }}>
+                                <Text style={{ fontSize: 14, color: '#4B5563' }}>Hierarchy of responsibility is actively maintained.</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
                 {/* 2️⃣ RESPONSIBILITY SUMMARY BAR */}
                 <View style={{ padding: 20 }}>
                     <View style={{
