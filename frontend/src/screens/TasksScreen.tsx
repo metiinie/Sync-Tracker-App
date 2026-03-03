@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../services/api';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
+import { useTasks } from '../hooks/useTasks';
 import { getSocket } from '../services/socket';
 import { Search, Plus, Bell, X } from 'lucide-react-native';
 import TaskItem from '../components/TaskItem';
