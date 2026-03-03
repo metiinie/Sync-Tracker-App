@@ -94,6 +94,33 @@ export const useTaskMutations = (taskId: string) => {
         }
     });
 
+    const nudgeTask = useMutation({
+        mutationFn: () => api.post(`/tasks/${taskId}/nudge`),
+        onSuccess: invalidateTask
+    });
+
+    const editTask = useMutation({
+        mutationFn: (data: any) => api.patch(`/tasks/${taskId}`, data),
+        onSuccess: invalidateTask
+    });
+
+    const deleteTask = useMutation({
+        mutationFn: () => api.delete(`/tasks/${taskId}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        }
+    });
+
+    const addParticipant = useMutation({
+        mutationFn: (userId: string) => api.post(`/tasks/${taskId}/participants`, { userId, role: 'contributor' }),
+        onSuccess: invalidateTask
+    });
+
+    const removeParticipant = useMutation({
+        mutationFn: (userId: string) => api.delete(`/tasks/${taskId}/participants/${userId}`),
+        onSuccess: invalidateTask
+    });
+
     return {
         updateSyncState,
         logTime,
@@ -102,7 +129,12 @@ export const useTaskMutations = (taskId: string) => {
         deleteMilestone,
         transferTask,
         addComment,
-        deleteComment
+        deleteComment,
+        nudgeTask,
+        editTask,
+        deleteTask,
+        addParticipant,
+        removeParticipant
     };
 };
 
@@ -128,4 +160,15 @@ export const useTransferActions = () => {
     });
 
     return { acceptTransfer, rejectTransfer };
+};
+
+export const useUsers = (searchQuery = '') => {
+    return useQuery({
+        queryKey: ['users', searchQuery],
+        queryFn: async () => {
+            const endpoint = searchQuery ? `/users/search?q=${searchQuery}` : '/users';
+            const res = await api.get(endpoint);
+            return res.data;
+        }
+    });
 };

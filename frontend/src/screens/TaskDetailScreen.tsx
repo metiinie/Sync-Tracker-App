@@ -108,8 +108,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const [showEditMilestoneModal, setShowEditMilestoneModal] = useState(false);
     const [commentText, setCommentText] = useState('');
     const [userSearch, setUserSearch] = useState('');
-    const [users, setUsers] = useState<any[]>([]);
-    const [searchingUsers, setSearchingUsers] = useState(false);
+    const { data: searchedUsers = [], isLoading: searchingUsers } = useUsers(userSearch.length >= 2 ? userSearch : '');
+    const users = searchedUsers.filter((u: any) => u.id !== user?.id);
     const [selectedNewOwner, setSelectedNewOwner] = useState<any>(null);
     const [transferNote, setTransferNote] = useState('');
 
@@ -160,21 +160,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
         };
     }, [taskId, queryClient]);
 
-    const searchUsers = async (q: string) => {
+    const searchUsers = (q: string) => {
         setUserSearch(q);
-        if (q.length < 2) {
-            setUsers([]);
-            return;
-        }
-        setSearchingUsers(true);
-        try {
-            const res = await api.get(`/users/search?q=${q}`);
-            setUsers(res.data.filter((u: any) => u.id !== user?.id));
-        } catch (err) {
-            console.log(err);
-        } finally {
-            setSearchingUsers(false);
-        }
     };
 
 
@@ -211,11 +198,9 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     };
 
     const handleUpdateTask = async () => {
-        const res = await api.patch(`/tasks/${taskId}`, editTaskData);
-        if (res.data) {
-            setShowEditModal(false);
-            queryClient.invalidateQueries({ queryKey: ['task', taskId] });
-        }
+        editTask.mutate(editTaskData, {
+            onSuccess: () => setShowEditModal(false)
+        });
     };
 
     const handleDeleteTask = async () => {
@@ -224,9 +209,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
             {
                 text: "Delete",
                 style: "destructive",
-                onPress: async () => {
-                    await api.delete(`/tasks/${taskId}`);
-                    navigation.goBack();
+                onPress: () => {
+                    deleteTask.mutate(undefined, {
+                        onSuccess: () => navigation.goBack()
+                    });
                 }
             }
         ]);
@@ -240,13 +226,11 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     };
 
     const handleAddParticipant = async (userId: string) => {
-        await api.post(`/tasks/${taskId}/participants`, { userId, role: 'contributor' });
-        queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+        addParticipant.mutate(userId);
     };
 
     const handleRemoveParticipant = async (userId: string) => {
-        await api.delete(`/tasks/${taskId}/participants/${userId}`);
-        queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+        removeParticipant.mutate(userId);
     };
 
     const handleUpdateSync = async () => {
@@ -293,8 +277,9 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     };
 
     const handleNudge = async () => {
-        await api.post(`/tasks/${taskId}/nudge`);
-        Alert.alert("Nudge Sent", "The responsible owner has been notified.");
+        nudgeTask.mutate(undefined, {
+            onSuccess: () => Alert.alert("Nudge Sent", "The responsible owner has been notified.")
+        });
     };
 
     const handleCompleteTask = async () => {
@@ -302,9 +287,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
             { text: "Cancel", style: "cancel" },
             {
                 text: "Complete",
-                onPress: async () => {
-                    await api.patch(`/tasks/${taskId}`, { status: 'COMPLETED' });
-                    queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+                onPress: () => {
+                    editTask.mutate({ status: 'COMPLETED' });
                 }
             }
         ]);

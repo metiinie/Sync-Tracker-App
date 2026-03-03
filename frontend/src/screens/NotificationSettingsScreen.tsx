@@ -4,8 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Bell, Mail } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 
+import { useUserSettings, useProfileMutations } from '../hooks/useProfile';
+
 const NotificationSettingsScreen = ({ navigation }: any) => {
-    const { settings, updateSettings } = useAuthStore();
+    const { settings: localSettings, updateSettings: updateLocalSettings } = useAuthStore();
+    const { data: serverSettings } = useUserSettings();
+    const { updateUserSettings } = useProfileMutations();
+
+    const settings = serverSettings || localSettings;
     const isDark = settings?.theme === 'dark';
 
     const ToggleRow = ({ icon: Icon, title, description, value, onToggle }: any) => (
@@ -49,14 +55,20 @@ const NotificationSettingsScreen = ({ navigation }: any) => {
                         title="In-app Alerts"
                         description="Receive push notifications and in-app updates for track activity"
                         value={settings?.inAppNotif}
-                        onToggle={(val: boolean) => updateSettings({ inAppNotif: val })}
+                        onToggle={(val: boolean) => {
+                            updateUserSettings.mutate({ inAppNotif: val });
+                            updateLocalSettings({ inAppNotif: val });
+                        }}
                     />
                     <ToggleRow
                         icon={Mail}
                         title="Email Digest"
                         description="Receive a daily or weekly summary of your tasks directly to your inbox"
                         value={settings?.emailDigest}
-                        onToggle={(val: boolean) => updateSettings({ emailDigest: val })}
+                        onToggle={(val: boolean) => {
+                            updateUserSettings.mutate({ emailDigest: val });
+                            updateLocalSettings({ emailDigest: val });
+                        }}
                     />
                 </View>
 
