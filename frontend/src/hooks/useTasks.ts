@@ -31,12 +31,4 @@ export const useUnreadNotificationsCount = () => {
     });
 };
 
-export const useWorkspaceSettings = () => {
-    return useQuery({
-        queryKey: ['workspace', 'settings'],
-        queryFn: async () => {
-            const res = await api.get('/workspace/settings');
-            return res.data;
-        }
-    });
-};
+

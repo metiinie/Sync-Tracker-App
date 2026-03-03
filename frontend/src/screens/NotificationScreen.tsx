@@ -1,52 +1,48 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity, RefreshControl,
-    ActivityIndicator, StatusBar, Alert
+    ActivityIndicator, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Bell, CheckCircle2, AlertCircle, Info, HandMetal, Trash2 } from 'lucide-react-native';
-import api from '../services/api';
+import { ChevronLeft, Bell, AlertCircle, Info, HandMetal } from 'lucide-react-native';
 import { timeAgo } from '../utils/timeAgo';
+import { useNotifications, useNotificationMutations } from '../hooks/useNotifications';
+import { useQueryClient } from '@tanstack/react-query';
+import { getSocket } from '../services/socket';
 
 const NotificationScreen = ({ navigation }: any) => {
-    const [notifications, setNotifications] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+    const queryClient = useQueryClient();
+    const { data: notifications = [], isLoading: notificationsLoading, isRefetching } = useNotifications();
+    const { markAsRead, markAllAsRead } = useNotificationMutations();
 
-    const fetchNotifications = async (showRefresh = false) => {
-        if (showRefresh) setRefreshing(true);
-        try {
-            const response = await api.get('/notifications');
-            setNotifications(response.data);
-        } catch (error) {
-            console.error('Error fetching notifications:', error);
-        } finally {
-            setLoading(false);
-            if (showRefresh) setRefreshing(false);
-        }
-    };
-
+    // ─── REAL-TIME SYNC ────────────────────────────────
     useEffect(() => {
-        fetchNotifications();
-    }, []);
+        const socket = getSocket();
+        const invalidate = () => queryClient.invalidateQueries({ queryKey: ['notifications'] });
 
-    const handleMarkAsRead = async (id: string) => {
-        try {
-            await api.patch(`/notifications/${id}/read`);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: 'true' } : n));
-        } catch (error) {
-            console.error('Error marking notification as read:', error);
-        }
+        socket.on('comment:new', invalidate);
+        socket.on('task:nudge', invalidate);
+
+        return () => {
+            socket.off('comment:new', invalidate);
+            socket.off('task:nudge', invalidate);
+        };
+    }, [queryClient]);
+
+    const onRefresh = () => {
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
     };
 
-    const handleMarkAllRead = async () => {
-        try {
-            // Sequential for simplicity, could be optimized in backend
-            const unread = notifications.filter(n => n.isRead === 'false');
-            await Promise.all(unread.map(n => api.patch(`/notifications/${n.id}/read`)));
-            setNotifications(prev => prev.map(n => ({ ...n, isRead: 'true' })));
-        } catch (error) {
-            console.error('Error marking all as read:', error);
+    const handleMarkAsReadAction = (id: string) => {
+        markAsRead.mutate(id);
+    };
+
+    const handleMarkAllReadAction = () => {
+        const unreadIds = notifications
+            .filter((n: any) => n.isRead === 'false' || n.isRead === false)
+            .map((n: any) => n.id);
+        if (unreadIds.length > 0) {
+            markAllAsRead.mutate(unreadIds);
         }
     };
 
@@ -77,7 +73,7 @@ const NotificationScreen = ({ navigation }: any) => {
         </View>
     );
 
-    if (loading) {
+    if (notificationsLoading && notifications.length === 0) {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -103,8 +99,8 @@ const NotificationScreen = ({ navigation }: any) => {
                     </TouchableOpacity>
                     <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>Notifications</Text>
                 </View>
-                {notifications.some(n => n.isRead === 'false') && (
-                    <TouchableOpacity onPress={handleMarkAllRead}>
+                {notifications.some((n: any) => n.isRead === 'false' || n.isRead === false) && (
+                    <TouchableOpacity onPress={handleMarkAllReadAction}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: '#3B82F6' }}>Mark all as read</Text>
                     </TouchableOpacity>
                 )}
@@ -113,31 +109,31 @@ const NotificationScreen = ({ navigation }: any) => {
             <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{ padding: 20, flexGrow: 1 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchNotifications(true)} />}
+                refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} />}
             >
                 {notifications.length === 0 ? renderEmptyState() : (
-                    notifications.map((n) => (
+                    notifications.map((n: any) => (
                         <TouchableOpacity
                             key={n.id}
                             onPress={() => {
-                                handleMarkAsRead(n.id);
+                                handleMarkAsReadAction(n.id);
                                 if (n.taskId) navigation.navigate('TaskDetail', { taskId: n.taskId });
                             }}
                             activeOpacity={0.7}
                             style={{
-                                backgroundColor: n.isRead === 'false' ? '#FFFFFF' : '#F9FAFB',
+                                backgroundColor: (n.isRead === 'false' || n.isRead === false) ? '#FFFFFF' : '#F9FAFB',
                                 borderRadius: 16,
                                 padding: 16,
                                 marginBottom: 12,
                                 flexDirection: 'row',
                                 alignItems: 'flex-start',
                                 borderWidth: 1,
-                                borderColor: n.isRead === 'false' ? '#E5E7EB' : '#F3F4F6',
+                                borderColor: (n.isRead === 'false' || n.isRead === false) ? '#E5E7EB' : '#F3F4F6',
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: n.isRead === 'false' ? 0.05 : 0,
+                                shadowOpacity: (n.isRead === 'false' || n.isRead === false) ? 0.05 : 0,
                                 shadowRadius: 8,
-                                elevation: n.isRead === 'false' ? 2 : 0,
+                                elevation: (n.isRead === 'false' || n.isRead === false) ? 2 : 0,
                             }}
                         >
                             {/* Icon container */}
@@ -154,11 +150,11 @@ const NotificationScreen = ({ navigation }: any) => {
                                     <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 0.5 }}>
                                         {n.type}
                                     </Text>
-                                    {n.isRead === 'false' && (
+                                    {(n.isRead === 'false' || n.isRead === false) && (
                                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3B82F6' }} />
                                     )}
                                 </View>
-                                <Text style={{ fontSize: 14, fontWeight: n.isRead === 'false' ? '700' : '500', color: '#111827', marginBottom: 6 }}>
+                                <Text style={{ fontSize: 14, fontWeight: (n.isRead === 'false' || n.isRead === false) ? '700' : '500', color: '#111827', marginBottom: 6 }}>
                                     {n.content}
                                 </Text>
                                 <Text style={{ fontSize: 12, color: '#9CA3AF' }}>

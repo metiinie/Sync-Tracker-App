@@ -6,11 +6,13 @@ import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
 import { supabase } from '../services/supabase';
 
+import { useProfileMutations } from '../hooks/useProfile';
+
 const EditProfileScreen = ({ navigation }: any) => {
     const { user, settings } = useAuthStore();
     const [name, setName] = useState(user?.user_metadata?.name || user?.user_metadata?.full_name || '');
     const [email, setEmail] = useState(user?.email || '');
-    const [loading, setLoading] = useState(false);
+    const { updateProfile } = useProfileMutations();
 
     const handleSave = async () => {
         if (!name.trim()) {
@@ -18,27 +20,28 @@ const EditProfileScreen = ({ navigation }: any) => {
             return;
         }
 
-        setLoading(true);
-        try {
-            // Update custom DB
-            await api.patch('/users/profile', { name });
-
-            // Update Supabase Auth metadata
-            const { error } = await supabase.auth.updateUser({
-                data: { full_name: name, name: name }
-            });
-
-            if (error) throw error;
-
-            Alert.alert('Success', 'Profile updated successfully.');
-            navigation.goBack();
-        } catch (error: any) {
-            console.error('Update profile error:', error);
-            Alert.alert('Error', error.message || 'Failed to update profile.');
-        } finally {
-            setLoading(false);
-        }
+        updateProfile.mutate({ name }, {
+            onSuccess: async () => {
+                try {
+                    // Update Supabase Auth metadata
+                    const { error } = await supabase.auth.updateUser({
+                        data: { full_name: name, name: name }
+                    });
+                    if (error) throw error;
+                    Alert.alert('Success', 'Profile updated successfully.');
+                    navigation.goBack();
+                } catch (error: any) {
+                    console.error('Supabase update error:', error);
+                    Alert.alert('Success', 'Profile updated in database, but metadata sync failed.');
+                }
+            },
+            onError: (error: any) => {
+                Alert.alert('Error', error.response?.data?.message || error.message || 'Failed to update profile.');
+            }
+        });
     };
+
+    const loading = updateProfile.isPending;
 
     const isDark = settings?.theme === 'dark';
 

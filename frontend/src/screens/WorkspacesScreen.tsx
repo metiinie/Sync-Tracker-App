@@ -5,12 +5,15 @@ import { ArrowLeft, Clock, Save, Link, Users } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
 
+import { useWorkspaceSettings, useWorkspaceMutations } from '../hooks/useWorkspace';
+
 const WorkspacesScreen = ({ navigation }: any) => {
     const { settings } = useAuthStore();
     const isDark = settings?.theme === 'dark';
 
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    // ─── QUERY & MUTATIONS ──────────────────────────────
+    const { data: wsData, isLoading: fetchLoading } = useWorkspaceSettings();
+    const { updateSettings } = useWorkspaceMutations();
 
     // Form state
     const [staleThresholdHours, setStaleThresholdHours] = useState('24');
@@ -18,24 +21,12 @@ const WorkspacesScreen = ({ navigation }: any) => {
     const [enableHelperRole, setEnableHelperRole] = useState(true);
 
     useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const response = await api.get('/workspace/settings');
-                if (response.data) {
-                    setStaleThresholdHours(response.data.staleThresholdHours?.toString() || '24');
-                    setAllowResponsibilityTransfer(response.data.allowResponsibilityTransfer);
-                    setEnableHelperRole(response.data.enableHelperRole);
-                }
-            } catch (error) {
-                console.error('Error fetching workspace settings:', error);
-                Alert.alert('Error', 'Failed to load workspace settings.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchSettings();
-    }, []);
+        if (wsData) {
+            setStaleThresholdHours(wsData.staleThresholdHours?.toString() || '24');
+            setAllowResponsibilityTransfer(wsData.allowResponsibilityTransfer);
+            setEnableHelperRole(wsData.enableHelperRole);
+        }
+    }, [wsData]);
 
     const handleSave = async () => {
         const hours = parseInt(staleThresholdHours, 10);
@@ -44,22 +35,23 @@ const WorkspacesScreen = ({ navigation }: any) => {
             return;
         }
 
-        setSaving(true);
-        try {
-            await api.patch('/workspace/settings', {
-                staleThresholdHours: hours.toString(),
-                allowResponsibilityTransfer,
-                enableHelperRole
-            });
-            Alert.alert('Success', 'Workspace settings updated successfully.');
-            navigation.goBack();
-        } catch (error: any) {
-            console.error('Update workspace error:', error);
-            Alert.alert('Error', 'Failed to update workspace settings.');
-        } finally {
-            setSaving(false);
-        }
+        updateSettings.mutate({
+            staleThresholdHours: hours,
+            allowResponsibilityTransfer,
+            enableHelperRole
+        }, {
+            onSuccess: () => {
+                Alert.alert('Success', 'Workspace settings updated successfully.');
+                navigation.goBack();
+            },
+            onError: (error: any) => {
+                Alert.alert('Error', error.response?.data?.message || error.message || 'Failed to update workspace settings.');
+            }
+        });
     };
+
+    const loading = fetchLoading;
+    const saving = updateSettings.isPending;
 
     const ToggleRow = ({ icon: Icon, title, description, value, onToggle }: any) => (
         <View className={`flex-row justify-between items-center rounded-2xl px-4 py-4 mb-4 border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>

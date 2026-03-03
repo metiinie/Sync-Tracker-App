@@ -5,11 +5,13 @@ import { ArrowLeft, Lock, Save, ShieldCheck } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../services/supabase';
 
+import { useProfileMutations } from '../hooks/useProfile';
+
 const SecurityScreen = ({ navigation }: any) => {
     const { settings } = useAuthStore();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [loading, setLoading] = useState(false);
+    const { updatePassword } = useProfileMutations();
 
     const handleUpdatePassword = async () => {
         if (!password || !confirmPassword) {
@@ -27,29 +29,34 @@ const SecurityScreen = ({ navigation }: any) => {
             return;
         }
 
-        setLoading(true);
-        try {
-            const { error } = await supabase.auth.updateUser({
-                password: password
-            });
+        updatePassword.mutate(password, {
+            onSuccess: async () => {
+                try {
+                    const { error } = await supabase.auth.updateUser({
+                        password: password
+                    });
 
-            if (error) throw error;
+                    if (error) throw error;
 
-            Alert.alert('Success', 'Password updated successfully. You will be signed out to log back in.', [
-                {
-                    text: 'OK', onPress: async () => {
-                        await supabase.auth.signOut();
-                        // useAuthStore logout will be triggered by auth state change listener in App.tsx
-                    }
+                    Alert.alert('Success', 'Password updated successfully. You will be signed out to log back in.', [
+                        {
+                            text: 'OK', onPress: async () => {
+                                await supabase.auth.signOut();
+                            }
+                        }
+                    ]);
+                } catch (error: any) {
+                    console.error('Supabase password update error:', error);
+                    Alert.alert('Success', 'Security preference updated, but auth sync failed.');
                 }
-            ]);
-        } catch (error: any) {
-            console.error('Update password error:', error);
-            Alert.alert('Error', error.message || 'Failed to update password.');
-        } finally {
-            setLoading(false);
-        }
+            },
+            onError: (error: any) => {
+                Alert.alert('Error', error.response?.data?.message || error.message || 'Failed to update security settings.');
+            }
+        });
     };
+
+    const loading = updatePassword.isPending;
 
     const isDark = settings?.theme === 'dark';
 

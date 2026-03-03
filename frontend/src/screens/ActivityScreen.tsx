@@ -13,6 +13,8 @@ import {
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
+import { useActivities } from '../hooks/useActivities';
+import { useQueryClient } from '@tanstack/react-query';
 
 // ─── HELPERS ────────────────────────────────────────────
 const formatTimeAgo = (dateStr: string) => {
@@ -107,6 +109,7 @@ const ActivityScreen = ({ navigation }: any) => {
     const { user, settings } = useAuthStore();
     const isDark = settings?.theme === 'dark';
     const [scope, setScope] = useState<'my_tasks' | 'delegated' | 'all' | 'workspace'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('All');
     const queryClient = useQueryClient();
 
@@ -447,7 +450,7 @@ const ActivityScreen = ({ navigation }: any) => {
             </View>
 
             {/* ═══ TIMELINE FEED ══════════════════════════════ */}
-            {loading ? (
+            {activitiesLoading && activities.length === 0 ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator color={isDark ? '#F9FAFB' : '#111827'} size="large" />
                     <Text style={{ marginTop: 12, color: isDark ? '#9CA3AF' : '#9CA3AF', fontSize: 13, fontWeight: '500' }}>
@@ -458,7 +461,7 @@ const ActivityScreen = ({ navigation }: any) => {
                 <ScrollView
                     style={{ flex: 1 }}
                     contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#F9FAFB' : '#111827'} />}
+                    refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={isDark ? '#F9FAFB' : '#111827'} />}
                     showsVerticalScrollIndicator={false}
                 >
                     {Object.keys(groupedActivities).map(dateGroup => (

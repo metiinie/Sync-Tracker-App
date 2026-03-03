@@ -14,6 +14,10 @@ import api from '../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useProfileStats } from '../hooks/useProfile';
+import { useActivities } from '../hooks/useActivities';
+import { useQueryClient } from '@tanstack/react-query';
+import { getSocket } from '../services/socket';
 
 type TabButtonProps = {
     icon: any;
@@ -46,38 +50,47 @@ const KPICard = ({ label, value, valueColor = '#111827', isDark }: { label: stri
 
 const ProfileScreen = ({ navigation }: any) => {
     const { user, setSession, settings, updateSettings } = useAuthStore();
-    const [stats, setStats] = useState<any>(null);
-    const [recentActivities, setRecentActivities] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+    const queryClient = useQueryClient();
     const [view, setView] = useState<'profile' | 'settings'>('profile');
     const [isExporting, setIsExporting] = useState(false);
     const [isClearingCache, setIsClearingCache] = useState(false);
 
-    const fetchProfileData = async () => {
-        try {
-            const [statsRes, activityRes] = await Promise.all([
-                api.get('/users/stats'),
-                api.get('/activities?scope=my_tasks&limit=3')
-            ]);
-            setStats(statsRes.data);
-            setRecentActivities(activityRes.data);
-        } catch (err) {
-            console.error('Failed to fetch profile data', err);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    };
+    // ─── QUERY HOOKS ────────────────────────────────────
+    const { data: stats, isLoading: statsLoading, isRefetching: statsRefetching } = useProfileStats();
+    const { data: recentActivities = [], isLoading: activitiesLoading, isRefetching: activitiesRefetching } = useActivities('my_tasks', '', 3);
 
-    useEffect(() => {
-        fetchProfileData();
-    }, []);
+    const isLoading = statsLoading || activitiesLoading;
+    const isRefetching = statsRefetching || activitiesRefetching;
 
     const onRefresh = () => {
-        setRefreshing(true);
-        fetchProfileData();
+        queryClient.invalidateQueries({ queryKey: ['profile', 'stats'] });
+        queryClient.invalidateQueries({ queryKey: ['activities', 'my_tasks'] });
     };
+
+    // ─── REAL-TIME SYNC ────────────────────────────────
+    useEffect(() => {
+        const socket = getSocket();
+        const invalidate = () => queryClient.invalidateQueries({ queryKey: ['profile', 'stats'] });
+
+        // Stats should refresh on any meaningful task change
+        socket.on('task:created', invalidate);
+        socket.on('task:updated', invalidate);
+        socket.on('task:deleted', invalidate);
+        socket.on('task:completed', invalidate);
+        socket.on('task:accepted', invalidate);
+        socket.on('milestone:completed', invalidate);
+        socket.on('sync:update', invalidate);
+
+        return () => {
+            socket.off('task:created', invalidate);
+            socket.off('task:updated', invalidate);
+            socket.off('task:deleted', invalidate);
+            socket.off('task:completed', invalidate);
+            socket.off('task:accepted', invalidate);
+            socket.off('milestone:completed', invalidate);
+            socket.off('sync:update', invalidate);
+        };
+    }, [queryClient]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -161,7 +174,7 @@ const ProfileScreen = ({ navigation }: any) => {
 
     const isDark = settings?.theme === 'dark';
 
-    if (loading) {
+    if (isLoading && !stats && recentActivities.length === 0) {
         return (
             <SafeAreaView className={`flex-1 justify-center items-center ${isDark ? 'bg-gray-900' : 'bg-[#FAFAFA]'}`}>
                 <ActivityIndicator color={isDark ? '#F9FAFB' : '#000'} size="large" />
@@ -172,7 +185,7 @@ const ProfileScreen = ({ navigation }: any) => {
     const renderProfile = () => (
         <ScrollView
             className="flex-1 px-6"
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#F9FAFB' : '#111827'} />}
+            refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={isDark ? '#F9FAFB' : '#111827'} />}
             contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
             showsVerticalScrollIndicator={false}
         >
@@ -249,7 +262,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
             </View>
             <View className={`rounded-3xl mb-8 border overflow-hidden shadow-sm pt-2 pb-2 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
-                {recentActivities.length > 0 ? recentActivities.map((act, idx, arr) => (
+                {recentActivities.length > 0 ? recentActivities.map((act: any, idx: number, arr: any[]) => (
                     <TouchableOpacity
                         key={act.id}
                         onPress={() => navigation.navigate('TaskDetail', { taskId: act.taskId })}
