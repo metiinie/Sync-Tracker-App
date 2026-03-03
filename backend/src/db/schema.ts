@@ -273,3 +273,41 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
   }),
 }));
 
+// ─── Responsibility Transfers ─────────────────────────────────────────────────
+export const responsibilityTransfers = pgTable('responsibility_transfers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id')
+    .references(() => tasks.id)
+    .notNull(),
+  fromUserId: uuid('from_user_id')
+    .references(() => users.id)
+    .notNull(),
+  toUserId: uuid('to_user_id')
+    .references(() => users.id)
+    .notNull(),
+  status: transferStatusEnum('status').default('PENDING').notNull(),
+  note: text('note'),
+  initiatedAt: timestamp('initiated_at').defaultNow().notNull(),
+  resolvedAt: timestamp('resolved_at'),
+}, (table) => ({
+  taskIdx: index('transfers_task_idx').on(table.taskId),
+  fromIdx: index('transfers_from_idx').on(table.fromUserId),
+  toIdx: index('transfers_to_idx').on(table.toUserId),
+}));
+
+export const responsibilityTransfersRelations = relations(responsibilityTransfers, ({ one }) => ({
+  task: one(tasks, {
+    fields: [responsibilityTransfers.taskId],
+    references: [tasks.id],
+  }),
+  fromUser: one(users, {
+    fields: [responsibilityTransfers.fromUserId],
+    references: [users.id],
+    relationName: 'transferFrom',
+  }),
+  toUser: one(users, {
+    fields: [responsibilityTransfers.toUserId],
+    references: [users.id],
+    relationName: 'transferTo',
+  }),
+}));

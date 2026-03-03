@@ -372,54 +372,194 @@ export class TasksService {
     return { success: true, syncState, activityId: log.id };
   }
 
-  async transfer(taskId: string, currentOwnerId: string, newOwnerId: string) {
+  // ─── TRANSFER: Step 1 — Initiate ───────────────────────────────────────────
+  async transfer(taskId: string, currentOwnerId: string, newOwnerId: string, note?: string) {
     const task = await this.db.query.tasks.findFirst({
       where: eq(schema.tasks.id, taskId),
+      with: { owner: true, assigner: true },
     });
 
     if (!task) throw new NotFoundException('Task not found');
     if (task.responsibleOwner !== currentOwnerId)
-      throw new UnauthorizedException(
-        'Only the current responsible owner can transfer responsibility',
+      throw new UnauthorizedException('Only the current responsible owner can transfer responsibility');
+
+    // Cancel any existing PENDING transfers for this task
+    await this.db
+      .update(schema.responsibilityTransfers)
+      .set({ status: 'CANCELLED', resolvedAt: new Date() })
+      .where(
+        and(
+          eq(schema.responsibilityTransfers.taskId, taskId),
+          eq(schema.responsibilityTransfers.status, 'PENDING'),
+        ),
       );
 
-    const [updatedTask] = await this.db
-      .update(schema.tasks)
-      .set({
-        responsibleOwner: newOwnerId,
-        status: 'PENDING',
-        lastUpdatedAt: new Date(),
-      })
-      .where(eq(schema.tasks.id, taskId))
+    // Create a new transfer record
+    const [transfer] = await this.db
+      .insert(schema.responsibilityTransfers)
+      .values({ taskId, fromUserId: currentOwnerId, toUserId: newOwnerId, note: note || null })
       .returning();
 
-    await this.logAction(
-      taskId,
-      currentOwnerId,
-      `Transfer initiated to ${newOwnerId}`,
-      { type: 'TRANSFER_INITIATED', toUserId: newOwnerId }
-    );
-    await this.logAction(
-      taskId,
-      newOwnerId,
-      `Received responsibility (PENDING acceptance)`,
-      { type: 'TRANSFER_RECEIVED', fromUserId: currentOwnerId }
-    );
+    // Set task to TRANSFER_PENDING
+    await this.db
+      .update(schema.tasks)
+      .set({ status: 'TRANSFER_PENDING', lastUpdatedAt: new Date() })
+      .where(eq(schema.tasks.id, taskId));
 
-    this.syncGateway.emitToTask(taskId, 'task:transfer', {
+    await this.logAction(taskId, currentOwnerId, `Transfer initiated to ${newOwnerId}`, {
+      type: 'TRANSFER_INITIATED',
+      toUserId: newOwnerId,
+      transferId: transfer.id,
+    });
+
+    this.syncGateway.emitToTask(taskId, 'transfer:initiated', {
+      transferId: transfer.id,
       from: currentOwnerId,
       to: newOwnerId,
     });
+    this.syncGateway.server.to(`user:${newOwnerId}`).emit('transfer:incoming', {
+      transferId: transfer.id,
+      taskId,
+      taskTitle: task.title,
+      fromUser: task.owner?.name || currentOwnerId,
+    });
 
-    // Notification for new owner
     await this.notificationsService.create(
       newOwnerId,
       taskId,
       'TRANSFER_INITIATED',
-      `Responsibility for "${task.title}" has been transferred to you.`,
+      `${task.owner?.name || 'Someone'} wants to transfer responsibility for "${task.title}" to you.`,
     );
 
-    return updatedTask;
+    return { transfer, message: 'Transfer initiated — awaiting acceptance by new owner' };
+  }
+
+  // ─── TRANSFER: Step 2 — Accept ─────────────────────────────────────────────
+  async acceptTransfer(transferId: string, userId: string) {
+    const transfer = await this.db.query.responsibilityTransfers.findFirst({
+      where: eq(schema.responsibilityTransfers.id, transferId),
+      with: { task: { with: { owner: true, assigner: true } }, fromUser: true, toUser: true },
+    });
+
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.toUserId !== userId)
+      throw new UnauthorizedException('Only the designated new owner can accept this transfer');
+    if (transfer.status !== 'PENDING')
+      throw new BadRequestException(`Transfer is already ${transfer.status}`);
+
+    const taskId = transfer.taskId;
+
+    // Mark transfer as ACCEPTED
+    const [updatedTransfer] = await this.db
+      .update(schema.responsibilityTransfers)
+      .set({ status: 'ACCEPTED', resolvedAt: new Date() })
+      .where(eq(schema.responsibilityTransfers.id, transferId))
+      .returning();
+
+    // Update task: new owner, set to ACTIVE
+    const [updatedTask] = await this.db
+      .update(schema.tasks)
+      .set({ responsibleOwner: userId, status: 'ACTIVE', syncState: 'IN_SYNC', lastUpdatedAt: new Date() })
+      .where(eq(schema.tasks.id, taskId))
+      .returning();
+
+    await this.logAction(taskId, userId, `Transfer accepted — now responsible owner`, {
+      type: 'TRANSFER_ACCEPTED',
+      transferId,
+      fromUserId: transfer.fromUserId,
+    });
+
+    this.syncGateway.emitToTask(taskId, 'transfer:accepted', {
+      transferId,
+      newOwner: userId,
+      task: updatedTask,
+    });
+    this.syncGateway.server.to(`user:${transfer.fromUserId}`).emit('transfer:accepted', {
+      transferId,
+      taskId,
+      taskTitle: transfer.task?.title || taskId,
+      newOwnerName: transfer.toUser?.name || userId,
+    });
+
+    await this.notificationsService.create(
+      transfer.fromUserId,
+      taskId,
+      'TRANSFER_ACCEPTED',
+      `${transfer.toUser?.name || 'New owner'} accepted responsibility for "${transfer.task?.title}".`,
+    );
+
+    return { transfer: updatedTransfer, task: updatedTask };
+  }
+
+  // ─── TRANSFER: Step 3 — Reject ─────────────────────────────────────────────
+  async rejectTransfer(transferId: string, userId: string) {
+    const transfer = await this.db.query.responsibilityTransfers.findFirst({
+      where: eq(schema.responsibilityTransfers.id, transferId),
+      with: { task: { with: { owner: true } }, fromUser: true, toUser: true },
+    });
+
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    if (transfer.toUserId !== userId)
+      throw new UnauthorizedException('Only the designated new owner can reject this transfer');
+    if (transfer.status !== 'PENDING')
+      throw new BadRequestException(`Transfer is already ${transfer.status}`);
+
+    const taskId = transfer.taskId;
+
+    // Mark transfer as REJECTED
+    await this.db
+      .update(schema.responsibilityTransfers)
+      .set({ status: 'REJECTED', resolvedAt: new Date() })
+      .where(eq(schema.responsibilityTransfers.id, transferId));
+
+    // Restore task to ACTIVE (original owner still owns it)
+    await this.db
+      .update(schema.tasks)
+      .set({ status: 'ACTIVE', lastUpdatedAt: new Date() })
+      .where(eq(schema.tasks.id, taskId));
+
+    await this.logAction(taskId, userId, `Transfer rejected — ${transfer.fromUser?.name} remains responsible`, {
+      type: 'TRANSFER_REJECTED',
+      transferId,
+      toUserId: transfer.toUserId,
+    });
+
+    this.syncGateway.emitToTask(taskId, 'transfer:rejected', { transferId, taskId });
+    this.syncGateway.server.to(`user:${transfer.fromUserId}`).emit('transfer:rejected', {
+      transferId,
+      taskId,
+      taskTitle: transfer.task?.title || taskId,
+      rejectedByName: transfer.toUser?.name || userId,
+    });
+
+    await this.notificationsService.create(
+      transfer.fromUserId,
+      taskId,
+      'TRANSFER_REJECTED',
+      `${transfer.toUser?.name || 'User'} rejected the responsibility transfer for "${transfer.task?.title}".`,
+    );
+
+    return { success: true, message: 'Transfer rejected — you remain the responsible owner' };
+  }
+
+  // ─── Get Pending Incoming Transfers for a user ─────────────────────────────
+  async getPendingTransfers(userId: string) {
+    return this.db.query.responsibilityTransfers.findMany({
+      where: and(
+        eq(schema.responsibilityTransfers.toUserId, userId),
+        eq(schema.responsibilityTransfers.status, 'PENDING'),
+      ),
+      with: { task: { with: { assigner: true } }, fromUser: true, toUser: true },
+    });
+  }
+
+  // ─── Get All Transfers for a task ──────────────────────────────────────────
+  async getTaskTransfers(taskId: string) {
+    return this.db.query.responsibilityTransfers.findMany({
+      where: eq(schema.responsibilityTransfers.taskId, taskId),
+      with: { fromUser: true, toUser: true },
+      orderBy: (t, { desc }) => [desc(t.initiatedAt)],
+    });
   }
 
   async nudge(taskId: string, userId: string) {
