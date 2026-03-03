@@ -23,6 +23,14 @@ export const taskStatusEnum = pgEnum('task_status', [
   'COMPLETED',
   'CANCELLED',
   'FROZEN',
+  'TRANSFER_PENDING',
+]);
+
+export const transferStatusEnum = pgEnum('transfer_status', [
+  'PENDING',
+  'ACCEPTED',
+  'REJECTED',
+  'CANCELLED',
 ]);
 export const taskPriorityEnum = pgEnum('task_priority', [
   'LOW',
