@@ -29,29 +29,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setSession: async (session) => {
         if (session) {
             const token = session.access_token;
+            const user = session.user;
             setAuthToken(token);
             set({
                 session,
-                user: session.user,
+                user,
                 token
             });
-            // Fetch settings after session is established
+            // Fetch settings and initialize socket if needed
             await get().fetchSettings();
+
+            const currentSettings = get().settings;
+            if (currentSettings?.realTimeSync && token && user?.id) {
+                connectSocket(token, user.id);
+            }
         } else {
             setAuthToken(null);
+            disconnectSocket();
             set({ session: null, user: null, token: null, settings: null });
         }
     },
     fetchSettings: async () => {
         try {
-            const res = await api.get('/users/settings');
+            // Timeout fetch after 5 seconds
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Settings fetch timeout')), 5000)
+            );
+            const fetchPromise = api.get('/users/settings');
+
+            const res: any = await Promise.race([fetchPromise, timeoutPromise]);
             set({ settings: res.data });
         } catch (err) {
             console.error('Failed to fetch user settings', err);
+            // Default settings if fetch fails or times out
+            set({ settings: { theme: 'light', inAppNotif: true, emailDigest: false, realTimeSync: true } });
         }
     },
     updateSettings: async (data) => {
-        const { settings } = get();
+        const { settings, token, user } = get();
         if (!settings) return;
 
         // Optimistic update
@@ -61,8 +76,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Handle Socket connection explicitly based on realTimeSync
         if (data.realTimeSync === false) {
             disconnectSocket();
-        } else if (data.realTimeSync === true) {
-            connectSocket();
+        } else if (data.realTimeSync === true && token && user?.id) {
+            connectSocket(token, user.id);
         }
 
         try {
@@ -76,6 +91,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     logout: async () => {
         setAuthToken(null);
+        disconnectSocket();
         set({ session: null, user: null, token: null, settings: null });
     },
 }));

@@ -4,6 +4,7 @@ const API_URL = 'http://192.168.8.182:3000/api/v1'; // Local IP for mobile conne
 
 const api = axios.create({
     baseURL: API_URL,
+    timeout: 10000, // 10 seconds global timeout
 });
 
 export const setAuthToken = (token: string | null) => {

@@ -1,5 +1,4 @@
 import { io, Socket } from 'socket.io-client';
-import { useAuthStore } from '../store/authStore';
 
 const SOCKET_URL = 'http://192.168.8.182:3000';
 
@@ -13,50 +12,31 @@ const mockSocket = {
     connected: false,
 } as any;
 
-const setupSocketListeners = (s: Socket) => {
+const setupSocketListeners = (s: Socket, userId: string) => {
     s.on('connect', () => {
-        const { user } = useAuthStore.getState();
-        if (user?.id) {
-            s.emit('joinUser', { userId: user.id });
-            console.log(`[Socket] Joined personal room: user:${user.id}`);
+        if (userId) {
+            s.emit('joinUser', { userId });
+            console.log(`[Socket] Joined personal room: user:${userId}`);
         }
     });
 
-    // Handle existing connection case
-    if (s.connected) {
-        const { user } = useAuthStore.getState();
-        if (user?.id) {
-            s.emit('joinUser', { userId: user.id });
-            console.log(`[Socket] Re-joined personal room on init: user:${user.id}`);
-        }
+    if (s.connected && userId) {
+        s.emit('joinUser', { userId });
+        console.log(`[Socket] Re-joined personal room on init: user:${userId}`);
     }
 };
 
 export const getSocket = () => {
-    const { token, settings } = useAuthStore.getState();
-
-    if (!settings?.realTimeSync) {
-        if (socket) {
-            socket.disconnect();
-            socket = null;
-        }
-        return mockSocket;
-    }
-
-    if (!socket && token) {
-        socket = io(SOCKET_URL, { auth: { token } });
-        setupSocketListeners(socket);
-    }
     return socket || mockSocket;
 };
 
-export const connectSocket = () => {
-    const { token, settings } = useAuthStore.getState();
-    if (settings?.realTimeSync && token && !socket) {
-        socket = io(SOCKET_URL, { auth: { token } });
-        setupSocketListeners(socket);
+export const connectSocket = (token: string, userId: string) => {
+    if (socket) {
+        socket.disconnect();
     }
-    return socket || mockSocket;
+    socket = io(SOCKET_URL, { auth: { token } });
+    setupSocketListeners(socket, userId);
+    return socket;
 };
 
 export const disconnectSocket = () => {

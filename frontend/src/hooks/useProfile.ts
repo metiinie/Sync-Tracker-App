@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
-import { connectSocket, disconnectSocket } from '../services/socket';
 
 export const useProfileStats = () => {
     return useQuery({
@@ -47,15 +46,8 @@ export const useProfileMutations = () => {
             const res = await api.patch('/users/settings', data);
             return res.data;
         },
-        onSuccess: (data, variables) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userSettings'] });
-
-            // Handle socket connection
-            if (variables.realTimeSync === false) {
-                disconnectSocket();
-            } else if (variables.realTimeSync === true) {
-                connectSocket();
-            }
         }
     });
 

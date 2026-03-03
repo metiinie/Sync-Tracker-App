@@ -72,9 +72,11 @@ const ProfileScreen = ({ navigation }: any) => {
     const [isClearingCache, setIsClearingCache] = useState(false);
 
     const { data: stats, isLoading: statsLoading, isRefetching: statsRefetching } = useProfileStats();
-    const { data: recentActivities = [], isLoading: activitiesLoading, isRefetching: activitiesRefetching } = useActivities('my_tasks', '', 3);
+    const { data: recentActivitiesData = [], isLoading: activitiesLoading, isRefetching: activitiesRefetching } = useActivities('my_tasks', '', 3);
 
-    const isLoading = statsLoading || activitiesLoading;
+    const recentActivities = Array.isArray(recentActivitiesData) ? recentActivitiesData : [];
+
+    const isLoading = (statsLoading || activitiesLoading) && !stats && recentActivities.length === 0;
     const isRefetching = statsRefetching || activitiesRefetching;
 
     const onRefresh = () => {
@@ -159,7 +161,7 @@ const ProfileScreen = ({ navigation }: any) => {
     const displayName = user?.user_metadata?.name || user?.user_metadata?.full_name || 'Responsible User';
     const isDark = settings?.theme === 'dark';
 
-    if (isLoading && !stats && recentActivities.length === 0) {
+    if (isLoading) {
         return (
             <SafeAreaView className={`flex-1 justify-center items-center ${isDark ? 'bg-gray-900' : 'bg-[#FAFAFA]'}`}>
                 <ActivityIndicator color={isDark ? '#F9FAFB' : '#6366f1'} size="large" />
@@ -185,7 +187,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         {user?.user_metadata?.avatar_url ? (
                             <Image source={{ uri: user.user_metadata.avatar_url }} className="w-full h-full" />
                         ) : (
-                            <View className="w-full h-full bg-blue-100 items-center justify-center">
+                            <View className="w-full h-full items-center justify-center" style={{ backgroundColor: isDark ? '#1e293b' : '#eff6ff' }}>
                                 <UserIcon size={40} color="#3b82f6" />
                             </View>
                         )}
@@ -234,7 +236,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 <KPICard label="Tasks Owned" value={stats?.active ?? '0'} isDark={isDark} />
                 <KPICard label="Tasks Blocked" value={stats?.blocked ?? '0'} valueColor="#EF4444" isDark={isDark} />
                 <KPICard label="Help Requests" value={stats?.helpRequested ?? '0'} valueColor="#3B82F6" isDark={isDark} />
-                <KPICard label="Time Logged" value={`${stats?.totalTimeMins ? Math.floor(stats.totalTimeMins / 60) + 'h ' + (stats.totalTimeMins % 60) + 'm' : '0h 0m'}`} isDark={isDark} />
+                <KPICard label="Time Logged" value={stats?.totalTimeMins ? `${Math.floor(stats.totalTimeMins / 60)}h ${stats.totalTimeMins % 60}m` : '0h 0m'} isDark={isDark} />
             </View>
 
             {/* Recent Activity */}
