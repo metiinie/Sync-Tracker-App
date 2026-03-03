@@ -214,236 +214,154 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                 socket.off('task:updated', handleUpdate);
                 socket.off('comment:new');
                 socket.off('comment:deleted');
+                socket.off('comment:new', handleCommentUpdate);
+                socket.off('comment:deleted', handleCommentUpdate);
             };
-        }, [taskId]);
+        }, [taskId, queryClient]);
 
         // ─── ACTIONS ───────────────────────────────────────────
         const handleTransferInitiate = async (newOwnerId: string, note?: string) => {
-            setIsTransferring(true);
-            try {
-                await api.patch(`/tasks/${taskId}/transfer`, { newOwnerId, note });
-                setShowTransferModal(false);
-                setUserSearch('');
-                setUsers([]);
-                fetchTask();
-                Alert.alert('Success', 'Responsibility transfer initiated. Awaiting acceptance.');
-            } catch (err) {
-                console.log(err);
-                Alert.alert('Error', 'Failed to initiate transfer');
-            } finally {
-                setIsTransferring(false);
-            }
+            transferTask.mutate({ newOwnerId, note }, {
+                onSuccess: () => {
+                    setShowTransferModal(false);
+                    setSelectedNewOwner(null);
+                    setTransferNote('');
+                    Alert.alert("Transfer Initiated", "The recipient has been notified to accept responsibility.");
+                }
+            });
         };
 
         const handleAcceptTransfer = async (transferId: string) => {
-            try {
-                await api.patch(`/tasks/transfers/${transferId}/accept`);
-                fetchTask();
-                Alert.alert('Success', 'You are now the responsible owner of this track.');
-            } catch (err) {
-                console.log(err);
-                Alert.alert('Error', 'Failed to accept transfer');
-            }
+            acceptTransfer.mutate(transferId, {
+                onSuccess: () => {
+                    Alert.alert("Success", "You are now responsible for this track.");
+                }
+            });
         };
 
         const handleRejectTransfer = async (transferId: string) => {
-            try {
-                await api.patch(`/tasks/transfers/${transferId}/reject`);
-                fetchTask();
-                Alert.alert('Transfer Rejected', 'Original owner remains responsible.');
-            } catch (err) {
-                console.log(err);
-                Alert.alert('Error', 'Failed to reject transfer');
-            }
+            rejectTransfer.mutate(transferId, {
+                onSuccess: () => {
+                    Alert.alert("Rejected", "The transfer has been cancelled.");
+                }
+            });
         };
 
         const handleDeleteComment = async (commentId: string) => {
-            try {
-                await api.delete(`/tasks/comments/${commentId}`);
-            } catch (err) {
-                console.log(err);
-            }
+            deleteComment.mutate(commentId);
         };
 
         const handleUpdateTask = async () => {
-            try {
-                await api.patch(`/tasks/${taskId}`, editTaskData);
+            const res = await api.patch(`/tasks/${taskId}`, editTaskData);
+            if (res.data) {
                 setShowEditModal(false);
-                fetchTask();
-            } catch (err) {
-                console.log(err);
+                queryClient.invalidateQueries({ queryKey: ['task', taskId] });
             }
         };
 
         const handleDeleteTask = async () => {
-            try {
-                await api.delete(`/tasks/${taskId}`);
-                navigation.goBack();
-            } catch (err) {
-                console.log(err);
-            }
+            Alert.alert("Delete Track", "Are you sure? This cannot be undone.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        await api.delete(`/tasks/${taskId}`);
+                        navigation.goBack();
+                    }
+                }
+            ]);
         };
 
         const handleAddComment = async () => {
             if (!commentText.trim()) return;
-            try {
-                await api.post(`/tasks/${taskId}/comments`, { content: commentText });
-                setCommentText('');
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            addComment.mutate(commentText.trim(), {
+                onSuccess: () => setCommentText('')
+            });
         };
 
         const handleAddParticipant = async (userId: string) => {
-            try {
-                await api.post(`/tasks/${taskId}/participants`, { userId, role: 'contributor' });
-                setUserSearch('');
-                setUsers([]);
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            await api.post(`/tasks/${taskId}/participants`, { userId, role: 'contributor' });
+            queryClient.invalidateQueries({ queryKey: ['task', taskId] });
         };
 
         const handleRemoveParticipant = async (userId: string) => {
-            try {
-                await api.delete(`/tasks/${taskId}/participants/${userId}`);
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            await api.delete(`/tasks/${taskId}/participants/${userId}`);
+            queryClient.invalidateQueries({ queryKey: ['task', taskId] });
         };
+
         const handleUpdateSync = async () => {
-            if (!syncParams.state) return;
-            if ((syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && !syncParams.note.trim()) {
-                return; // Note is required
-            }
-            try {
-                await api.patch(`/tasks/${taskId}/sync`, { syncState: syncParams.state });
-                if (syncParams.note.trim()) {
-                    await api.post(`/tasks/${taskId}/time-logs`, {
-                        durationMinutes: 0,
-                        description: `[${syncParams.state}] ${syncParams.note}`
-                    });
-                }
-                setShowSyncModal(false);
-                setSyncParams({ state: '', note: '' });
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            updateSyncState.mutate(syncParams, {
+                onSuccess: () => setShowSyncModal(false)
+            });
         };
 
         const handleLogTime = async () => {
             const h = parseInt(timeLog.hours || '0', 10);
             const m = parseInt(timeLog.minutes || '0', 10);
             const totalMinutes = (h * 60) + m;
-            if (totalMinutes <= 0) return;
 
-            try {
-                await api.post(`/tasks/${taskId}/time-logs`, {
-                    durationMinutes: totalMinutes,
-                    description: timeLog.note,
-                });
-                setShowTimeModal(false);
-                setTimeLog({ hours: '', minutes: '', note: '' });
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            logTime.mutate({ durationMinutes: totalMinutes, description: timeLog.note }, {
+                onSuccess: () => {
+                    setShowTimeModal(false);
+                    setTimeLog({ hours: '', minutes: '', note: '' });
+                }
+            });
         };
 
         const handleToggleMilestone = async (mid: string, current: string) => {
-            try {
-                const next = current === 'true' ? false : true;
-                await api.patch(`/tasks/milestones/${mid}/toggle`, { isCompleted: next });
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            updateMilestone.mutate({ milestoneId: mid, isCompleted: current !== 'COMPLETED' });
         };
 
         const handleAddMilestone = async () => {
-            if (!newMilestone.trim()) return;
-            try {
-                await api.post(`/tasks/${taskId}/milestones`, {
-                    title: newMilestone,
-                    dueDate: newMilestoneDate || null
-                });
-                setShowMilestoneModal(false);
-                setNewMilestone('');
-                setNewMilestoneDate('');
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            addMilestone.mutate({ title: newMilestone, dueDate: newMilestoneDate }, {
+                onSuccess: () => {
+                    setShowMilestoneModal(false);
+                    setNewMilestone('');
+                    setNewMilestoneDate('');
+                }
+            });
         };
 
         const handleUpdateMilestone = async () => {
-            if (!editMilestoneData.title.trim()) return;
-            try {
-                await api.patch(`/tasks/milestones/${editMilestoneData.id}`, {
-                    title: editMilestoneData.title,
-                    dueDate: editMilestoneData.dueDate || null
-                });
-                setShowEditMilestoneModal(false);
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            updateMilestone.mutate({
+                milestoneId: editMilestoneData.id,
+                title: editMilestoneData.title,
+                dueDate: editMilestoneData.dueDate
+            }, {
+                onSuccess: () => setShowEditMilestoneModal(false)
+            });
         };
 
         const handleNudge = async () => {
-            try {
-                await api.post(`/tasks/${taskId}/nudge`);
-                Alert.alert('Success', 'Responsible owner has been nudged.');
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            await api.post(`/tasks/${taskId}/nudge`);
+            Alert.alert("Nudge Sent", "The responsible owner has been notified.");
         };
 
         const handleCompleteTask = async () => {
-            Alert.alert(
-                'Complete Track',
-                'Are you sure you want to mark this track as COMPLETED? This signifies all objectives have been met.',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Complete',
-                        style: 'default',
-                        onPress: async () => {
-                            try {
-                                await api.patch(`/tasks/${taskId}/complete`);
-                                fetchTask();
-                            } catch (err) {
-                                console.log(err);
-                            }
-                        }
+            Alert.alert("Complete Track", "Mark this entire track as COMPLETED?", [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Complete",
+                    onPress: async () => {
+                        await api.patch(`/tasks/${taskId}`, { status: 'COMPLETED' });
+                        queryClient.invalidateQueries({ queryKey: ['task', taskId] });
                     }
-                ]
-            );
+                }
+            ]);
         };
 
         const handleDeleteMilestone = async (mid: string) => {
-            try {
-                await api.delete(`/tasks/milestones/${mid}`);
-                fetchTask();
-            } catch (err) {
-                console.log(err);
-            }
+            deleteMilestone.mutate(mid);
         };
 
         const handleAcceptResponsibility = async () => {
-            try {
-                await api.patch(`/tasks/${taskId}/accept`);
-                fetchTask();
-            } catch (err) {
-                console.log(err);
+            // Find the pending transfer to me
+            const myTransfer = transfers.find((t: any) => t.toUserId === user?.id && t.status === 'PENDING');
+            if (myTransfer) {
+                handleAcceptTransfer(myTransfer.id);
             }
         };
-
         // ─── COMPUTED DATA ─────────────────────────────────────
         const isOwner = task?.responsibleOwner === user?.id;
         const isAssigner = task?.assignedBy === user?.id;
