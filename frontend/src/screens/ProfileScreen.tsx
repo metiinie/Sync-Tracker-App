@@ -189,35 +189,31 @@ const ProfileScreen = ({ navigation }: any) => {
             contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
             showsVerticalScrollIndicator={false}
         >
-            {/* Profile Card */}
-            <View
-                className={`rounded-[32px] p-6 mb-2 items-center flex-row border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
-                style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: isDark ? 0.3 : 0.05, shadowRadius: 10, elevation: 3 }}
-            >
-                <View className="relative w-20 h-20">
+            {/* Profile Header - Centered Layout */}
+            <View className={`items-center mb-8 px-6 pt-4`}>
+                <View className="relative w-24 h-24 mb-4">
                     {user?.user_metadata?.avatar_url ? (
                         <Image
                             source={{ uri: user.user_metadata.avatar_url }}
-                            className="w-20 h-20 rounded-full"
+                            className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
                         />
                     ) : (
-                        <View className="w-20 h-20 bg-[#FCD34D] rounded-full items-center justify-center border-4 border-white shadow-sm overflow-hidden">
-                            <View className="w-10 h-10 bg-[#FDBA74] rounded-full mt-2" />
+                        <View className={`w-24 h-24 bg-[#FCD34D] rounded-full items-center justify-center border-4 border-white shadow-lg overflow-hidden`}>
+                            <View className="w-12 h-12 bg-[#FDBA74] rounded-full mt-2" />
                         </View>
                     )}
-                    <View className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-2 border-white rounded-full" />
+                    <View className="absolute bottom-1 right-1 w-6 h-6 bg-green-500 border-2 border-white rounded-full" />
                 </View>
 
-                <View className="ml-5 flex-1 justify-center">
-                    <View className="flex-row items-center">
-                        <Text className={`text-xl font-black ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{displayName}</Text>
-                        <View className="ml-1 bg-blue-600 rounded-full p-[2px]">
+                <View className="items-center">
+                    <View className="flex-row items-center justify-center">
+                        <Text className={`text-2xl font-black ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{displayName}</Text>
+                        <View className="ml-2 bg-blue-600 rounded-full p-[2px]">
                             <CheckCircle2 size={12} color="#fff" />
                         </View>
                     </View>
-                    <Text className="text-gray-500 font-medium text-sm mt-0.5">{user?.email}</Text>
-                    <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mt-2">
-                        STANDARD USER • <Text className="text-blue-600">ONLINE</Text>
+                    <Text className="text-gray-400 font-bold text-xs mt-1 lowercase tracking-wide">
+                        online
                     </Text>
                 </View>
             </View>
