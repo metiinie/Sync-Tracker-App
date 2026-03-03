@@ -62,7 +62,7 @@ const HomeScreen = ({ navigation }: any) => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
         };
 
-        socket.on('sync:update', (data) => {
+        socket.on('sync:update', (data: any) => {
             // Optimistic update or just invalidate
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
         });
@@ -214,6 +214,26 @@ const HomeScreen = ({ navigation }: any) => {
         }
     };
 
+    const navigateToTask = (taskId: string) => {
+        navigation.navigate('TaskDetail', { taskId });
+    };
+
+    const handleUpdateSync = (taskId: string) => {
+        navigation.navigate('TaskDetail', { taskId });
+    };
+
+    const handleCreateTask = () => {
+        navigation.navigate('CreateTask');
+    };
+
+    const navigateToSegment = (segmentId: string) => {
+        navigation.navigate('Tasks', { segmentId });
+    };
+
+    const handleLogTime = () => {
+        setShowLogTimeModal(true);
+    };
+
     const displayName = user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
     const firstName = displayName.split(' ')[0];
 
@@ -309,7 +329,7 @@ const HomeScreen = ({ navigation }: any) => {
             <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: 100 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B82F6" />}
+                refreshControl={<RefreshControl refreshing={tasksLoading} onRefresh={onRefresh} tintColor="#3B82F6" />}
             >
                 {/* ─── GREETING ────────────────────── */}
                 <View style={{ paddingHorizontal: 24, paddingTop: 20, marginBottom: 24 }}>
@@ -322,13 +342,15 @@ const HomeScreen = ({ navigation }: any) => {
                 </View>
 
                 {/* ─── ATTENTION PANEL ────────────────────── */}
-                <AttentionPanel
-                    items={dashboard.attentionItems}
-                    onTaskPress={navigateToTask}
-                />
+                {dashboard && (
+                    <AttentionPanel
+                        items={dashboard.attentionItems}
+                        onTaskPress={navigateToTask}
+                    />
+                )}
 
                 {/* ─── ACTIVITY PULSE (Pulse) ────────────────────── */}
-                {recentActivities.length > 0 && (
+                {!activitiesLoading && recentActivities.length > 0 && (
                     <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -340,7 +362,7 @@ const HomeScreen = ({ navigation }: any) => {
                             </TouchableOpacity>
                         </View>
                         <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFFFFF', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.3 : 0.05, shadowRadius: 10, elevation: 2 }}>
-                            {recentActivities.map((act, idx) => (
+                            {recentActivities.map((act: any, idx: number) => (
                                 <TouchableOpacity
                                     key={act.id}
                                     onPress={() => navigateToTask(act.taskId)}
@@ -375,28 +397,34 @@ const HomeScreen = ({ navigation }: any) => {
                     </View>
                 )}
                 {/* 2️⃣ MY RESPONSIBILITY */}
-                <ResponsibilitySection
-                    groups={dashboard.myResponsibility}
-                    onTaskPress={navigateToTask}
-                    onUpdateSync={handleUpdateSync}
-                    onHeaderPress={() => navigateToSegment('owned')}
-                />
+                {dashboard && (
+                    <ResponsibilitySection
+                        groups={dashboard.myResponsibility}
+                        onTaskPress={navigateToTask}
+                        onUpdateSync={handleUpdateSync}
+                        onHeaderPress={() => navigateToSegment('owned')}
+                    />
+                )}
 
                 {/* 3️⃣ DELEGATED BY ME */}
-                <DelegatedSection
-                    tasks={dashboard.delegated}
-                    onTaskPress={navigateToTask}
-                    onNudge={handleNudge}
-                    onHeaderPress={() => navigateToSegment('delegated')}
-                />
+                {dashboard && (
+                    <DelegatedSection
+                        tasks={dashboard.delegated}
+                        onTaskPress={navigateToTask}
+                        onNudge={handleNudge}
+                        onHeaderPress={() => navigateToSegment('delegated')}
+                    />
+                )}
 
                 {/* 4️⃣ PARTICIPATING IN */}
-                <ParticipatingSection
-                    items={dashboard.participating}
-                    onTaskPress={navigateToTask}
-                    onQuickSync={handleParticipantSync}
-                    onHeaderPress={() => navigateToSegment('participating')}
-                />
+                {dashboard && (
+                    <ParticipatingSection
+                        items={dashboard.participating}
+                        onTaskPress={navigateToTask}
+                        onQuickSync={handleParticipantSync}
+                        onHeaderPress={() => navigateToSegment('participating')}
+                    />
+                )}
 
                 {/* 5️⃣ QUICK ACTIONS */}
                 <QuickActionsBar
@@ -468,8 +496,8 @@ const HomeScreen = ({ navigation }: any) => {
                             style={{ marginBottom: 24 }}
                             contentContainerStyle={{ gap: 10 }}
                         >
-                            {tasks.filter(t => t.status === 'ACTIVE' || t.status === 'PENDING').length > 0 ? (
-                                tasks.filter(t => t.status === 'ACTIVE' || t.status === 'PENDING').map(t => (
+                            {tasks.filter((t: any) => t.status === 'ACTIVE' || t.status === 'PENDING').length > 0 ? (
+                                tasks.filter((t: any) => t.status === 'ACTIVE' || t.status === 'PENDING').map((t: any) => (
                                     <TouchableOpacity
                                         key={t.id}
                                         onPress={() => setSelectedTaskId(t.id)}

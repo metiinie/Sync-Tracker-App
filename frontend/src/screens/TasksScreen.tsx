@@ -77,63 +77,23 @@ const TasksScreen = ({ navigation, route }: any) => {
     useEffect(() => {
         const socket = getSocket();
 
-        const handleSyncUpdate = (data: any) => {
-            queryClient.setQueryData(['tasks'], (old: any[] | undefined) => {
-                if (!old) return old;
-                return old.map(t =>
-                    t.id === data.taskId
-                        ? { ...t, syncState: data.syncState, lastUpdatedAt: new Date().toISOString() }
-                        : t
-                );
-            });
+        const invalidateTasks = () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
         };
 
-        const handleBlocked = (data: any) => {
-            queryClient.setQueryData(['tasks'], (old: any[] | undefined) => {
-                if (!old) return old;
-                return old.map(t =>
-                    t.id === data.taskId
-                        ? { ...t, syncState: 'BLOCKED', lastUpdatedAt: new Date().toISOString() }
-                        : t
-                );
-            });
-        };
+        const events = [
+            'sync:update', 'task:blocked', 'task:helpRequested',
+            'task:assigned', 'task:transferred', 'task:updated',
+            'task:deleted', 'milestone:completed', 'task:created',
+            'task:accepted', 'comment:new'
+        ];
 
-        const handleHelpRequested = (data: any) => {
-            queryClient.setQueryData(['tasks'], (old: any[] | undefined) => {
-                if (!old) return old;
-                return old.map(t =>
-                    t.id === data.taskId
-                        ? { ...t, syncState: 'HELP_REQUESTED', lastUpdatedAt: new Date().toISOString() }
-                        : t
-                );
-            });
-        };
-
-        const handleRefetch = () => {
-            refetch();
-        };
-
-        socket.on('sync:update', handleSyncUpdate);
-        socket.on('task:blocked', handleBlocked);
-        socket.on('task:helpRequested', handleHelpRequested);
-        socket.on('task:assigned', handleRefetch);
-        socket.on('task:transferred', handleRefetch);
-        socket.on('task:updated', handleRefetch);
-        socket.on('task:deleted', handleRefetch);
-        socket.on('milestone:completed', handleRefetch);
+        events.forEach(event => socket.on(event, invalidateTasks));
 
         return () => {
-            socket.off('sync:update', handleSyncUpdate);
-            socket.off('task:blocked', handleBlocked);
-            socket.off('task:helpRequested', handleHelpRequested);
-            socket.off('task:assigned', handleRefetch);
-            socket.off('task:transferred', handleRefetch);
-            socket.off('task:updated', handleRefetch);
-            socket.off('task:deleted', handleRefetch);
-            socket.off('milestone:completed', handleRefetch);
+            events.forEach(event => socket.off(event, invalidateTasks));
         };
-    }, [queryClient, refetch]);
+    }, [queryClient]);
 
     // Join task rooms
     useEffect(() => {
