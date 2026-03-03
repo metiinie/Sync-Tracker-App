@@ -8,14 +8,8 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { UseGuards } from '@nestjs/common';
-import { WsJwtGuard } from './ws-jwt.guard';
 
-@WebSocketGateway({
-  cors: {
-    origin: '*',
-  },
-})
+@WebSocketGateway({ cors: { origin: '*' } })
 export class SyncGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -28,6 +22,7 @@ export class SyncGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`Client disconnected: ${client.id}`);
   }
 
+  // Join a single task room
   @SubscribeMessage('joinTask')
   handleJoinTask(
     @MessageBody() data: { taskId: string },
@@ -36,14 +31,13 @@ export class SyncGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(`task_${data.taskId}`);
   }
 
+  // Join multiple task rooms at once
   @SubscribeMessage('joinTasks')
   handleJoinTasks(
     @MessageBody() data: { taskIds: string[] },
     @ConnectedSocket() client: Socket,
   ) {
-    data.taskIds.forEach(id => {
-      client.join(`task_${id}`);
-    });
+    data.taskIds.forEach(id => client.join(`task_${id}`));
   }
 
   @SubscribeMessage('leaveTask')
@@ -54,7 +48,25 @@ export class SyncGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.leave(`task_${data.taskId}`);
   }
 
-  // Helper method to emit events to specific task rooms
+  // ─── Join personal user room (for notifications + transfers) ────────────────
+  @SubscribeMessage('joinUser')
+  handleJoinUser(
+    @MessageBody() data: { userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.join(`user:${data.userId}`);
+    console.log(`Client ${client.id} joined user room: user:${data.userId}`);
+  }
+
+  @SubscribeMessage('leaveUser')
+  handleLeaveUser(
+    @MessageBody() data: { userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.leave(`user:${data.userId}`);
+  }
+
+  // Helper to emit to a task room
   emitToTask(taskId: string, event: string, payload: any) {
     this.server.to(`task_${taskId}`).emit(event, payload);
   }
