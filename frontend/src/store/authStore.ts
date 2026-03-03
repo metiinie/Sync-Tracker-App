@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Session, User } from '@supabase/supabase-js';
-import api from '../services/api';
+import api, { setAuthToken } from '../services/api';
 import { disconnectSocket, connectSocket } from '../services/socket';
 
 interface UserSettings {
@@ -9,7 +9,6 @@ interface UserSettings {
     emailDigest: boolean;
     realTimeSync: boolean;
 }
-
 
 interface AuthState {
     session: Session | null;
@@ -29,14 +28,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     settings: null,
     setSession: async (session) => {
         if (session) {
+            const token = session.access_token;
+            setAuthToken(token);
             set({
                 session,
                 user: session.user,
-                token: session.access_token
+                token
             });
             // Fetch settings after session is established
             await get().fetchSettings();
         } else {
+            setAuthToken(null);
             set({ session: null, user: null, token: null, settings: null });
         }
     },
@@ -73,6 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     },
 
     logout: async () => {
+        setAuthToken(null);
         set({ session: null, user: null, token: null, settings: null });
     },
 }));

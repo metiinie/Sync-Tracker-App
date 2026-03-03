@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Image, Alert, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../services/supabase';
@@ -8,7 +8,7 @@ import {
     CheckCircle2, LayoutList, Activity, Clock,
     ChevronDown, ChevronUp, ChevronRight, Edit2, Lock,
     Bell, Mail, Timer, Info, Sun, Moon, Database, Share2, RefreshCw,
-    Briefcase
+    Briefcase, Shield, User as UserIcon, HelpCircle, MapPin
 } from 'lucide-react-native';
 import api from '../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -18,6 +18,7 @@ import { useProfileStats } from '../hooks/useProfile';
 import { useActivities } from '../hooks/useActivities';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSocket } from '../services/socket';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type TabButtonProps = {
     icon: any;
@@ -29,23 +30,38 @@ type TabButtonProps = {
 const QuickActionButton = ({ icon: Icon, label, onPress, active }: TabButtonProps) => (
     <TouchableOpacity
         onPress={onPress}
-        className={`flex-row items-center justify-center px-4 py-3 rounded-full flex-1 mx-1 border ${active ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'
-            }`}
-        style={!active ? { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 } : {}}
+        className="bg-white rounded-2xl p-4 flex-1 mx-1 items-center justify-center border border-gray-50 shadow-sm"
+        style={{ elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 }}
     >
-        <Icon size={16} color={active ? '#fff' : '#1f2937'} />
-        <Text className={`font-bold ml-2 text-xs ${active ? 'text-white' : 'text-gray-800'}`}>{label}</Text>
+        <View className="mb-2">
+            <Icon size={20} color="#6366f1" />
+        </View>
+        <Text className="font-bold text-gray-800 text-xs">{label}</Text>
     </TouchableOpacity>
 );
 
 const KPICard = ({ label, value, valueColor = '#111827', isDark }: { label: string, value: string | number, valueColor?: string, isDark: boolean }) => (
     <View
-        className={`p-5 rounded-3xl w-[48%] mb-4 border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
+        className={`p-6 rounded-3xl w-[48%] mb-4 border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
         style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.3 : 0.03, shadowRadius: 4, elevation: 2 }}
     >
-        <Text className="text-gray-400 text-xs font-bold mb-2">{label}</Text>
+        <Text className="text-gray-400 text-[10px] font-black tracking-widest uppercase mb-2">{label}</Text>
         <Text className="text-2xl font-black" style={{ color: isDark && valueColor === '#111827' ? '#F9FAFB' : valueColor }}>{value}</Text>
     </View>
+);
+
+const SettingItem = ({ icon: Icon, label, color, rightElement, onPress, isDark }: { icon: any, label: string, color: string, rightElement?: React.ReactNode, onPress?: () => void, isDark: boolean }) => (
+    <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.7}
+        className="flex-row items-center py-4 px-6"
+    >
+        <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: color }}>
+            <Icon size={20} color="#fff" />
+        </View>
+        <Text className={`flex-1 ml-4 font-bold text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{label}</Text>
+        {rightElement ? rightElement : <ChevronRight size={18} color={isDark ? '#4B5563' : '#D1D5DB'} />}
+    </TouchableOpacity>
 );
 
 const ProfileScreen = ({ navigation }: any) => {
@@ -55,7 +71,6 @@ const ProfileScreen = ({ navigation }: any) => {
     const [isExporting, setIsExporting] = useState(false);
     const [isClearingCache, setIsClearingCache] = useState(false);
 
-    // ─── QUERY HOOKS ────────────────────────────────────
     const { data: stats, isLoading: statsLoading, isRefetching: statsRefetching } = useProfileStats();
     const { data: recentActivities = [], isLoading: activitiesLoading, isRefetching: activitiesRefetching } = useActivities('my_tasks', '', 3);
 
@@ -67,12 +82,9 @@ const ProfileScreen = ({ navigation }: any) => {
         queryClient.invalidateQueries({ queryKey: ['activities', 'my_tasks'] });
     };
 
-    // ─── REAL-TIME SYNC ────────────────────────────────
     useEffect(() => {
         const socket = getSocket();
         const invalidate = () => queryClient.invalidateQueries({ queryKey: ['profile', 'stats'] });
-
-        // Stats should refresh on any meaningful task change
         socket.on('task:created', invalidate);
         socket.on('task:updated', invalidate);
         socket.on('task:deleted', invalidate);
@@ -80,7 +92,6 @@ const ProfileScreen = ({ navigation }: any) => {
         socket.on('task:accepted', invalidate);
         socket.on('milestone:completed', invalidate);
         socket.on('sync:update', invalidate);
-
         return () => {
             socket.off('task:created', invalidate);
             socket.off('task:updated', invalidate);
@@ -100,10 +111,6 @@ const ProfileScreen = ({ navigation }: any) => {
     const handleRealTimeSyncToggle = () => {
         const newValue = !settings?.realTimeSync;
         updateSettings({ realTimeSync: newValue });
-        Alert.alert(
-            "Real-time Sync",
-            newValue ? "Real-time updates are now enabled." : "Real-time updates have been paused."
-        );
     };
 
     const handleExportLogs = async () => {
@@ -113,27 +120,20 @@ const ProfileScreen = ({ navigation }: any) => {
                 api.get('/tasks'),
                 api.get('/activities?scope=all&limit=100')
             ]);
-
             const exportData = {
                 timestamp: new Date().toISOString(),
                 user: user?.email,
                 tasks: tasksRes.data,
                 activities: activitiesRes.data
             };
-
             const fileUri = `${FileSystem.cacheDirectory}sync_tracker_export.json`;
             await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(exportData, null, 2));
-
             if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(fileUri, {
-                    mimeType: 'application/json',
-                    dialogTitle: 'Export Sync Tracker Logs'
-                });
+                await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Export Sync Tracker Logs' });
             } else {
                 Alert.alert("Export Error", "Sharing is not available on this device.");
             }
         } catch (error) {
-            console.error("Export logs error:", error);
             Alert.alert("Error", "Failed to export logs.");
         } finally {
             setIsExporting(false);
@@ -141,43 +141,28 @@ const ProfileScreen = ({ navigation }: any) => {
     };
 
     const handleClearCache = async () => {
-        Alert.alert(
-            "Clear Cache",
-            "Are you sure you want to clear the local application cache? You will need to re-login.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Clear",
-                    style: "destructive",
-                    onPress: async () => {
-                        setIsClearingCache(true);
-                        try {
-                            // Leave supabase session alone, clear everything else
-                            const keys = await AsyncStorage.getAllKeys();
-                            const keysToKeep = keys.filter(k => k.includes('supabase'));
-                            const multiSet = keysToKeep.map(k => [k, ''] as [string, string]); // We actually want to KEEP these. 
-                            // It's safer to just clear specific app keys or clear all and force relogin
-                            await AsyncStorage.clear();
-                            Alert.alert("Success", "Cache cleared. Signing out...", [{ text: "OK", onPress: handleLogout }]);
-                        } catch (e) {
-                            Alert.alert("Error", "Failed to clear cache.");
-                        } finally {
-                            setIsClearingCache(false);
-                        }
-                    }
+        Alert.alert("Clear Cache", "Are you sure you want to clear local cache? You will need to re-login.", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Clear", style: "destructive", onPress: async () => {
+                    setIsClearingCache(true);
+                    try {
+                        await AsyncStorage.clear();
+                        Alert.alert("Success", "Cache cleared.", [{ text: "OK", onPress: handleLogout }]);
+                    } catch (e) { Alert.alert("Error", "Failed to clear cache."); }
+                    finally { setIsClearingCache(false); }
                 }
-            ]
-        );
+            }
+        ]);
     };
 
     const displayName = user?.user_metadata?.name || user?.user_metadata?.full_name || 'Responsible User';
-
     const isDark = settings?.theme === 'dark';
 
     if (isLoading && !stats && recentActivities.length === 0) {
         return (
             <SafeAreaView className={`flex-1 justify-center items-center ${isDark ? 'bg-gray-900' : 'bg-[#FAFAFA]'}`}>
-                <ActivityIndicator color={isDark ? '#F9FAFB' : '#000'} size="large" />
+                <ActivityIndicator color={isDark ? '#F9FAFB' : '#6366f1'} size="large" />
             </SafeAreaView>
         );
     }
@@ -189,59 +174,63 @@ const ProfileScreen = ({ navigation }: any) => {
             contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
             showsVerticalScrollIndicator={false}
         >
-            {/* Profile Header - Centered Layout */}
-            <View className={`items-center mb-8 px-6 pt-4`}>
-                <View className="relative w-24 h-24 mb-4">
-                    {user?.user_metadata?.avatar_url ? (
-                        <Image
-                            source={{ uri: user.user_metadata.avatar_url }}
-                            className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
-                        />
-                    ) : (
-                        <View className={`w-24 h-24 bg-[#FCD34D] rounded-full items-center justify-center border-4 border-white shadow-lg overflow-hidden`}>
-                            <View className="w-12 h-12 bg-[#FDBA74] rounded-full mt-2" />
-                        </View>
-                    )}
-                    <View className="absolute bottom-1 right-1 w-6 h-6 bg-green-500 border-2 border-white rounded-full" />
+            {/* Redesigned User Card - Matching Image 1 */}
+            <LinearGradient
+                colors={isDark ? ['#1e293b', '#0f172a'] : ['#f0f7ff', '#ffffff']}
+                className="rounded-[40px] p-8 items-center mb-8 border border-white/50"
+                style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.05, shadowRadius: 20, elevation: 5 }}
+            >
+                <View className="relative mb-4">
+                    <View className="w-28 h-28 rounded-full border-4 border-white shadow-sm overflow-hidden bg-gray-100">
+                        {user?.user_metadata?.avatar_url ? (
+                            <Image source={{ uri: user.user_metadata.avatar_url }} className="w-full h-full" />
+                        ) : (
+                            <View className="w-full h-full bg-blue-100 items-center justify-center">
+                                <UserIcon size={40} color="#3b82f6" />
+                            </View>
+                        )}
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('EditProfile')}
+                        className="absolute bottom-1 right-1 w-8 h-8 bg-white border border-gray-100 rounded-full items-center justify-center shadow-sm"
+                    >
+                        <Edit2 size={12} color="#1f2937" />
+                    </TouchableOpacity>
                 </View>
 
                 <View className="items-center">
-                    <View className="flex-row items-center justify-center">
+                    <View className="flex-row items-center mb-1">
                         <Text className={`text-2xl font-black ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{displayName}</Text>
                         <View className="ml-2 bg-blue-600 rounded-full p-[2px]">
-                            <CheckCircle2 size={12} color="#fff" />
+                            <CheckCircle2 size={10} color="#fff" />
                         </View>
                     </View>
-                    <Text className="text-gray-400 font-bold text-xs mt-1 lowercase tracking-wide">
-                        online
-                    </Text>
+                    <Text className="text-gray-400 font-medium text-xs mb-4">{user?.email}</Text>
+
+                    <View className="flex-row">
+                        <View className="bg-purple-50 px-4 py-1.5 rounded-full mr-2">
+                            <Text className="text-purple-600 font-bold text-[10px] uppercase">Standard</Text>
+                        </View>
+                        <View className="bg-green-50 px-4 py-1.5 rounded-full flex-row items-center">
+                            <View className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5" />
+                            <Text className="text-green-600 font-bold text-[10px] uppercase">Online</Text>
+                        </View>
+                    </View>
                 </View>
+            </LinearGradient>
+
+            {/* Quick Actions - Card Style */}
+            <View className="flex-row mb-10 -mx-1">
+                <QuickActionButton icon={LayoutList} label="Tasks" onPress={() => navigation.navigate('Tasks')} />
+                <QuickActionButton icon={Activity} label="Activity" onPress={() => navigation.navigate('Activity')} />
+                <QuickActionButton icon={Clock} label="Log" onPress={() => navigation.navigate('Tasks')} />
             </View>
 
-            {/* Quick Actions - Narrowed space and closer to card */}
-            <View className="flex-row mb-8 -mx-0.5">
-                <QuickActionButton
-                    icon={LayoutList}
-                    label="Tasks"
-                    onPress={() => navigation.navigate('Tasks')}
-                />
-                <QuickActionButton
-                    icon={Activity}
-                    label="Activity"
-                    onPress={() => navigation.navigate('Activity')}
-                />
-                <QuickActionButton
-                    icon={Clock}
-                    label="Log"
-                    onPress={() => navigation.navigate('Tasks')}
-                />
-            </View>
-
-            {/* Key Performance Indicators */}
-            <Text className="text-[10px] font-black tracking-widest uppercase text-gray-400 mb-4 pl-2">
-                Key Performance Indicators
+            {/* Performance Overview */}
+            <Text className="text-[10px] font-black tracking-[2px] uppercase text-gray-400 mb-4 ml-1">
+                Performance Overview
             </Text>
-            <View className="flex-row flex-wrap justify-between mb-2">
+            <View className="flex-row flex-wrap justify-between mb-4">
                 <KPICard label="Tasks Owned" value={stats?.active ?? '0'} isDark={isDark} />
                 <KPICard label="Tasks Blocked" value={stats?.blocked ?? '0'} valueColor="#EF4444" isDark={isDark} />
                 <KPICard label="Help Requests" value={stats?.helpRequested ?? '0'} valueColor="#3B82F6" isDark={isDark} />
@@ -249,30 +238,34 @@ const ProfileScreen = ({ navigation }: any) => {
             </View>
 
             {/* Recent Activity */}
-            <View className="flex-row justify-between items-end mb-4 pr-2 mt-4">
-                <Text className="text-[10px] font-black tracking-widest uppercase text-gray-400 pl-2">
+            <View className="flex-row justify-between items-center mb-4 pr-1">
+                <Text className="text-[10px] font-black tracking-[2px] uppercase text-gray-400">
                     Recent Activity
                 </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Activity')}>
                     <Text className="text-blue-600 font-bold text-[10px] uppercase tracking-wider">View All</Text>
                 </TouchableOpacity>
             </View>
-            <View className={`rounded-3xl mb-8 border overflow-hidden shadow-sm pt-2 pb-2 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
+
+            <View className={`rounded-[32px] mb-8 border shadow-sm ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-50'}`}>
                 {recentActivities.length > 0 ? recentActivities.map((act: any, idx: number, arr: any[]) => (
                     <TouchableOpacity
                         key={act.id}
                         onPress={() => navigation.navigate('TaskDetail', { taskId: act.taskId })}
                         className={`flex-row items-center p-5 ${idx !== arr.length - 1 ? (isDark ? 'border-b border-gray-700' : 'border-b border-gray-50') : ''}`}
                     >
-                        <View className="w-2 h-2 rounded-full mr-4" style={{ backgroundColor: act.stateBadge === 'BLOCKED' ? '#ef4444' : act.stateBadge === 'HELP_REQUESTED' ? '#3b82f6' : '#10b981' }} />
+                        <View className="w-10 h-10 rounded-2xl bg-gray-50 items-center justify-center mr-4">
+                            <Activity size={18} color={act.stateBadge === 'BLOCKED' ? '#ef4444' : act.stateBadge === 'HELP_REQUESTED' ? '#3b82f6' : '#10b981'} />
+                        </View>
                         <View className="flex-1">
-                            <Text className={`font-bold text-sm mb-1 ${isDark ? 'text-gray-100' : 'text-gray-900'}`} numberOfLines={1}>{act.taskTitle}</Text>
+                            <Text className={`font-bold text-sm mb-0.5 ${isDark ? 'text-gray-100' : 'text-gray-900'}`} numberOfLines={1}>{act.taskTitle}</Text>
                             <Text className="text-gray-400 text-xs font-medium">{act.actionText}</Text>
                         </View>
                         <ChevronRight size={16} color={isDark ? '#4B5563' : '#D1D5DB'} />
                     </TouchableOpacity>
                 )) : (
-                    <View className="p-8 items-center">
+                    <View className="p-10 items-center">
+                        <Activity size={32} color="#e5e7eb" className="mb-2" />
                         <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">No Recent Activity</Text>
                     </View>
                 )}
@@ -281,130 +274,180 @@ const ProfileScreen = ({ navigation }: any) => {
     );
 
     const renderSettings = () => (
-        <ScrollView
-            className={`flex-1 ${isDark ? 'bg-gray-900' : 'bg-white'}`}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            showsVerticalScrollIndicator={false}
-        >
-            <View className={`border-t ${isDark ? 'border-gray-800' : 'border-gray-50'}`}>
-                {/* Account Security Group */}
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('EditProfile')}
-                    className={`flex-row items-center px-6 py-5 border-b ${isDark ? 'border-gray-800' : 'border-gray-50'}`}
-                >
-                    <Edit2 size={20} color={isDark ? '#9CA3AF' : '#4B5563'} />
-                    <Text className={`ml-4 font-bold flex-1 text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Edit Profile</Text>
-                    <ChevronRight size={18} color={isDark ? '#4B5563' : '#D1D5DB'} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('Security')}
-                    className={`flex-row items-center px-6 py-5 border-b ${isDark ? 'border-gray-800' : 'border-gray-50'}`}
-                >
-                    <Lock size={20} color={isDark ? '#9CA3AF' : '#4B5563'} />
-                    <Text className={`ml-4 font-bold flex-1 text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Security</Text>
-                    <ChevronRight size={18} color={isDark ? '#4B5563' : '#D1D5DB'} />
-                </TouchableOpacity>
-
-                {/* Workspace Group */}
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('Workspaces')}
-                    className={`flex-row items-center px-6 py-5 border-b ${isDark ? 'border-gray-800' : 'border-gray-50'}`}
-                >
-                    <Briefcase size={20} color={isDark ? '#9CA3AF' : '#4B5563'} />
-                    <Text className={`ml-4 font-bold flex-1 text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Workspaces</Text>
-                    <ChevronRight size={18} color={isDark ? '#4B5563' : '#D1D5DB'} />
-                </TouchableOpacity>
-
-                {/* Notifications Group */}
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('NotificationSettings')}
-                    className={`flex-row items-center px-6 py-5 border-b ${isDark ? 'border-gray-800' : 'border-gray-50'}`}
-                >
-                    <Bell size={20} color={isDark ? '#9CA3AF' : '#4B5563'} />
-                    <Text className={`ml-4 font-bold flex-1 text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Notifications</Text>
-                    <ChevronRight size={18} color={isDark ? '#4B5563' : '#D1D5DB'} />
-                </TouchableOpacity>
-
-
-                {/* Sync & Data Group */}
-                <View className={`flex-row justify-between items-center px-6 py-5 border-b ${isDark ? 'border-gray-800' : 'border-gray-50'}`}>
-                    <View className="flex-row items-center">
-                        <RefreshCw size={20} color={isDark ? '#9CA3AF' : '#4B5563'} />
-                        <Text className={`ml-4 font-bold text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Real-time Sync</Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={handleRealTimeSyncToggle}
-                        className={`w-11 h-6 rounded-full p-1 transition-colors ${settings?.realTimeSync ? 'bg-blue-600' : (isDark ? 'bg-gray-700' : 'bg-gray-200')}`}
-                    >
-                        <View className={`w-4 h-4 rounded-full shadow-sm ${settings?.realTimeSync ? 'ml-auto bg-white' : 'bg-white'}`} />
-                    </TouchableOpacity>
+        <ScrollView className={`flex-1 ${isDark ? 'bg-gray-900' : 'bg-[#f8f9fb]'}`} showsVerticalScrollIndicator={false}>
+            {/* Header Section from Image 2 */}
+            <View className="items-center pt-6 pb-8">
+                <View className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden bg-gray-100 mb-4">
+                    {user?.user_metadata?.avatar_url ? (
+                        <Image source={{ uri: user.user_metadata.avatar_url }} className="w-full h-full" />
+                    ) : (
+                        <View className="w-full h-full bg-blue-100 items-center justify-center">
+                            <UserIcon size={32} color="#3b82f6" />
+                        </View>
+                    )}
                 </View>
-                <TouchableOpacity
-                    onPress={handleExportLogs}
-                    disabled={isExporting}
-                    className={`flex-row items-center px-6 py-5 border-b ${isDark ? 'border-gray-800' : 'border-gray-50'}`}
-                >
-                    {isExporting ? <ActivityIndicator size="small" color={isDark ? '#9CA3AF' : '#4B5563'} className="mr-1" /> : <Share2 size={20} color={isDark ? '#9CA3AF' : '#4B5563'} />}
-                    <Text className={`ml-4 font-bold flex-1 text-base ${isExporting ? 'text-gray-500' : (isDark ? 'text-gray-200' : 'text-gray-800')}`}>
-                        {isExporting ? 'Exporting...' : 'Export Logs'}
-                    </Text>
-                    <Text className="text-blue-600 font-bold text-xs uppercase">JSON</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={handleClearCache}
-                    disabled={isClearingCache}
-                    className={`flex-row items-center px-6 py-5 border-b ${isDark ? 'border-gray-800' : 'border-gray-100'}`}
-                >
-                    {isClearingCache ? <ActivityIndicator size="small" color={isDark ? '#9CA3AF' : '#4B5563'} className="mr-1" /> : <Database size={20} color={isDark ? '#9CA3AF' : '#4B5563'} />}
-                    <Text className={`ml-4 font-bold flex-1 text-base ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Clear Cache</Text>
-                    <Text className="text-gray-500 font-bold text-xs">Clear Local</Text>
-                </TouchableOpacity>
+                <Text className={`text-xl font-black ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{displayName}</Text>
+                <View className="flex-row items-center mt-1">
+                    <MapPin size={12} color="#9ca3af" />
+                    <Text className="text-gray-400 text-xs font-bold ml-1">Global Workspace</Text>
+                </View>
+                <Text className="text-gray-400 text-xs font-bold mt-1">System User</Text>
 
-                {/* Sign Out - Integrated closely at the bottom of the list */}
+                <TouchableOpacity className="bg-[#e91e63] px-8 py-3 rounded-2xl mt-6 shadow-lg shadow-pink-200">
+                    <Text className="text-white font-black text-sm">Upgrade Now - Go Pro</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Settings Card */}
+            <View className={`flex-1 bg-white rounded-t-[40px] pt-8 pb-32 border-t border-gray-100 ${isDark ? 'bg-gray-800 border-gray-700' : ''}`}>
+                <Text className={`px-8 text-xl font-black mb-4 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>Settings</Text>
+
+                <SettingItem
+                    isDark={isDark}
+                    icon={Moon}
+                    label="Dark Mode"
+                    color="#000000"
+                    rightElement={
+                        <Switch
+                            value={isDark}
+                            onValueChange={() => updateSettings({ theme: isDark ? 'light' : 'dark' })}
+                            trackColor={{ false: '#e2e8f0', true: '#000' }}
+                            thumbColor="#fff"
+                        />
+                    }
+                />
+
+                <SettingItem
+                    isDark={isDark}
+                    icon={Bell}
+                    label="Notifications"
+                    color="#ff4081"
+                    onPress={() => navigation.navigate('NotificationSettings')}
+                    rightElement={
+                        <View className="flex-row items-center">
+                            <Text className="text-gray-400 font-bold mr-2">On</Text>
+                            <ChevronRight size={18} color={isDark ? '#4B5563' : '#D1D5DB'} />
+                        </View>
+                    }
+                />
+
+                <SettingItem
+                    isDark={isDark}
+                    icon={Lock}
+                    label="Privacy"
+                    color="#f06292"
+                    onPress={() => navigation.navigate('Security')}
+                />
+
+                <SettingItem
+                    isDark={isDark}
+                    icon={Shield}
+                    label="Security"
+                    color="#ff5252"
+                    onPress={() => navigation.navigate('Security')}
+                />
+
+                <SettingItem
+                    isDark={isDark}
+                    icon={UserIcon}
+                    label="Account"
+                    color="#4dd0e1"
+                    onPress={() => navigation.navigate('EditProfile')}
+                />
+
+                <SettingItem
+                    isDark={isDark}
+                    icon={Briefcase}
+                    label="Workspaces"
+                    color="#26a69a"
+                    onPress={() => navigation.navigate('Workspaces')}
+                />
+
+                <SettingItem
+                    isDark={isDark}
+                    icon={HelpCircle}
+                    label="Help"
+                    color="#4fc3f7"
+                    onPress={() => Alert.alert("Help Center", "Visit our help center at support.synctracker.io")}
+                />
+
+                <SettingItem
+                    isDark={isDark}
+                    icon={Info}
+                    label="About"
+                    color="#80deea"
+                    onPress={() => Alert.alert("About", "Sync Tracker v1.0.4\nDeveloped by Google Deepmind Team")}
+                />
+
+                {/* Additional Utility Settings from original */}
+                <View className="mt-4 border-t border-gray-50 pt-4">
+                    <SettingItem
+                        isDark={isDark}
+                        icon={RefreshCw}
+                        label="Real-time Sync"
+                        color="#6366f1"
+                        rightElement={
+                            <Switch
+                                value={settings?.realTimeSync}
+                                onValueChange={handleRealTimeSyncToggle}
+                                trackColor={{ false: '#e2e8f0', true: '#6366f1' }}
+                                thumbColor="#fff"
+                            />
+                        }
+                    />
+                    <SettingItem
+                        isDark={isDark}
+                        icon={Share2}
+                        label="Export Logs"
+                        color="#8b5cf6"
+                        onPress={handleExportLogs}
+                    />
+                    <SettingItem
+                        isDark={isDark}
+                        icon={Database}
+                        label="Clear Cache"
+                        color="#64748b"
+                        onPress={handleClearCache}
+                    />
+                </View>
+
                 <TouchableOpacity
                     onPress={handleLogout}
-                    className={`flex-row items-center px-6 py-6 ${isDark ? 'bg-red-900/20' : 'bg-red-50/30'}`}
+                    className="flex-row items-center mt-8 px-8 py-6"
                 >
-                    <LogOut size={20} color="#EF4444" />
+                    <View className="w-10 h-10 rounded-full items-center justify-center bg-red-50">
+                        <LogOut size={20} color="#ef4444" />
+                    </View>
                     <Text className="ml-4 font-black text-red-500 uppercase tracking-widest text-sm">Sign Out</Text>
                 </TouchableOpacity>
-
-                {/* System Info */}
-                <View className="px-6 py-10 items-center">
-                    <Text className="text-gray-500 text-[10px] font-bold tracking-widest uppercase">v1.0.4</Text>
-                    <View className="flex-row items-center mt-2 opacity-40">
-                        <Info size={12} color="#9CA3AF" />
-                        <Text className="ml-1 text-[10px] text-gray-500 font-bold uppercase tracking-widest">Powered by Awol</Text>
-                    </View>
-                </View>
             </View>
         </ScrollView>
     );
 
     return (
-        <SafeAreaView className={`flex-1 ${isDark ? 'bg-gray-900' : 'bg-[#F9FAFB]'}`}>
-            {/* Header */}
-            <View className={`flex-row justify-between items-center px-6 pt-4 pb-4 ${view === 'settings' ? (isDark ? 'bg-gray-900 border-b border-gray-800' : 'bg-white border-b border-gray-50') : (isDark ? 'bg-gray-900' : 'bg-[#F9FAFB]')}`}>
+        <SafeAreaView className={`flex-1 ${isDark ? 'bg-gray-900' : (view === 'profile' ? 'bg-[#FAFAFA]' : 'bg-[#f8f9fb]')}`}>
+            {/* Nav Header */}
+            <View className="flex-row justify-between items-center px-6 pt-2 pb-4">
                 <TouchableOpacity
                     onPress={() => view === 'settings' ? setView('profile') : navigation.goBack()}
-                    className="p-2 -ml-2"
+                    className="w-10 h-10 items-center justify-center rounded-full bg-white border border-gray-50 shadow-sm"
                 >
-                    <ArrowLeft size={24} color={isDark ? '#F9FAFB' : '#111827'} />
+                    <ArrowLeft size={20} color="#111827" />
                 </TouchableOpacity>
+
                 <Text className={`text-lg font-black ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-                    {view === 'profile' ? 'Account Profile' : 'Settings'}
+                    {view === 'profile' ? 'Profile' : 'Settings'}
                 </Text>
+
                 {view === 'profile' ? (
-                    <TouchableOpacity onPress={() => setView('settings')} className="p-2 -mr-2">
-                        <SettingsIcon size={24} color={isDark ? '#9CA3AF' : '#4B5563'} />
+                    <TouchableOpacity
+                        onPress={() => setView('settings')}
+                        className="w-10 h-10 items-center justify-center rounded-full bg-white border border-gray-50 shadow-sm"
+                    >
+                        <SettingsIcon size={20} color="#111827" />
                     </TouchableOpacity>
                 ) : (
-                    <TouchableOpacity
-                        onPress={() => updateSettings({ theme: settings?.theme === 'dark' ? 'light' : 'dark' })}
-                        className="p-2 -mr-2"
-                    >
-                        {settings?.theme === 'dark' ? <Sun size={24} color="#F59E0B" /> : <Moon size={24} color="#3B82F6" />}
-                    </TouchableOpacity>
+                    <View className="w-10" />
                 )}
             </View>
 
