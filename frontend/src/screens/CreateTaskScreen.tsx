@@ -10,6 +10,7 @@ import {
 } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+import { useQueryClient } from '@tanstack/react-query';
 
 // ─── HELPERS ───────────────────────────────────────────
 const getInitials = (name: string) => {
@@ -39,6 +40,7 @@ const getPriorityConfig = (priority: string) => {
 
 const CreateTaskScreen = ({ navigation }: any) => {
     const { token, user } = useAuthStore();
+    const queryClient = useQueryClient();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [responsibleOwnerId, setResponsibleOwnerId] = useState('');
@@ -112,6 +114,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                 milestones,
                 priority,
             });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
             Alert.alert('Track Launched', 'Responsibility assigned. Awaiting acceptance.');
             navigation.goBack();
         } catch (error: any) {

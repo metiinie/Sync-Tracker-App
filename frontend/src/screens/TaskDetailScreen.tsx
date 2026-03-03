@@ -445,7 +445,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             </Text>
                             <Text style={{ fontSize: 11, color: '#D1D5DB', marginHorizontal: 4 }}>•</Text>
                             <TouchableOpacity
-                                onPress={() => fetchTask(true)}
+                                onPress={() => queryClient.invalidateQueries({ queryKey: ['task', taskId] })}
                                 style={{ flexDirection: 'row', alignItems: 'center' }}
                             >
                                 <RefreshCcw size={10} color="#9CA3AF" style={{ marginRight: 4 }} />
