@@ -1366,655 +1366,656 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         )}
                     </View>
                 </View>
+            </ScrollView>
+        </SafeAreaView>
 
-                {/* 💬 STICKY COMMENT INPUT */}
-                {
-                    activeTab === 'comments' && (
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-                            style={{
-                                position: 'absolute',
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                backgroundColor: '#FFF',
-                                padding: 12,
-                                borderTopWidth: 1,
-                                borderTopColor: '#F3F4F6',
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                            }}
-                        >
-                            <TextInput
-                                style={{
-                                    flex: 1,
-                                    backgroundColor: '#F9FAFB',
-                                    borderRadius: 20,
-                                    paddingHorizontal: 16,
-                                    paddingVertical: 10,
-                                    fontSize: 14,
-                                    color: '#111827',
-                                    maxHeight: 100,
-                                }}
-                                placeholder="Add a remark..."
-                                value={commentText}
-                                onChangeText={setCommentText}
-                                multiline
-                            />
+        {/* 💬 STICKY COMMENT INPUT */ }
+    {
+        activeTab === 'comments' && (
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: '#FFF',
+                    padding: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: '#F3F4F6',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                }}
+            >
+                <TextInput
+                    style={{
+                        flex: 1,
+                        backgroundColor: '#F9FAFB',
+                        borderRadius: 20,
+                        paddingHorizontal: 16,
+                        paddingVertical: 10,
+                        fontSize: 14,
+                        color: '#111827',
+                        maxHeight: 100,
+                    }}
+                    placeholder="Add a remark..."
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    multiline
+                />
+                <TouchableOpacity
+                    onPress={async () => {
+                        if (!commentText.trim()) return;
+                        try {
+                            await api.post(`/tasks/${taskId}/comments`, { content: commentText });
+                            setCommentText('');
+                            Keyboard.dismiss();
+                        } catch (err) {
+                            console.log(err);
+                        }
+                    }}
+                    style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: '#3B82F6',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginLeft: 10,
+                    }}
+                >
+                    <Send size={18} color="#FFF" />
+                </TouchableOpacity>
+            </KeyboardAvoidingView>
+        )
+    }
+
+    {/* ─── MODALS ─────────────────────────────────────────── */ }
+
+    {/* SYNC UPDATE MODAL */ }
+    <Modal visible={showSyncModal} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+            <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Update Sync State</Text>
+
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 16 }}>
+                    {[
+                        { id: 'IN_SYNC', label: 'In Sync', color: '#10B981', bg: '#F0FDF4' },
+                        { id: 'NEEDS_UPDATE', label: 'Needs Update', color: '#F59E0B', bg: '#FFFBEB' },
+                        { id: 'BLOCKED', label: 'Blocked', color: '#EF4444', bg: '#FEF2F2' },
+                        { id: 'HELP_REQUESTED', label: 'Help Requested', color: '#3B82F6', bg: '#EFF6FF' },
+                    ].map(s => {
+                        const isSelected = syncParams.state === s.id;
+                        return (
                             <TouchableOpacity
-                                onPress={async () => {
-                                    if (!commentText.trim()) return;
-                                    try {
-                                        await api.post(`/tasks/${taskId}/comments`, { content: commentText });
-                                        setCommentText('');
-                                        Keyboard.dismiss();
-                                    } catch (err) {
-                                        console.log(err);
-                                    }
-                                }}
+                                key={s.id}
+                                onPress={() => setSyncParams({ ...syncParams, state: s.id })}
                                 style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 18,
-                                    backgroundColor: '#3B82F6',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginLeft: 10,
+                                    width: '48%',
+                                    padding: 12,
+                                    borderRadius: 12,
+                                    backgroundColor: isSelected ? s.bg : '#F9FAFB',
+                                    borderWidth: 2,
+                                    borderColor: isSelected ? s.color : '#F3F4F6',
+                                    marginBottom: 8,
+                                    alignItems: 'center'
                                 }}
                             >
-                                <Send size={18} color="#FFF" />
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? s.color : '#4B5563' }}>
+                                    {s.label}
+                                </Text>
                             </TouchableOpacity>
-                        </KeyboardAvoidingView>
-                    )
-                }
+                        );
+                    })}
+                </View>
 
-                {/* ─── MODALS ─────────────────────────────────────────── */}
+                {(syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && (
+                    <TextInput
+                        style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', minHeight: 80, textAlignVertical: 'top', marginBottom: 16 }}
+                        placeholder="Why? (Required)"
+                        placeholderTextColor="#9CA3AF"
+                        multiline
+                        value={syncParams.note}
+                        onChangeText={t => setSyncParams({ ...syncParams, note: t })}
+                    />
+                )}
 
-                {/* SYNC UPDATE MODAL */}
-                <Modal visible={showSyncModal} transparent animationType="slide">
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                        <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Update Sync State</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity onPress={() => setShowSyncModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleUpdateSync} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center', opacity: (!syncParams.state || ((syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && !syncParams.note.trim())) ? 0.5 : 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Commit</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </KeyboardAvoidingView>
+    </Modal>
 
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 16 }}>
-                                {[
-                                    { id: 'IN_SYNC', label: 'In Sync', color: '#10B981', bg: '#F0FDF4' },
-                                    { id: 'NEEDS_UPDATE', label: 'Needs Update', color: '#F59E0B', bg: '#FFFBEB' },
-                                    { id: 'BLOCKED', label: 'Blocked', color: '#EF4444', bg: '#FEF2F2' },
-                                    { id: 'HELP_REQUESTED', label: 'Help Requested', color: '#3B82F6', bg: '#EFF6FF' },
-                                ].map(s => {
-                                    const isSelected = syncParams.state === s.id;
-                                    return (
-                                        <TouchableOpacity
-                                            key={s.id}
-                                            onPress={() => setSyncParams({ ...syncParams, state: s.id })}
-                                            style={{
-                                                width: '48%',
-                                                padding: 12,
-                                                borderRadius: 12,
-                                                backgroundColor: isSelected ? s.bg : '#F9FAFB',
-                                                borderWidth: 2,
-                                                borderColor: isSelected ? s.color : '#F3F4F6',
-                                                marginBottom: 8,
-                                                alignItems: 'center'
-                                            }}
-                                        >
-                                            <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? s.color : '#4B5563' }}>
-                                                {s.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
+    {/* LOG TIME MODAL */ }
+    <Modal visible={showTimeModal} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+            <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Log Time</Text>
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                    <TextInput
+                        style={{ flex: 1, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: '#111827', textAlign: 'center' }}
+                        placeholder="Hours"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                        value={timeLog.hours}
+                        onChangeText={t => setTimeLog({ ...timeLog, hours: t })}
+                    />
+                    <TextInput
+                        style={{ flex: 1, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: '#111827', textAlign: 'center' }}
+                        placeholder="Mins"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                        value={timeLog.minutes}
+                        onChangeText={t => setTimeLog({ ...timeLog, minutes: t })}
+                    />
+                </View>
+                <TextInput
+                    style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                    placeholder="What did you work on? (Optional)"
+                    placeholderTextColor="#9CA3AF"
+                    value={timeLog.note}
+                    onChangeText={t => setTimeLog({ ...timeLog, note: t })}
+                />
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity onPress={() => setShowTimeModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleLogTime} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Log Time</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </KeyboardAvoidingView>
+    </Modal>
 
-                            {(syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && (
-                                <TextInput
-                                    style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', minHeight: 80, textAlignVertical: 'top', marginBottom: 16 }}
-                                    placeholder="Why? (Required)"
-                                    placeholderTextColor="#9CA3AF"
-                                    multiline
-                                    value={syncParams.note}
-                                    onChangeText={t => setSyncParams({ ...syncParams, note: t })}
-                                />
-                            )}
+    {/* ADD MILESTONE MODAL */ }
+    <Modal visible={showMilestoneModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20 }}>
+            <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 24 }}>
+                <TextInput
+                    style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
+                    placeholder="Milestone title..."
+                    placeholderTextColor="#9CA3AF"
+                    value={newMilestone}
+                    onChangeText={setNewMilestone}
+                    autoFocus
+                />
+                <TextInput
+                    style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                    placeholder="Due Date (YYYY-MM-DD)"
+                    placeholderTextColor="#9CA3AF"
+                    value={newMilestoneDate}
+                    onChangeText={setNewMilestoneDate}
+                />
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity onPress={() => setShowMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleAddMilestone} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#3B82F6', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Add</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </KeyboardAvoidingView>
+    </Modal>
 
-                            <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <TouchableOpacity onPress={() => setShowSyncModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={handleUpdateSync} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center', opacity: (!syncParams.state || ((syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && !syncParams.note.trim())) ? 0.5 : 1 }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Commit</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </KeyboardAvoidingView>
-                </Modal>
+    {/* EDIT MILESTONE MODAL */ }
+    <Modal visible={showEditMilestoneModal} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20 }}>
+            <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Edit Milestone</Text>
+                <TextInput
+                    style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
+                    placeholder="Milestone title..."
+                    placeholderTextColor="#9CA3AF"
+                    value={editMilestoneData.title}
+                    onChangeText={t => setEditMilestoneData({ ...editMilestoneData, title: t })}
+                />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#9CA3AF', marginBottom: 8, marginLeft: 4 }}>DUE DATE</Text>
+                <TextInput
+                    style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#9CA3AF"
+                    value={editMilestoneData.dueDate}
+                    onChangeText={t => setEditMilestoneData({ ...editMilestoneData, dueDate: t })}
+                />
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity onPress={() => setShowEditMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleUpdateMilestone} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Save</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </KeyboardAvoidingView>
+    </Modal>
 
-                {/* LOG TIME MODAL */}
-                <Modal visible={showTimeModal} transparent animationType="slide">
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                        <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Log Time</Text>
-                            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-                                <TextInput
-                                    style={{ flex: 1, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: '#111827', textAlign: 'center' }}
-                                    placeholder="Hours"
-                                    placeholderTextColor="#9CA3AF"
-                                    keyboardType="numeric"
-                                    value={timeLog.hours}
-                                    onChangeText={t => setTimeLog({ ...timeLog, hours: t })}
-                                />
-                                <TextInput
-                                    style={{ flex: 1, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: '#111827', textAlign: 'center' }}
-                                    placeholder="Mins"
-                                    placeholderTextColor="#9CA3AF"
-                                    keyboardType="numeric"
-                                    value={timeLog.minutes}
-                                    onChangeText={t => setTimeLog({ ...timeLog, minutes: t })}
-                                />
-                            </View>
-                            <TextInput
-                                style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
-                                placeholder="What did you work on? (Optional)"
-                                placeholderTextColor="#9CA3AF"
-                                value={timeLog.note}
-                                onChangeText={t => setTimeLog({ ...timeLog, note: t })}
-                            />
-                            <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <TouchableOpacity onPress={() => setShowTimeModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={handleLogTime} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Log Time</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </KeyboardAvoidingView>
-                </Modal>
+    {/* EDIT TASK MODAL */ }
+    <Modal visible={showEditModal} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+            <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 20 }}>Edit Task</Text>
 
-                {/* ADD MILESTONE MODAL */}
-                <Modal visible={showMilestoneModal} transparent animationType="fade">
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20 }}>
-                        <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 24 }}>
-                            <TextInput
-                                style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
-                                placeholder="Milestone title..."
-                                placeholderTextColor="#9CA3AF"
-                                value={newMilestone}
-                                onChangeText={setNewMilestone}
-                                autoFocus
-                            />
-                            <TextInput
-                                style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
-                                placeholder="Due Date (YYYY-MM-DD)"
-                                placeholderTextColor="#9CA3AF"
-                                value={newMilestoneDate}
-                                onChangeText={setNewMilestoneDate}
-                            />
-                            <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <TouchableOpacity onPress={() => setShowMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={handleAddMilestone} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#3B82F6', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Add</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </KeyboardAvoidingView>
-                </Modal>
+                <TextInput
+                    style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
+                    placeholder="Task Title"
+                    value={editTaskData.title}
+                    onChangeText={t => setEditTaskData({ ...editTaskData, title: t })}
+                />
+                <TextInput
+                    style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 20, minHeight: 100, textAlignVertical: 'top' }}
+                    placeholder="Task Description"
+                    multiline
+                    value={editTaskData.description}
+                    onChangeText={t => setEditTaskData({ ...editTaskData, description: t })}
+                />
 
-                {/* EDIT MILESTONE MODAL */}
-                <Modal visible={showEditMilestoneModal} transparent animationType="fade">
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20 }}>
-                        <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 24 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Edit Milestone</Text>
-                            <TextInput
-                                style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
-                                placeholder="Milestone title..."
-                                placeholderTextColor="#9CA3AF"
-                                value={editMilestoneData.title}
-                                onChangeText={t => setEditMilestoneData({ ...editMilestoneData, title: t })}
-                            />
-                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#9CA3AF', marginBottom: 8, marginLeft: 4 }}>DUE DATE</Text>
-                            <TextInput
-                                style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
-                                placeholder="YYYY-MM-DD"
-                                placeholderTextColor="#9CA3AF"
-                                value={editMilestoneData.dueDate}
-                                onChangeText={t => setEditMilestoneData({ ...editMilestoneData, dueDate: t })}
-                            />
-                            <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <TouchableOpacity onPress={() => setShowEditMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={handleUpdateMilestone} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Save</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </KeyboardAvoidingView>
-                </Modal>
-
-                {/* EDIT TASK MODAL */}
-                <Modal visible={showEditModal} transparent animationType="slide">
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                        <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 20 }}>Edit Task</Text>
-
-                            <TextInput
-                                style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
-                                placeholder="Task Title"
-                                value={editTaskData.title}
-                                onChangeText={t => setEditTaskData({ ...editTaskData, title: t })}
-                            />
-                            <TextInput
-                                style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 20, minHeight: 100, textAlignVertical: 'top' }}
-                                placeholder="Task Description"
-                                multiline
-                                value={editTaskData.description}
-                                onChangeText={t => setEditTaskData({ ...editTaskData, description: t })}
-                            />
-
-                            <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 12 }}>PRIORITY LEVEL</Text>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
-                                {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(p => {
-                                    const isSelected = editTaskData.priority === p;
-                                    const cfg = getPriorityConfig(p);
-                                    return (
-                                        <TouchableOpacity
-                                            key={p}
-                                            onPress={() => setEditTaskData({ ...editTaskData, priority: p })}
-                                            style={{
-                                                paddingHorizontal: 10,
-                                                paddingVertical: 8,
-                                                borderRadius: 8,
-                                                backgroundColor: isSelected ? cfg.bg : '#F3F4F6',
-                                                borderWidth: 1,
-                                                borderColor: isSelected ? cfg.color : 'transparent',
-                                                minWidth: '22%',
-                                                alignItems: 'center'
-                                            }}
-                                        >
-                                            <Text style={{ fontSize: 10, fontWeight: '700', color: isSelected ? cfg.color : '#6B7280' }}>{p}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-
-                            <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <TouchableOpacity onPress={() => setShowEditModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={handleUpdateTask} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Save Changes</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {isAssigner && (
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        Alert.alert(
-                                            'Delete Task',
-                                            'Are you sure you want to delete this task? This cannot be undone.',
-                                            [
-                                                { text: 'Cancel', style: 'cancel' },
-                                                { text: 'Delete', style: 'destructive', onPress: handleDeleteTask }
-                                            ]
-                                        );
-                                    }}
-                                    style={{ marginTop: 12, padding: 16, borderRadius: 12, backgroundColor: '#FEF2F2', alignItems: 'center' }}
-                                >
-                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>Delete Task</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </KeyboardAvoidingView>
-                </Modal>
-
-                {/* MANAGE PARTICIPANTS MODAL */}
-                <Modal visible={showParticipantsModal} transparent animationType="slide">
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                        <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_HEIGHT * 0.8 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                                <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Manage Participants</Text>
-                                <TouchableOpacity onPress={() => setShowParticipantsModal(false)}>
-                                    <X size={24} color="#9CA3AF" />
-                                </TouchableOpacity>
-                            </View>
-
-                            <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 12 }}>ADD CONTRIBUTOR</Text>
-                            <View style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                backgroundColor: '#F3F4F6',
-                                borderRadius: 12,
-                                paddingHorizontal: 12,
-                                borderWidth: 1,
-                                borderColor: '#E5E7EB',
-                                marginBottom: 16
-                            }}>
-                                <Users size={18} color="#9CA3AF" />
-                                <TextInput
-                                    style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: '#111827' }}
-                                    placeholder="Search by name..."
-                                    value={userSearch}
-                                    onChangeText={searchUsers}
-                                />
-                            </View>
-
-                            <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
-                                {searchingUsers ? (
-                                    <ActivityIndicator size="small" color="#3B82F6" style={{ marginVertical: 10 }} />
-                                ) : users.length > 0 ? (
-                                    users.map((u: any) => (
-                                        <TouchableOpacity
-                                            key={u.id}
-                                            onPress={() => handleAddParticipant(u.id)}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                paddingVertical: 10,
-                                                borderBottomWidth: 1,
-                                                borderBottomColor: '#F3F4F6'
-                                            }}
-                                        >
-                                            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: getAvatarColor(u.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                                                <Text style={{ fontSize: 8, fontWeight: '700', color: '#FFF' }}>{getInitials(u.name)}</Text>
-                                            </View>
-                                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827', flex: 1 }}>{u.name}</Text>
-                                            <Plus size={16} color="#3B82F6" />
-                                        </TouchableOpacity>
-                                    ))
-                                ) : userSearch.length >= 2 && (
-                                    <Text style={{ textAlign: 'center', color: '#9CA3AF', marginBottom: 10 }}>No users found</Text>
-                                )}
-                            </ScrollView>
-
-                            <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginTop: 20, marginBottom: 12 }}>CURRENT PARTICIPANTS</Text>
-                            <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
-                                {task.participants?.map((p: any) => (
-                                    <View key={p.userId} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-                                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
-                                        </View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{p.user?.name}</Text>
-                                            <Text style={{ fontSize: 11, color: '#9CA3AF', textTransform: 'uppercase' }}>{p.role}</Text>
-                                        </View>
-                                        {isAssigner && p.userId !== task.responsibleOwner && (
-                                            <TouchableOpacity onPress={() => handleRemoveParticipant(p.userId)} style={{ padding: 8 }}>
-                                                <X size={16} color="#EF4444" />
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                ))}
-                            </ScrollView>
-
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 12 }}>PRIORITY LEVEL</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
+                    {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(p => {
+                        const isSelected = editTaskData.priority === p;
+                        const cfg = getPriorityConfig(p);
+                        return (
                             <TouchableOpacity
-                                onPress={() => setShowParticipantsModal(false)}
-                                style={{ marginTop: 20, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}
+                                key={p}
+                                onPress={() => setEditTaskData({ ...editTaskData, priority: p })}
+                                style={{
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 8,
+                                    borderRadius: 8,
+                                    backgroundColor: isSelected ? cfg.bg : '#F3F4F6',
+                                    borderWidth: 1,
+                                    borderColor: isSelected ? cfg.color : 'transparent',
+                                    minWidth: '22%',
+                                    alignItems: 'center'
+                                }}
                             >
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Done</Text>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: isSelected ? cfg.color : '#6B7280' }}>{p}</Text>
                             </TouchableOpacity>
-                        </View>
-                    </KeyboardAvoidingView>
-                </Modal>
+                        );
+                    })}
+                </View>
 
-                {/* TRANSFER MODAL */}
-                <Modal visible={showTransferModal} transparent animationType="slide">
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                        <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_HEIGHT * 0.8 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                                <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Transfer Responsibility</Text>
-                                <TouchableOpacity onPress={() => setShowTransferModal(false)}>
-                                    <X size={24} color="#9CA3AF" />
-                                </TouchableOpacity>
-                            </View>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity onPress={() => setShowEditModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleUpdateTask} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Save Changes</Text>
+                    </TouchableOpacity>
+                </View>
 
-                            <View style={{ marginBottom: 16 }}>
-                                <View style={{
+                {isAssigner && (
+                    <TouchableOpacity
+                        onPress={() => {
+                            Alert.alert(
+                                'Delete Task',
+                                'Are you sure you want to delete this task? This cannot be undone.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Delete', style: 'destructive', onPress: handleDeleteTask }
+                                ]
+                            );
+                        }}
+                        style={{ marginTop: 12, padding: 16, borderRadius: 12, backgroundColor: '#FEF2F2', alignItems: 'center' }}
+                    >
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>Delete Task</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+        </KeyboardAvoidingView>
+    </Modal>
+
+    {/* MANAGE PARTICIPANTS MODAL */ }
+    <Modal visible={showParticipantsModal} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+            <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_HEIGHT * 0.8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Manage Participants</Text>
+                    <TouchableOpacity onPress={() => setShowParticipantsModal(false)}>
+                        <X size={24} color="#9CA3AF" />
+                    </TouchableOpacity>
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 12 }}>ADD CONTRIBUTOR</Text>
+                <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#F3F4F6',
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: '#E5E7EB',
+                    marginBottom: 16
+                }}>
+                    <Users size={18} color="#9CA3AF" />
+                    <TextInput
+                        style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: '#111827' }}
+                        placeholder="Search by name..."
+                        value={userSearch}
+                        onChangeText={searchUsers}
+                    />
+                </View>
+
+                <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+                    {searchingUsers ? (
+                        <ActivityIndicator size="small" color="#3B82F6" style={{ marginVertical: 10 }} />
+                    ) : users.length > 0 ? (
+                        users.map((u: any) => (
+                            <TouchableOpacity
+                                key={u.id}
+                                onPress={() => handleAddParticipant(u.id)}
+                                style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    backgroundColor: '#F3F4F6',
-                                    borderRadius: 12,
-                                    paddingHorizontal: 12,
-                                    borderWidth: 1,
-                                    borderColor: '#E5E7EB'
-                                }}>
-                                    <Users size={18} color="#9CA3AF" />
-                                    <TextInput
-                                        style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: '#111827' }}
-                                        placeholder="Search by name or email..."
-                                        value={userSearch}
-                                        onChangeText={searchUsers}
-                                    />
+                                    paddingVertical: 10,
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: '#F3F4F6'
+                                }}
+                            >
+                                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: getAvatarColor(u.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                    <Text style={{ fontSize: 8, fontWeight: '700', color: '#FFF' }}>{getInitials(u.name)}</Text>
                                 </View>
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827', flex: 1 }}>{u.name}</Text>
+                                <Plus size={16} color="#3B82F6" />
+                            </TouchableOpacity>
+                        ))
+                    ) : userSearch.length >= 2 && (
+                        <Text style={{ textAlign: 'center', color: '#9CA3AF', marginBottom: 10 }}>No users found</Text>
+                    )}
+                </ScrollView>
+
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginTop: 20, marginBottom: 12 }}>CURRENT PARTICIPANTS</Text>
+                <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+                    {task.participants?.map((p: any) => (
+                        <View key={p.userId} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
                             </View>
-
-                            <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
-                                {searchingUsers ? (
-                                    <ActivityIndicator size="small" color="#3B82F6" style={{ marginVertical: 20 }} />
-                                ) : users.length > 0 ? (
-                                    users.map((u: any) => (
-                                        <TouchableOpacity
-                                            key={u.id}
-                                            onPress={() => setSelectedNewOwner(u)}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                paddingVertical: 12,
-                                                borderBottomWidth: 1,
-                                                borderBottomColor: '#F3F4F6',
-                                                backgroundColor: selectedNewOwner?.id === u.id ? '#EFF6FF' : 'transparent',
-                                                paddingHorizontal: 10,
-                                                borderRadius: 8
-                                            }}
-                                        >
-                                            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: getAvatarColor(u.name), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>{getInitials(u.name)}</Text>
-                                            </View>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{u.name}</Text>
-                                                <Text style={{ fontSize: 12, color: '#6B7280' }}>{u.email}</Text>
-                                            </View>
-                                            {selectedNewOwner?.id === u.id && <Check size={18} color="#3B82F6" />}
-                                        </TouchableOpacity>
-                                    ))
-                                ) : userSearch.length >= 2 && (
-                                    <Text style={{ textAlign: 'center', color: '#9CA3AF', marginVertical: 20 }}>No users found</Text>
-                                )}
-                            </ScrollView>
-
-                            {selectedNewOwner && (
-                                <View style={{ marginTop: 20 }}>
-                                    <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>TRANSFER NOTE (OPTIONAL)</Text>
-                                    <TextInput
-                                        style={{ backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, fontSize: 14, color: '#111827', minHeight: 80, textAlignVertical: 'top' }}
-                                        placeholder="Why are you transferring this track?"
-                                        multiline
-                                        value={transferNote}
-                                        onChangeText={setTransferNote}
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => handleTransferInitiate(selectedNewOwner.id, transferNote)}
-                                        disabled={isTransferring}
-                                        style={{ marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}
-                                    >
-                                        {isTransferring ? (
-                                            <ActivityIndicator size="small" color="#FFF" />
-                                        ) : (
-                                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Initiate Transfer to {selectedNewOwner.name.split(' ')[0]}</Text>
-                                        )}
-                                    </TouchableOpacity>
-                                </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{p.user?.name}</Text>
+                                <Text style={{ fontSize: 11, color: '#9CA3AF', textTransform: 'uppercase' }}>{p.role}</Text>
+                            </View>
+                            {isAssigner && p.userId !== task.responsibleOwner && (
+                                <TouchableOpacity onPress={() => handleRemoveParticipant(p.userId)} style={{ padding: 8 }}>
+                                    <X size={16} color="#EF4444" />
+                                </TouchableOpacity>
                             )}
                         </View>
-                    </KeyboardAvoidingView>
-                </Modal>
+                    ))}
+                </ScrollView>
 
-                {/* FULLSCREEN VISION MODAL */}
-                <Modal visible={showVisionModal} animationType="slide">
-                    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', zIndex: 10 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Vision</Text>
+                <TouchableOpacity
+                    onPress={() => setShowParticipantsModal(false)}
+                    style={{ marginTop: 20, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}
+                >
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Done</Text>
+                </TouchableOpacity>
+            </View>
+        </KeyboardAvoidingView>
+    </Modal>
 
-                            <View style={{ flexDirection: 'row', backgroundColor: '#F3F4F6', padding: 4, borderRadius: 8 }}>
-                                <TouchableOpacity
-                                    onPress={() => setVisionTab('graph')}
-                                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'graph' ? '#FFF' : 'transparent', shadowOpacity: visionTab === 'graph' ? 0.05 : 0 }}
-                                >
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'graph' ? '#111827' : '#6B7280' }}>Graph</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => setVisionTab('tree')}
-                                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'tree' ? '#FFF' : 'transparent', shadowOpacity: visionTab === 'tree' ? 0.05 : 0 }}
-                                >
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'tree' ? '#111827' : '#6B7280' }}>Tree</Text>
-                                </TouchableOpacity>
-                            </View>
+    {/* TRANSFER MODAL */ }
+    <Modal visible={showTransferModal} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+            <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_HEIGHT * 0.8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Transfer Responsibility</Text>
+                    <TouchableOpacity onPress={() => setShowTransferModal(false)}>
+                        <X size={24} color="#9CA3AF" />
+                    </TouchableOpacity>
+                </View>
 
-                            <TouchableOpacity onPress={() => setShowVisionModal(false)} style={{ backgroundColor: '#F3F4F6', padding: 8, borderRadius: 20 }}>
-                                <X size={20} color="#374151" />
+                <View style={{ marginBottom: 16 }}>
+                    <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: '#F3F4F6',
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        borderWidth: 1,
+                        borderColor: '#E5E7EB'
+                    }}>
+                        <Users size={18} color="#9CA3AF" />
+                        <TextInput
+                            style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: '#111827' }}
+                            placeholder="Search by name or email..."
+                            value={userSearch}
+                            onChangeText={searchUsers}
+                        />
+                    </View>
+                </View>
+
+                <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+                    {searchingUsers ? (
+                        <ActivityIndicator size="small" color="#3B82F6" style={{ marginVertical: 20 }} />
+                    ) : users.length > 0 ? (
+                        users.map((u: any) => (
+                            <TouchableOpacity
+                                key={u.id}
+                                onPress={() => setSelectedNewOwner(u)}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    paddingVertical: 12,
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: '#F3F4F6',
+                                    backgroundColor: selectedNewOwner?.id === u.id ? '#EFF6FF' : 'transparent',
+                                    paddingHorizontal: 10,
+                                    borderRadius: 8
+                                }}
+                            >
+                                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: getAvatarColor(u.name), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>{getInitials(u.name)}</Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{u.name}</Text>
+                                    <Text style={{ fontSize: 12, color: '#6B7280' }}>{u.email}</Text>
+                                </View>
+                                {selectedNewOwner?.id === u.id && <Check size={18} color="#3B82F6" />}
                             </TouchableOpacity>
+                        ))
+                    ) : userSearch.length >= 2 && (
+                        <Text style={{ textAlign: 'center', color: '#9CA3AF', marginVertical: 20 }}>No users found</Text>
+                    )}
+                </ScrollView>
+
+                {selectedNewOwner && (
+                    <View style={{ marginTop: 20 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>TRANSFER NOTE (OPTIONAL)</Text>
+                        <TextInput
+                            style={{ backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, fontSize: 14, color: '#111827', minHeight: 80, textAlignVertical: 'top' }}
+                            placeholder="Why are you transferring this track?"
+                            multiline
+                            value={transferNote}
+                            onChangeText={setTransferNote}
+                        />
+                        <TouchableOpacity
+                            onPress={() => handleTransferInitiate(selectedNewOwner.id, transferNote)}
+                            disabled={isTransferring}
+                            style={{ marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}
+                        >
+                            {isTransferring ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Initiate Transfer to {selectedNewOwner.name.split(' ')[0]}</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+        </KeyboardAvoidingView>
+    </Modal>
+
+    {/* FULLSCREEN VISION MODAL */ }
+    <Modal visible={showVisionModal} animationType="slide">
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', zIndex: 10 }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Vision</Text>
+
+                <View style={{ flexDirection: 'row', backgroundColor: '#F3F4F6', padding: 4, borderRadius: 8 }}>
+                    <TouchableOpacity
+                        onPress={() => setVisionTab('graph')}
+                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'graph' ? '#FFF' : 'transparent', shadowOpacity: visionTab === 'graph' ? 0.05 : 0 }}
+                    >
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'graph' ? '#111827' : '#6B7280' }}>Graph</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setVisionTab('tree')}
+                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'tree' ? '#FFF' : 'transparent', shadowOpacity: visionTab === 'tree' ? 0.05 : 0 }}
+                    >
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'tree' ? '#111827' : '#6B7280' }}>Tree</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity onPress={() => setShowVisionModal(false)} style={{ backgroundColor: '#F3F4F6', padding: 8, borderRadius: 20 }}>
+                    <X size={20} color="#374151" />
+                </TouchableOpacity>
+            </View>
+
+            {visionTab === 'graph' ? (
+                <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#F9FAFB', paddingTop: 20 }}>
+                    <Svg height="100%" width="100%">
+                        {/* Lines from Center to Owner */}
+                        <Line x1={SCREEN_WIDTH / 2} y1={80} x2={SCREEN_WIDTH / 2} y2={180} stroke="#E5E7EB" strokeWidth="2" strokeDasharray="5,5" />
+
+                        {/* Lines from Owner to Participants */}
+                        {task.participants?.map((p: any, i: number) => {
+                            const total = task.participants.length;
+                            const radius = 120;
+                            const angle = (Math.PI / (total + 1)) * (i + 1);
+                            const pos = {
+                                x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
+                                y: 180 + radius * Math.sin(Math.PI + angle)
+                            };
+                            return <Line key={`l-${i}`} x1={SCREEN_WIDTH / 2} y1={180} x2={pos.x} y2={pos.y} stroke="#E2E8F0" strokeWidth="1.5" />;
+                        })}
+
+                        {/* Center Node: Task */}
+                        <G>
+                            <Circle cx={SCREEN_WIDTH / 2} cy={80} r="30" fill="#111827" />
+                            <SvgText x={SCREEN_WIDTH / 2} y={85} fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">TASK</SvgText>
+                        </G>
+
+                        {/* Owner Node */}
+                        <G>
+                            <Circle cx={SCREEN_WIDTH / 2} cy={180} r="36" fill={getSyncConfig(task.syncState).color} />
+                            <Circle cx={SCREEN_WIDTH / 2} cy={180} r="30" fill="#fff" />
+                            <SvgText x={SCREEN_WIDTH / 2} y={185} fill="#111827" fontSize="10" textAnchor="middle" fontWeight="bold">
+                                {getInitials(ownerName)}
+                            </SvgText>
+                            <SvgText x={SCREEN_WIDTH / 2} y={230} fill="#4B5563" fontSize="11" textAnchor="middle" fontWeight="600">
+                                {ownerName}
+                            </SvgText>
+                            <SvgText x={SCREEN_WIDTH / 2} y={245} fill="#9CA3AF" fontSize="9" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
+                                OWNER
+                            </SvgText>
+                        </G>
+
+                        {/* Participant Nodes */}
+                        {task.participants?.map((p: any, i: number) => {
+                            const total = task.participants.length;
+                            const radius = 120;
+                            const angle = (Math.PI / (total + 1)) * (i + 1);
+                            const pos = {
+                                x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
+                                y: 180 + radius * Math.sin(Math.PI + angle)
+                            };
+                            const roleColor = getRoleConfig(p.role === 'contributor' ? 'Contributor' : 'Helper').color;
+                            return (
+                                <G key={`p-${i}`}>
+                                    <Circle cx={pos.x} cy={pos.y} r="22" fill="#F8FAFC" stroke={getSyncConfig(p.syncState || 'IN_SYNC').color} strokeWidth="2.5" />
+                                    <SvgText x={pos.x} y={pos.y + 4} fill="#64748B" fontSize="9" textAnchor="middle" fontWeight="700">
+                                        {getInitials(p.user?.name)}
+                                    </SvgText>
+                                    <SvgText x={pos.x} y={pos.y + 35} fill="#9CA3AF" fontSize="8" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
+                                        {p.role.toUpperCase()}
+                                    </SvgText>
+                                </G>
+                            );
+                        })}
+                    </Svg>
+                </View>
+            ) : (
+                <ScrollView style={{ flex: 1, backgroundColor: '#FAFAFA' }} contentContainerStyle={{ padding: 20 }}>
+                    <View style={{ borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFF' }}>
+                        {/* Header Row */}
+                        <View style={{ flexDirection: 'row', backgroundColor: '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                            <Text style={{ flex: 2, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>STAKEHOLDER</Text>
+                            <Text style={{ flex: 1.5, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>ROLE AUTHORITY</Text>
+                            <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, textAlign: 'right' }}>STATUS</Text>
                         </View>
 
-                        {visionTab === 'graph' ? (
-                            <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#F9FAFB', paddingTop: 20 }}>
-                                <Svg height="100%" width="100%">
-                                    {/* Lines from Center to Owner */}
-                                    <Line x1={SCREEN_WIDTH / 2} y1={80} x2={SCREEN_WIDTH / 2} y2={180} stroke="#E5E7EB" strokeWidth="2" strokeDasharray="5,5" />
+                        {/* Hierarchy Rows */}
+                        {treeParticipants.map((p, i) => {
+                            const roleCfg = getRoleConfig(p.authority);
+                            const syncCfg = getSyncConfig(p.syncState || 'IN_SYNC');
+                            const isNodeBlocked = p.syncState === 'BLOCKED';
 
-                                    {/* Lines from Owner to Participants */}
-                                    {task.participants?.map((p: any, i: number) => {
-                                        const total = task.participants.length;
-                                        const radius = 120;
-                                        const angle = (Math.PI / (total + 1)) * (i + 1);
-                                        const pos = {
-                                            x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
-                                            y: 180 + radius * Math.sin(Math.PI + angle)
-                                        };
-                                        return <Line key={`l-${i}`} x1={SCREEN_WIDTH / 2} y1={180} x2={pos.x} y2={pos.y} stroke="#E2E8F0" strokeWidth="1.5" />;
-                                    })}
+                            return (
+                                <View key={i} style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    paddingVertical: 14,
+                                    paddingHorizontal: 16,
+                                    borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
+                                    borderBottomColor: '#F3F4F6',
+                                    backgroundColor: isNodeBlocked ? '#FEF2F2' : '#FFFFFF',
+                                }}>
+                                    {/* Stakeholder */}
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setSelectedUserData({ ...p.user, role: p.role, authority: p.authority });
+                                            setShowUserModal(true);
+                                        }}
+                                        style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}
+                                    >
+                                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
+                                        </View>
+                                        <View>
+                                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
+                                                {p.user?.name}
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
 
-                                    {/* Center Node: Task */}
-                                    <G>
-                                        <Circle cx={SCREEN_WIDTH / 2} cy={80} r="30" fill="#111827" />
-                                        <SvgText x={SCREEN_WIDTH / 2} y={85} fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">TASK</SvgText>
-                                    </G>
-
-                                    {/* Owner Node */}
-                                    <G>
-                                        <Circle cx={SCREEN_WIDTH / 2} cy={180} r="36" fill={getSyncConfig(task.syncState).color} />
-                                        <Circle cx={SCREEN_WIDTH / 2} cy={180} r="30" fill="#fff" />
-                                        <SvgText x={SCREEN_WIDTH / 2} y={185} fill="#111827" fontSize="10" textAnchor="middle" fontWeight="bold">
-                                            {getInitials(ownerName)}
-                                        </SvgText>
-                                        <SvgText x={SCREEN_WIDTH / 2} y={230} fill="#4B5563" fontSize="11" textAnchor="middle" fontWeight="600">
-                                            {ownerName}
-                                        </SvgText>
-                                        <SvgText x={SCREEN_WIDTH / 2} y={245} fill="#9CA3AF" fontSize="9" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
-                                            OWNER
-                                        </SvgText>
-                                    </G>
-
-                                    {/* Participant Nodes */}
-                                    {task.participants?.map((p: any, i: number) => {
-                                        const total = task.participants.length;
-                                        const radius = 120;
-                                        const angle = (Math.PI / (total + 1)) * (i + 1);
-                                        const pos = {
-                                            x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
-                                            y: 180 + radius * Math.sin(Math.PI + angle)
-                                        };
-                                        const roleColor = getRoleConfig(p.role === 'contributor' ? 'Contributor' : 'Helper').color;
-                                        return (
-                                            <G key={`p-${i}`}>
-                                                <Circle cx={pos.x} cy={pos.y} r="22" fill="#F8FAFC" stroke={getSyncConfig(p.syncState || 'IN_SYNC').color} strokeWidth="2.5" />
-                                                <SvgText x={pos.x} y={pos.y + 4} fill="#64748B" fontSize="9" textAnchor="middle" fontWeight="700">
-                                                    {getInitials(p.user?.name)}
-                                                </SvgText>
-                                                <SvgText x={pos.x} y={pos.y + 35} fill="#9CA3AF" fontSize="8" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
-                                                    {p.role.toUpperCase()}
-                                                </SvgText>
-                                            </G>
-                                        );
-                                    })}
-                                </Svg>
-                            </View>
-                        ) : (
-                            <ScrollView style={{ flex: 1, backgroundColor: '#FAFAFA' }} contentContainerStyle={{ padding: 20 }}>
-                                <View style={{ borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFF' }}>
-                                    {/* Header Row */}
-                                    <View style={{ flexDirection: 'row', backgroundColor: '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-                                        <Text style={{ flex: 2, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>STAKEHOLDER</Text>
-                                        <Text style={{ flex: 1.5, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>ROLE AUTHORITY</Text>
-                                        <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, textAlign: 'right' }}>STATUS</Text>
+                                    {/* Role Authority */}
+                                    <View style={{ flex: 1.5, justifyContent: 'center' }}>
+                                        <View style={{
+                                            alignSelf: 'flex-start',
+                                            backgroundColor: roleCfg.bg,
+                                            paddingHorizontal: 8,
+                                            paddingVertical: 4,
+                                            borderRadius: 6,
+                                        }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '800', color: roleCfg.color, textTransform: 'uppercase' }}>
+                                                {p.authority}
+                                            </Text>
+                                        </View>
                                     </View>
 
-                                    {/* Hierarchy Rows */}
-                                    {treeParticipants.map((p, i) => {
-                                        const roleCfg = getRoleConfig(p.authority);
-                                        const syncCfg = getSyncConfig(p.syncState || 'IN_SYNC');
-                                        const isNodeBlocked = p.syncState === 'BLOCKED';
-
-                                        return (
-                                            <View key={i} style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                paddingVertical: 14,
-                                                paddingHorizontal: 16,
-                                                borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
-                                                borderBottomColor: '#F3F4F6',
-                                                backgroundColor: isNodeBlocked ? '#FEF2F2' : '#FFFFFF',
-                                            }}>
-                                                {/* Stakeholder */}
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        setSelectedUserData({ ...p.user, role: p.role, authority: p.authority });
-                                                        setShowUserModal(true);
-                                                    }}
-                                                    style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}
-                                                >
-                                                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                                                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
-                                                    </View>
-                                                    <View>
-                                                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
-                                                            {p.user?.name}
-                                                        </Text>
-                                                    </View>
-                                                </TouchableOpacity>
-
-                                                {/* Role Authority */}
-                                                <View style={{ flex: 1.5, justifyContent: 'center' }}>
-                                                    <View style={{
-                                                        alignSelf: 'flex-start',
-                                                        backgroundColor: roleCfg.bg,
-                                                        paddingHorizontal: 8,
-                                                        paddingVertical: 4,
-                                                        borderRadius: 6,
-                                                    }}>
-                                                        <Text style={{ fontSize: 10, fontWeight: '800', color: roleCfg.color, textTransform: 'uppercase' }}>
-                                                            {p.authority}
-                                                        </Text>
-                                                    </View>
-                                                </View>
-
-                                                {/* Status */}
-                                                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-                                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncCfg.color }} />
-                                                </View>
-                                            </View>
-                                        );
-                                    })}
+                                    {/* Status */}
+                                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncCfg.color }} />
+                                    </View>
                                 </View>
-                            </ScrollView>
-                        )}
-                    </SafeAreaView>
-                </Modal>
-                );
-                );
+                            );
+                        })}
+                    </View>
+                </ScrollView>
+            )}
+        </SafeAreaView>
+    </Modal>
+    );
 };
 
-                export default TaskDetailScreen;
+export default TaskDetailScreen;
