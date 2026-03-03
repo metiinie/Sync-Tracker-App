@@ -103,6 +103,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const [users, setUsers] = useState<any[]>([]);
     const [searchingUsers, setSearchingUsers] = useState(false);
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+    const [selectedNewOwner, setSelectedNewOwner] = useState<any>(null);
+    const [transferNote, setTransferNote] = useState('');
 
     const fetchTask = async (showRefresh = false) => {
         if (showRefresh) setRefreshing(true);
@@ -956,7 +958,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
                         {/* 5️⃣ DESCRIPTION */}
                         <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 10 }}>Track Vision & Mission</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>Track Vision & Mission</Text>
                             <View style={{ backgroundColor: '#FFF', borderRadius: 12, padding: 15, borderWidth: 1, borderColor: '#F3F4F6' }}>
                                 <Text style={{ fontSize: 14, color: '#4B5563', lineHeight: 22 }}>
                                     {task.description || 'No description provided for this track.'}
@@ -1441,35 +1443,70 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 </View>
                             ))
                         )}
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 12 }}>
-                            <TextInput
-                                style={{ flex: 1, backgroundColor: '#F9FAFB', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, fontSize: 14, color: '#111827' }}
-                                placeholder="Add a comment..."
-                                value={commentText}
-                                onChangeText={setCommentText}
-                                multiline
-                            />
-                            <TouchableOpacity
-                                onPress={handleAddComment}
-                                disabled={!commentText.trim()}
-                                style={{
-                                    marginLeft: 10,
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: 20,
-                                    backgroundColor: commentText.trim() ? '#3B82F6' : '#E5E7EB',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}
-                            >
-                                <Send size={18} color="#FFF" />
-                            </TouchableOpacity>
-                        </View>
                     </View>
                 </View>
 
             </ScrollView>
+
+            {/* 💬 STICKY COMMENT INPUT */}
+            {activeTab === 'comments' && (
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                    style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        backgroundColor: '#FFF',
+                        padding: 12,
+                        borderTopWidth: 1,
+                        borderTopColor: '#F3F4F6',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                    }}
+                >
+                    <TextInput
+                        style={{
+                            flex: 1,
+                            backgroundColor: '#F9FAFB',
+                            borderRadius: 20,
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            fontSize: 14,
+                            color: '#111827',
+                            maxHeight: 100,
+                        }}
+                        placeholder="Add a remark..."
+                        value={commentText}
+                        onChangeText={setCommentText}
+                        multiline
+                    />
+                    <TouchableOpacity
+                        onPress={async () => {
+                            if (!commentText.trim()) return;
+                            try {
+                                await api.post(`/tasks/${taskId}/comments`, { content: commentText });
+                                setCommentText('');
+                                Keyboard.dismiss();
+                            } catch (err) {
+                                console.log(err);
+                            }
+                        }}
+                        style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            backgroundColor: '#3B82F6',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginLeft: 10,
+                        }}
+                    >
+                        <Send size={18} color="#FFF" />
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
+            )}
 
             {/* ─── MODALS ─────────────────────────────────────────── */}
 
@@ -1841,38 +1878,56 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 users.map((u: any) => (
                                     <TouchableOpacity
                                         key={u.id}
-                                        onPress={() => handleTransfer(u.id)}
+                                        onPress={() => setSelectedNewOwner(u)}
                                         style={{
                                             flexDirection: 'row',
                                             alignItems: 'center',
                                             paddingVertical: 12,
                                             borderBottomWidth: 1,
-                                            borderBottomColor: '#F3F4F6'
+                                            borderBottomColor: '#F3F4F6',
+                                            backgroundColor: selectedNewOwner?.id === u.id ? '#EFF6FF' : 'transparent',
+                                            paddingHorizontal: 10,
+                                            borderRadius: 8
                                         }}
                                     >
-                                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(u.name), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(u.name)}</Text>
+                                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: getAvatarColor(u.name), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>{getInitials(u.name)}</Text>
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{u.name}</Text>
-                                            <Text style={{ fontSize: 12, color: '#9CA3AF' }} numberOfLines={1}>{u.email}</Text>
+                                            <Text style={{ fontSize: 12, color: '#6B7280' }}>{u.email}</Text>
                                         </View>
-                                        <ArrowRightLeft size={16} color="#3B82F6" />
+                                        {selectedNewOwner?.id === u.id && <Check size={18} color="#3B82F6" />}
                                     </TouchableOpacity>
                                 ))
-                            ) : userSearch.length >= 2 ? (
+                            ) : userSearch.length >= 2 && (
                                 <Text style={{ textAlign: 'center', color: '#9CA3AF', marginVertical: 20 }}>No users found</Text>
-                            ) : (
-                                <Text style={{ textAlign: 'center', color: '#9CA3AF', marginVertical: 20 }}>Type at least 2 characters to search</Text>
                             )}
                         </ScrollView>
 
-                        <TouchableOpacity
-                            onPress={() => setShowTransferModal(false)}
-                            style={{ marginTop: 20, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}
-                        >
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
-                        </TouchableOpacity>
+                        {selectedNewOwner && (
+                            <View style={{ marginTop: 20 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>TRANSFER NOTE (OPTIONAL)</Text>
+                                <TextInput
+                                    style={{ backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, fontSize: 14, color: '#111827', minHeight: 80, textAlignVertical: 'top' }}
+                                    placeholder="Why are you transferring this track?"
+                                    multiline
+                                    value={transferNote}
+                                    onChangeText={setTransferNote}
+                                />
+                                <TouchableOpacity
+                                    onPress={() => handleTransferInitiate(selectedNewOwner.id, transferNote)}
+                                    disabled={isTransferring}
+                                    style={{ marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}
+                                >
+                                    {isTransferring ? (
+                                        <ActivityIndicator size="small" color="#FFF" />
+                                    ) : (
+                                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Initiate Transfer to {selectedNewOwner.name.split(' ')[0]}</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
                 </KeyboardAvoidingView>
             </Modal>

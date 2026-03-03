@@ -27,124 +27,70 @@ const formatTimeAgo = (dateStr: string) => {
     return `${diffInDays}d ago`;
 };
 
+import { useTasks, useRecentActivities, useUnreadNotificationsCount, useWorkspaceSettings } from '../hooks/useTasks';
+import { useQueryClient } from '@tanstack/react-query';
+
 const HomeScreen = ({ navigation }: any) => {
-    const [tasks, setTasks] = useState<any[]>([]);
-    const [refreshing, setRefreshing] = useState(false);
+    const queryClient = useQueryClient();
+    const { user, settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
+
+    // ─── DATA FETCHING (TANSTACK QUERY) ──────────
+    const { data: tasks = [], isLoading: tasksLoading, refetch: refetchTasks } = useTasks();
+    const { data: recentActivities = [], isLoading: activitiesLoading } = useRecentActivities();
+    const { data: unreadNotifications = 0 } = useUnreadNotificationsCount();
+    const { data: workspaceSettings } = useWorkspaceSettings();
+
+    const staleThreshold = parseInt(workspaceSettings?.staleThresholdHours || '24', 10);
+
     const [showLogTimeModal, setShowLogTimeModal] = useState(false);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [timeLog, setTimeLog] = useState({ hours: '', minutes: '', note: '' });
     const [isSyncing, setIsSyncing] = useState(false);
     const [isLoggingTime, setIsLoggingTime] = useState(false);
-    const [unreadNotifications, setUnreadNotifications] = useState(0);
-    const [recentActivities, setRecentActivities] = useState<any[]>([]);
-    const [staleThreshold, setStaleThreshold] = useState(24);
-    const { user, settings } = useAuthStore();
-    const isDark = settings?.theme === 'dark';
-
-    const fetchTasks = async () => {
-        try {
-            const response = await api.get('/tasks');
-            setTasks(response.data);
-        } catch (error) {
-            console.error('Error fetching tasks:', error);
-        }
-    };
-
-    const fetchRecentActivities = async () => {
-        try {
-            const response = await api.get('/activities?limit=3&scope=all');
-            setRecentActivities(response.data);
-        } catch (error) {
-            console.error('Error fetching recent activities:', error);
-        }
-    };
-
-    const fetchUnreadCount = async () => {
-        try {
-            const response = await api.get('/notifications');
-            const unread = response.data.filter((n: any) => n.isRead === 'false').length;
-            setUnreadNotifications(unread);
-        } catch (error) {
-            console.error('Error fetching unread count:', error);
-        }
-    };
-
-    const fetchWorkspaceSettings = async () => {
-        try {
-            const response = await api.get('/workspace/settings');
-            const threshold = parseInt(response.data.staleThresholdHours, 10);
-            if (!isNaN(threshold)) setStaleThreshold(threshold);
-        } catch (error) {
-            console.error('Error fetching workspace settings:', error);
-        }
-    };
 
     const onRefresh = async () => {
-        setRefreshing(true);
-        await Promise.all([fetchTasks(), fetchRecentActivities(), fetchUnreadCount(), fetchWorkspaceSettings()]);
-        setRefreshing(false);
-    };
-
-    const refreshSilent = () => {
-        fetchTasks();
-        fetchRecentActivities();
-        fetchUnreadCount();
-        fetchWorkspaceSettings();
+        await queryClient.invalidateQueries();
     };
 
     useEffect(() => {
-        fetchTasks();
-        fetchRecentActivities();
-        fetchUnreadCount();
-        fetchWorkspaceSettings();
-
         const socket = getSocket();
 
-        // Real-time event listeners
+        const invalidateAll = () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['activities'] });
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        };
+
         socket.on('sync:update', (data) => {
-            setTasks(prevTasks => prevTasks.map(t =>
-                t.id === data.taskId ? { ...t, syncState: data.syncState, lastUpdatedAt: new Date().toISOString() } : t
-            ));
+            // Optimistic update or just invalidate
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
         });
 
-        socket.on('task:created', refreshSilent);
-        socket.on('task:updated', refreshSilent);
-        socket.on('task:deleted', refreshSilent);
-        socket.on('task:transfer', refreshSilent);
-        socket.on('task:accepted', refreshSilent);
-        socket.on('task:completed', refreshSilent);
-        socket.on('milestone:created', refreshSilent);
-        socket.on('milestone:updated', refreshSilent);
-        socket.on('milestone:deleted', refreshSilent);
-        socket.on('comment:new', refreshSilent);
-        socket.on('task:join', refreshSilent);
-        socket.on('task:leave', refreshSilent);
+        const events = [
+            'task:created', 'task:updated', 'task:deleted',
+            'task:transfer', 'task:accepted', 'task:completed',
+            'milestone:created', 'milestone:updated', 'milestone:deleted',
+            'comment:new', 'task:join', 'task:leave'
+        ];
+
+        events.forEach(event => socket.on(event, invalidateAll));
+
         socket.on('notification:new', () => {
-            setUnreadNotifications(prev => prev + 1);
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
         });
 
         return () => {
             socket.off('sync:update');
-            socket.off('task:created');
-            socket.off('task:updated');
-            socket.off('task:deleted');
-            socket.off('task:transfer');
-            socket.off('task:accepted');
-            socket.off('task:completed');
-            socket.off('milestone:created');
-            socket.off('milestone:updated');
-            socket.off('milestone:deleted');
-            socket.off('comment:new');
-            socket.off('task:join');
-            socket.off('task:leave');
+            events.forEach(event => socket.off(event));
             socket.off('notification:new');
         };
-    }, []);
+    }, [queryClient]);
 
     // Join rooms for all tasks
     useEffect(() => {
         const socket = getSocket();
-        tasks.forEach(t => {
+        tasks.forEach((t: any) => {
             socket.emit('joinTask', { taskId: t.id });
         });
     }, [tasks.length]);
@@ -152,78 +98,54 @@ const HomeScreen = ({ navigation }: any) => {
     // ─── DASHBOARD DATA COMPUTATION ──────────────────────
     const dashboard = useMemo(() => {
         const userId = user?.id;
-        if (!userId) return null;
+        if (!userId || tasksLoading) return null;
 
-        // ─── 1. ATTENTION PANEL ──────────────────────
         const attentionItems: { task: any; role: 'Owner' | 'Assigner' | 'Participant'; riskState: string }[] = [];
 
-        tasks.forEach(t => {
-            // ─── NEW: I am the owner AND it's PENDING (Incoming Transfer) ───
+        tasks.forEach((t: any) => {
             if (t.responsibleOwner === userId && t.status === 'PENDING') {
                 attentionItems.push({ task: t, role: 'Owner', riskState: 'PENDING_ACCEPTANCE' });
-            }
-            // I am responsible AND BLOCKED
-            else if (t.responsibleOwner === userId && t.syncState === 'BLOCKED') {
+            } else if (t.responsibleOwner === userId && t.syncState === 'BLOCKED') {
                 attentionItems.push({ task: t, role: 'Owner', riskState: 'BLOCKED' });
-            }
-            // I am responsible AND HELP_REQUESTED
-            else if (t.responsibleOwner === userId && t.syncState === 'HELP_REQUESTED') {
+            } else if (t.responsibleOwner === userId && t.syncState === 'HELP_REQUESTED') {
                 attentionItems.push({ task: t, role: 'Owner', riskState: 'HELP_REQUESTED' });
-            }
-            // I assigned it AND owner is BLOCKED
-            else if (t.assignedBy === userId && t.responsibleOwner !== userId && t.syncState === 'BLOCKED') {
+            } else if (t.assignedBy === userId && t.responsibleOwner !== userId && t.syncState === 'BLOCKED') {
                 attentionItems.push({ task: t, role: 'Assigner', riskState: 'BLOCKED' });
-            }
-            // I assigned it AND owner needs HELP
-            else if (t.assignedBy === userId && t.responsibleOwner !== userId && t.syncState === 'HELP_REQUESTED') {
+            } else if (t.assignedBy === userId && t.responsibleOwner !== userId && t.syncState === 'HELP_REQUESTED') {
                 attentionItems.push({ task: t, role: 'Assigner', riskState: 'HELP_REQUESTED' });
-            }
-            // Stale beyond threshold
-            else if (t.responsibleOwner === userId && isStale(t.lastUpdatedAt || t.createdAt, staleThreshold)) {
+            } else if (t.responsibleOwner === userId && isStale(t.lastUpdatedAt || t.createdAt, staleThreshold)) {
                 attentionItems.push({ task: t, role: 'Owner', riskState: 'STALE' });
             }
         });
 
-        // ─── 2. MY RESPONSIBILITY ──────────────────────
         const myResponsibility = {
-            blocked: tasks.filter(t => t.responsibleOwner === userId && t.syncState === 'BLOCKED'),
-            help: tasks.filter(t => t.responsibleOwner === userId && t.syncState === 'HELP_REQUESTED'),
-            needsUpdate: tasks.filter(t => t.responsibleOwner === userId && t.syncState === 'NEEDS_UPDATE'),
-            inSync: tasks.filter(t => t.responsibleOwner === userId && (t.syncState === 'IN_SYNC' || !t.syncState)),
+            blocked: tasks.filter((t: any) => t.responsibleOwner === userId && t.syncState === 'BLOCKED'),
+            help: tasks.filter((t: any) => t.responsibleOwner === userId && t.syncState === 'HELP_REQUESTED'),
+            needsUpdate: tasks.filter((t: any) => t.responsibleOwner === userId && t.syncState === 'NEEDS_UPDATE'),
+            inSync: tasks.filter((t: any) => t.responsibleOwner === userId && (t.syncState === 'IN_SYNC' || !t.syncState)),
         };
 
-        // ─── 3. DELEGATED BY ME ──────────────────────
-        const delegated = tasks.filter(t => t.assignedBy === userId && t.responsibleOwner !== userId);
+        const delegated = tasks.filter((t: any) => t.assignedBy === userId && t.responsibleOwner !== userId);
 
-        // ─── 4. PARTICIPATING IN ──────────────────────
         const participating = tasks
-            .filter(t =>
+            .filter((t: any) =>
                 t.participants?.some((p: any) => p.userId === userId) &&
                 t.responsibleOwner !== userId &&
                 t.assignedBy !== userId
             )
-            .map(t => {
+            .map((t: any) => {
                 const myParticipation = t.participants.find((p: any) => p.userId === userId);
                 return { task: t, role: myParticipation?.role || 'contributor' };
             });
 
         return { attentionItems, myResponsibility, delegated, participating };
-    }, [tasks, user]);
-
-    // ─── NAVIGATION HELPERS ──────────────────────
-    const navigateToTask = (taskId: string) => {
-        navigation.navigate('TaskDetail', { taskId });
-    };
-
-    const handleUpdateSync = (taskId: string) => {
-        navigation.navigate('TaskDetail', { taskId });
-    };
+    }, [tasks, user, tasksLoading, staleThreshold]);
 
     const handleParticipantSync = async (taskId: string) => {
         try {
             await api.patch(`/tasks/${taskId}/sync-participant`);
             Alert.alert("Synced", "Your status for this track is now IN_SYNC.");
-            fetchTasks();
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
         } catch (error) {
             console.error('Error syncing participant:', error);
             Alert.alert("Error", "Failed to sync status.");
@@ -234,19 +156,11 @@ const HomeScreen = ({ navigation }: any) => {
         try {
             await api.post(`/tasks/${taskId}/nudge`);
             Alert.alert("Nudge Sent", "The responsible owner has been notified.");
-            fetchTasks(); // Refresh to see audit log updates if needed
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
         } catch (error) {
             console.error('Error nudging task:', error);
             Alert.alert("Error", "Failed to send nudge.");
         }
-    };
-
-    const handleCreateTask = () => {
-        navigation.navigate('CreateTask');
-    };
-
-    const navigateToSegment = (segmentId: string) => {
-        navigation.navigate('Tasks', { segmentId });
     };
 
     const handleGlobalSync = async () => {
@@ -260,7 +174,7 @@ const HomeScreen = ({ navigation }: any) => {
                 `Synchronized ${ownedCount} owned tracks and ${participationCount} participations to IN_SYNC state.`,
                 [{ text: "Great" }]
             );
-            fetchTasks();
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
         } catch (error) {
             console.error('Error in global sync:', error);
             Alert.alert("Error", "Failed to perform global sync.");
@@ -269,15 +183,8 @@ const HomeScreen = ({ navigation }: any) => {
         }
     };
 
-    const handleLogTime = () => {
-        setShowLogTimeModal(true);
-    };
-
     const submitLogTime = async () => {
-        if (!selectedTaskId) {
-            Alert.alert("Select Task", "Please select a task to log time for.");
-            return;
-        }
+        if (!selectedTaskId) return;
 
         const h = parseInt(timeLog.hours || '0', 10);
         const m = parseInt(timeLog.minutes || '0', 10);
@@ -298,7 +205,7 @@ const HomeScreen = ({ navigation }: any) => {
             setSelectedTaskId(null);
             setTimeLog({ hours: '', minutes: '', note: '' });
             Alert.alert("Success", "Time logged successfully.");
-            fetchTasks();
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
         } catch (err) {
             console.error('Error logging time:', err);
             Alert.alert("Error", "Failed to log time.");
@@ -307,14 +214,16 @@ const HomeScreen = ({ navigation }: any) => {
         }
     };
 
-    // ─── DISPLAY NAME ──────────────────────
-    const displayName = user?.user_metadata?.name
-        || user?.user_metadata?.full_name
-        || user?.email?.split('@')[0]
-        || 'User';
+    const displayName = user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
     const firstName = displayName.split(' ')[0];
 
-    if (!dashboard) return null;
+    if (tasksLoading && tasks.length === 0) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA', justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#3B82F6" />
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
