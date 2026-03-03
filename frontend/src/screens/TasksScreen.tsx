@@ -54,15 +54,8 @@ const TasksScreen = ({ navigation, route }: any) => {
         return unsubscribe;
     }, [navigation, route.params]);
 
-    // ─── DATA FETCHING ─────────────────────────────
-    const { data: tasks = [], isLoading, refetch } = useQuery({
-        queryKey: ['tasks'],
-        queryFn: async () => {
-            const res = await api.get('/tasks');
-            return res.data;
-        },
-        enabled: !!token,
-    });
+    // ─── DATA FETCHING (TANSTACK QUERY) ──────────
+    const { data: tasks = [], isLoading, refetch } = useTasks();
 
     // ─── JOIN REAL-TIME ROOMS ──────────────────────
     useEffect(() => {

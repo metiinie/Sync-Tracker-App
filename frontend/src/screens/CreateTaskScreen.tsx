@@ -11,6 +11,8 @@ import {
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCreateTask } from '../hooks/useTasks';
+import { useUsers } from '../hooks/useTaskDetail';
 
 // ─── HELPERS ───────────────────────────────────────────
 const getInitials = (name: string) => {
@@ -48,28 +50,13 @@ const CreateTaskScreen = ({ navigation }: any) => {
     const [milestones, setMilestones] = useState<string[]>([]);
     const [newMilestone, setNewMilestone] = useState('');
     const [priority, setPriority] = useState('MEDIUM');
-    const [submitting, setSubmitting] = useState(false);
+    const { mutate: launchTrack, isPending: submitting } = useCreateTask();
 
     // Active section for step indicator
     const [activeSection, setActiveSection] = useState(0);
 
-    // User search
-    const [allUsers, setAllUsers] = useState<any[]>([]);
-    const [loadingUsers, setLoadingUsers] = useState(true);
-
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const res = await api.get('/users');
-                setAllUsers(res.data);
-            } catch (err) {
-                console.error('Failed to fetch users', err);
-            } finally {
-                setLoadingUsers(false);
-            }
-        };
-        fetchUsers();
-    }, [token]);
+    // User search/listing
+    const { data: allUsers = [], isLoading: loadingUsers } = useUsers();
 
     const addParticipant = (userId: string) => {
         if (participants.find(p => p.userId === userId)) return;
@@ -94,7 +81,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
         setMilestones(milestones.filter((_, i) => i !== index));
     };
 
-    const handleCreate = async () => {
+    const handleCreate = () => {
         if (!title.trim()) {
             Alert.alert('Missing Fields', 'Track title is required.');
             return;
@@ -104,24 +91,22 @@ const CreateTaskScreen = ({ navigation }: any) => {
             return;
         }
 
-        setSubmitting(true);
-        try {
-            await api.post('/tasks', {
-                title,
-                description,
-                responsibleOwner: responsibleOwnerId,
-                participants,
-                milestones,
-                priority,
-            });
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            Alert.alert('Track Launched', 'Responsibility assigned. Awaiting acceptance.');
-            navigation.goBack();
-        } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to create task');
-        } finally {
-            setSubmitting(false);
-        }
+        launchTrack({
+            title,
+            description,
+            responsibleOwner: responsibleOwnerId,
+            participants,
+            milestones,
+            priority,
+        }, {
+            onSuccess: () => {
+                Alert.alert('Track Launched', 'Responsibility assigned. Awaiting acceptance.');
+                navigation.goBack();
+            },
+            onError: (error: any) => {
+                Alert.alert('Error', error.response?.data?.message || error.message || 'Failed to create task');
+            }
+        });
     };
 
     // Step indicators

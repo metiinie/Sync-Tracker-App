@@ -68,10 +68,12 @@ const getAvatarColor = (name: string) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
+import { useTaskDetail, useTaskComments, useTaskTransfers, useTaskMutations, useTransferActions, useUsers } from '../hooks/useTaskDetail';
+
 const TaskDetailScreen = ({ route, navigation }: any) => {
     const { taskId } = route.params;
     const queryClient = useQueryClient();
-    const { user } = useAuthStore();
+    const { user, settings } = useAuthStore();
 
     // ─── QUERY HOOKS ───────────────────────────────────
     const { data: task, isLoading: taskLoading, error: taskError } = useTaskDetail(taskId);
@@ -80,7 +82,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
     const {
         updateSyncState, logTime, addMilestone, updateMilestone,
-        deleteMilestone, transferTask, addComment, deleteComment
+        deleteMilestone, transferTask, addComment, deleteComment,
+        nudgeTask, editTask, deleteTask, addParticipant, removeParticipant
     } = useTaskMutations(taskId);
 
     const { acceptTransfer, rejectTransfer } = useTransferActions();

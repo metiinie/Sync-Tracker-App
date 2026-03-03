@@ -27,7 +27,8 @@ const formatTimeAgo = (dateStr: string) => {
     return `${diffInDays}d ago`;
 };
 
-import { useTasks, useRecentActivities, useUnreadNotificationsCount, useWorkspaceSettings } from '../hooks/useTasks';
+import { useTasks, useRecentActivities, useUnreadNotificationsCount, useHomeMutations } from '../hooks/useTasks';
+import { useWorkspaceSettings } from '../hooks/useWorkspace';
 import { useQueryClient } from '@tanstack/react-query';
 
 const HomeScreen = ({ navigation }: any) => {
@@ -40,14 +41,13 @@ const HomeScreen = ({ navigation }: any) => {
     const { data: recentActivities = [], isLoading: activitiesLoading } = useRecentActivities();
     const { data: unreadNotifications = 0 } = useUnreadNotificationsCount();
     const { data: workspaceSettings } = useWorkspaceSettings();
-
     const staleThreshold = parseInt(workspaceSettings?.staleThresholdHours || '24', 10);
 
     const [showLogTimeModal, setShowLogTimeModal] = useState(false);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [timeLog, setTimeLog] = useState({ hours: '', minutes: '', note: '' });
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [isLoggingTime, setIsLoggingTime] = useState(false);
+
+    const { nudgeTask, syncParticipant, globalSync, logTime } = useHomeMutations();
 
     const onRefresh = async () => {
         await queryClient.invalidateQueries();
@@ -141,46 +141,29 @@ const HomeScreen = ({ navigation }: any) => {
         return { attentionItems, myResponsibility, delegated, participating };
     }, [tasks, user, tasksLoading, staleThreshold]);
 
-    const handleParticipantSync = async (taskId: string) => {
-        try {
-            await api.patch(`/tasks/${taskId}/sync-participant`);
-            Alert.alert("Synced", "Your status for this track is now IN_SYNC.");
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        } catch (error) {
-            console.error('Error syncing participant:', error);
-            Alert.alert("Error", "Failed to sync status.");
-        }
+    const handleParticipantSync = (taskId: string) => {
+        syncParticipant.mutate(taskId, {
+            onSuccess: () => Alert.alert("Synced", "Your status for this track is now IN_SYNC.")
+        });
     };
 
-    const handleNudge = async (taskId: string) => {
-        try {
-            await api.post(`/tasks/${taskId}/nudge`);
-            Alert.alert("Nudge Sent", "The responsible owner has been notified.");
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        } catch (error) {
-            console.error('Error nudging task:', error);
-            Alert.alert("Error", "Failed to send nudge.");
-        }
+    const handleNudge = (taskId: string) => {
+        nudgeTask.mutate(taskId, {
+            onSuccess: () => Alert.alert("Nudge Sent", "The responsible owner has been notified.")
+        });
     };
 
-    const handleGlobalSync = async () => {
-        if (isSyncing) return;
-        setIsSyncing(true);
-        try {
-            const response = await api.patch('/tasks/sync-all');
-            const { ownedCount, participationCount } = response.data;
-            Alert.alert(
-                "Global Sync Complete",
-                `Synchronized ${ownedCount} owned tracks and ${participationCount} participations to IN_SYNC state.`,
-                [{ text: "Great" }]
-            );
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        } catch (error) {
-            console.error('Error in global sync:', error);
-            Alert.alert("Error", "Failed to perform global sync.");
-        } finally {
-            setIsSyncing(false);
-        }
+    const handleGlobalSync = () => {
+        globalSync.mutate(undefined, {
+            onSuccess: (data: any) => {
+                const { ownedCount, participationCount } = data;
+                Alert.alert(
+                    "Global Sync Complete",
+                    `Synchronized ${ownedCount} owned tracks and ${participationCount} participations to IN_SYNC state.`,
+                    [{ text: "Great" }]
+                );
+            }
+        });
     };
 
     const submitLogTime = async () => {
@@ -195,24 +178,18 @@ const HomeScreen = ({ navigation }: any) => {
             return;
         }
 
-        setIsLoggingTime(true);
-        try {
-            await api.post(`/tasks/${selectedTaskId}/time-logs`, {
-                durationMinutes: totalMinutes,
-                description: timeLog.note,
-            });
-            setShowLogTimeModal(false);
-            setSelectedTaskId(null);
-            setTimeLog({ hours: '', minutes: '', note: '' });
-            Alert.alert("Success", "Time logged successfully.");
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        } catch (err) {
-            console.error('Error logging time:', err);
-            Alert.alert("Error", "Failed to log time.");
-        } finally {
-            setIsLoggingTime(false);
-        }
+        logTime.mutate({ taskId: selectedTaskId, durationMinutes: totalMinutes, description: timeLog.note }, {
+            onSuccess: () => {
+                setShowLogTimeModal(false);
+                setSelectedTaskId(null);
+                setTimeLog({ hours: '', minutes: '', note: '' });
+                Alert.alert("Success", "Time logged successfully.");
+            }
+        });
     };
+
+    const isSyncing = globalSync.isPending;
+    const isLoggingTime = logTime.isPending;
 
     const navigateToTask = (taskId: string) => {
         navigation.navigate('TaskDetail', { taskId });
