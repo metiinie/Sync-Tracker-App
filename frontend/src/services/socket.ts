@@ -1,6 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-
-const SOCKET_URL = 'http://192.168.8.182:3000';
+import { SOCKET_URL } from '../config/apiConfig';
 
 let socket: Socket | null = null;
 

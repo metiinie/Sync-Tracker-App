@@ -1,9 +1,8 @@
 import axios from 'axios';
-
-const API_URL = 'http://192.168.8.182:3000/api/v1'; // Local IP for mobile connectivity
+import { API_BASE_URL } from '../config/apiConfig';
 
 const api = axios.create({
-    baseURL: API_URL,
+    baseURL: API_BASE_URL,
     timeout: 10000, // 10 seconds global timeout
 });
 
