@@ -50,6 +50,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
     const [milestones, setMilestones] = useState<string[]>([]);
     const [newMilestone, setNewMilestone] = useState('');
     const [priority, setPriority] = useState('MEDIUM');
+    const [selectedRole, setSelectedRole] = useState('contributor');
     const { mutate: launchTrack, isPending: submitting } = useCreateTask();
 
     // Active section for step indicator
@@ -64,7 +65,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
             Alert.alert('Invalid Selection', 'Responsible Owner cannot be a participant');
             return;
         }
-        setParticipants([...participants, { userId, role: 'contributor' }]);
+        setParticipants([...participants, { userId, role: selectedRole }]);
     };
 
     const removeParticipant = (userId: string) => {
@@ -418,6 +419,35 @@ const CreateTaskScreen = ({ navigation }: any) => {
                             TEAM PARTICIPANTS
                         </Text>
 
+                        {/* Role Selector Toggle */}
+                        <View style={{ flexDirection: 'row', backgroundColor: '#F3F4F6', borderRadius: 12, padding: 4, marginBottom: 16, width: '60%' }}>
+                            {['contributor', 'helper'].map(r => {
+                                const isSelected = selectedRole === r;
+                                return (
+                                    <TouchableOpacity
+                                        key={r}
+                                        onPress={() => setSelectedRole(r)}
+                                        style={{
+                                            flex: 1,
+                                            paddingVertical: 8,
+                                            borderRadius: 8,
+                                            backgroundColor: isSelected ? '#FFFFFF' : 'transparent',
+                                            alignItems: 'center',
+                                            shadowColor: '#000',
+                                            shadowOffset: { width: 0, height: 1 },
+                                            shadowOpacity: isSelected ? 0.05 : 0,
+                                            shadowRadius: 2,
+                                            elevation: isSelected ? 1 : 0,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 11, fontWeight: '700', color: isSelected ? '#111827' : '#6B7280', textTransform: 'capitalize' }}>
+                                            {r}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
                         {/* Selected Chips */}
                         {participants.length > 0 && (
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 8 }}>
@@ -445,9 +475,14 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                                     {getInitials(userObj.name)}
                                                 </Text>
                                             </View>
-                                            <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151', marginLeft: 8 }}>
-                                                {userObj.name}
-                                            </Text>
+                                            <View style={{ marginLeft: 8 }}>
+                                                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
+                                                    {userObj.name}
+                                                </Text>
+                                                <Text style={{ fontSize: 9, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase' }}>
+                                                    {p.role}
+                                                </Text>
+                                            </View>
                                             <TouchableOpacity
                                                 onPress={() => removeParticipant(p.userId)}
                                                 style={{ marginLeft: 8, padding: 2 }}

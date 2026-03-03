@@ -178,7 +178,7 @@ export class TasksService {
     this.syncGateway.emitToTask(
       milestone.taskId,
       'milestone:updated',
-      milestone,
+      fullMilestone,
     );
     return milestone;
   }
