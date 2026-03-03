@@ -152,14 +152,22 @@ export class TasksService {
     if (data.title !== undefined) updateData.title = data.title;
     if (data.dueDate !== undefined)
       updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
-    if (data.isCompleted !== undefined)
+    if (data.isCompleted !== undefined) {
       updateData.isCompleted = data.isCompleted ? 'true' : 'false';
+      updateData.completedBy = data.isCompleted ? userId : null;
+    }
 
     const [milestone] = await this.db
       .update(schema.milestones)
       .set(updateData)
       .where(eq(schema.milestones.id, milestoneId))
       .returning();
+
+    // Fetch with relation for socket emission
+    const fullMilestone = await this.db.query.milestones.findFirst({
+      where: eq(schema.milestones.id, milestoneId),
+      with: { completedByUser: true }
+    });
 
     await this.logAction(
       milestone.taskId,

@@ -156,6 +156,7 @@ export const milestones = pgTable('milestones', {
     .notNull(),
   title: text('title').notNull(),
   isCompleted: text('is_completed').default('false').notNull(),
+  completedBy: uuid('completed_by').references(() => users.id),
   dueDate: timestamp('due_date'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -164,6 +165,10 @@ export const milestonesRelations = relations(milestones, ({ one }) => ({
   task: one(tasks, {
     fields: [milestones.taskId],
     references: [tasks.id],
+  }),
+  completedByUser: one(users, {
+    fields: [milestones.completedBy],
+    references: [users.id],
   }),
 }));
 
