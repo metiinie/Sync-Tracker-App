@@ -13,7 +13,7 @@ export class TasksCron {
   constructor(
     @Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>,
     private syncGateway: SyncGateway,
-  ) {}
+  ) { }
 
   @Cron(CronExpression.EVERY_HOUR)
   async handleSyncDecay() {
@@ -22,6 +22,7 @@ export class TasksCron {
     const threshold = new Date();
     threshold.setHours(threshold.getHours() - 24);
 
+    // 1. Check Stale Participants
     const staleParticipants = await this.db.query.taskParticipants.findMany({
       where: and(
         lt(schema.taskParticipants.lastUpdatedAt, threshold),
@@ -43,6 +44,31 @@ export class TasksCron {
 
       this.logger.log(
         `Marked participant ${participant.userId} as NEEDS_UPDATE for task ${participant.taskId}`,
+      );
+    }
+
+    // 2. Check Stale Owners (Task level)
+    const staleTasks = await this.db.query.tasks.findMany({
+      where: and(
+        lt(schema.tasks.lastUpdatedAt, threshold),
+        eq(schema.tasks.syncState, 'IN_SYNC'),
+      ),
+    });
+
+    for (const task of staleTasks) {
+      await this.db
+        .update(schema.tasks)
+        .set({ syncState: 'NEEDS_UPDATE', lastUpdatedAt: new Date() })
+        .where(eq(schema.tasks.id, task.id));
+
+      this.syncGateway.emitToTask(task.id, 'sync:update', {
+        userId: task.responsibleOwner,
+        syncState: 'NEEDS_UPDATE',
+        reason: 'Owner Auto-decay (no update in 24h)',
+      });
+
+      this.logger.log(
+        `Marked owner ${task.responsibleOwner} as NEEDS_UPDATE for task ${task.id}`,
       );
     }
   }

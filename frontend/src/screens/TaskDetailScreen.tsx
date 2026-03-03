@@ -100,6 +100,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const [showTransferModal, setShowTransferModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [selectedUserData, setSelectedUserData] = useState<any>(null);
 
     // Form states
     const [syncParams, setSyncParams] = useState({ state: '', note: '' });
@@ -1957,7 +1959,13 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                             backgroundColor: isNodeBlocked ? '#FEF2F2' : '#FFFFFF',
                                         }}>
                                             {/* Stakeholder */}
-                                            <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setSelectedUserData({ ...p.user, role: p.role, authority: p.authority });
+                                                    setShowUserModal(true);
+                                                }}
+                                                style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}
+                                            >
                                                 <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
                                                     <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
                                                 </View>
@@ -1966,7 +1974,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                                         {p.user?.name}
                                                     </Text>
                                                 </View>
-                                            </View>
+                                            </TouchableOpacity>
 
                                             {/* Role Authority */}
                                             <View style={{ flex: 1.5, justifyContent: 'center' }}>
