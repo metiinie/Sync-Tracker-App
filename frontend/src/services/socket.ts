@@ -13,6 +13,25 @@ const mockSocket = {
     connected: false,
 } as any;
 
+const setupSocketListeners = (s: Socket) => {
+    s.on('connect', () => {
+        const { user } = useAuthStore.getState();
+        if (user?.id) {
+            s.emit('joinUser', { userId: user.id });
+            console.log(`[Socket] Joined personal room: user:${user.id}`);
+        }
+    });
+
+    // Handle existing connection case
+    if (s.connected) {
+        const { user } = useAuthStore.getState();
+        if (user?.id) {
+            s.emit('joinUser', { userId: user.id });
+            console.log(`[Socket] Re-joined personal room on init: user:${user.id}`);
+        }
+    }
+};
+
 export const getSocket = () => {
     const { token, settings } = useAuthStore.getState();
 
@@ -26,21 +45,16 @@ export const getSocket = () => {
 
     if (!socket && token) {
         socket = io(SOCKET_URL, { auth: { token } });
+        setupSocketListeners(socket);
     }
     return socket || mockSocket;
 };
 
 export const connectSocket = () => {
-    const { token, settings, user } = useAuthStore.getState();
+    const { token, settings } = useAuthStore.getState();
     if (settings?.realTimeSync && token && !socket) {
         socket = io(SOCKET_URL, { auth: { token } });
-
-        // Immediately join personal user room for notifications + transfers
-        socket.on('connect', () => {
-            if (user?.id) {
-                socket?.emit('joinUser', { userId: user.id });
-            }
-        });
+        setupSocketListeners(socket);
     }
     return socket || mockSocket;
 };

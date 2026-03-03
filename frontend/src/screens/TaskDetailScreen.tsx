@@ -308,6 +308,14 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
             handleAcceptTransfer(myTransfer.id);
         }
     };
+
+    const handleRejectResponsibility = async () => {
+        // Find the pending transfer to me
+        const myTransfer = transfers.find((t: any) => t.toUserId === user?.id && t.status === 'PENDING');
+        if (myTransfer) {
+            handleRejectTransfer(myTransfer.id);
+        }
+    };
     // ─── COMPUTED DATA ─────────────────────────────────────
     const isOwner = task?.responsibleOwner === user?.id;
     const isAssigner = task?.assignedBy === user?.id;
@@ -1026,12 +1034,20 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 )}
                             </View>
                             {task.status === 'PENDING' && isOwner && (
-                                <TouchableOpacity
-                                    onPress={handleAcceptResponsibility}
-                                    style={{ marginTop: 12, backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 12, alignItems: 'center' }}
-                                >
-                                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Accept Responsibility</Text>
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', marginTop: 12 }}>
+                                    <TouchableOpacity
+                                        onPress={handleAcceptResponsibility}
+                                        style={{ flex: 1, backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 12, alignItems: 'center', marginRight: 8 }}
+                                    >
+                                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Accept</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={handleRejectResponsibility}
+                                        style={{ flex: 1, backgroundColor: '#EF4444', paddingVertical: 10, borderRadius: 12, alignItems: 'center' }}
+                                    >
+                                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Reject</Text>
+                                    </TouchableOpacity>
+                                </View>
                             )}
                         </View>
 
