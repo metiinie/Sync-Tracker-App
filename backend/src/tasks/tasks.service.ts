@@ -808,11 +808,26 @@ export class TasksService {
   async getComments(taskId: string) {
     return this.db.query.taskComments.findMany({
       where: eq(schema.taskComments.taskId, taskId),
-      with: {
-        user: true,
-      },
+      with: { user: true },
       orderBy: (comments, { asc }) => [asc(comments.createdAt)],
     });
+  }
+
+  async deleteComment(commentId: string, userId: string) {
+    const comment = await this.db.query.taskComments.findFirst({
+      where: eq(schema.taskComments.id, commentId),
+    });
+
+    if (!comment) throw new NotFoundException('Comment not found');
+    if (comment.userId !== userId)
+      throw new UnauthorizedException('Only the comment author can delete it');
+
+    await this.db
+      .delete(schema.taskComments)
+      .where(eq(schema.taskComments.id, commentId));
+
+    this.syncGateway.emitToTask(comment.taskId, 'comment:deleted', { id: commentId });
+    return { success: true };
   }
 
   async findOne(taskId: string) {

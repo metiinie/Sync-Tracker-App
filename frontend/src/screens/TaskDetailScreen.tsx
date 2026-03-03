@@ -72,6 +72,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const [task, setTask] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState<'overview' | 'tree' | 'graph' | 'logs' | 'comments'>('overview');
     const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
     const [visionTab, setVisionTab] = useState<'graph' | 'tree'>('graph');
 
@@ -84,6 +85,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [showParticipantsModal, setShowParticipantsModal] = useState(false);
 
+    // Transfer State
+    const [pendingTransfer, setPendingTransfer] = useState<any>(null);
+    const [isTransferring, setIsTransferring] = useState(false);
+
     // Form states
     const [syncParams, setSyncParams] = useState({ state: '', note: '' });
     const [timeLog, setTimeLog] = useState({ hours: '', minutes: '', note: '' });
@@ -93,6 +98,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const [editMilestoneData, setEditMilestoneData] = useState({ id: '', title: '', dueDate: '' });
     const [showEditMilestoneModal, setShowEditMilestoneModal] = useState(false);
     const [commentText, setCommentText] = useState('');
+    const [comments, setComments] = useState<any[]>([]);
     const [userSearch, setUserSearch] = useState('');
     const [users, setUsers] = useState<any[]>([]);
     const [searchingUsers, setSearchingUsers] = useState(false);
@@ -104,6 +110,19 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
             const response = await api.get(`/tasks/${taskId}`);
             setTask(response.data);
             setLastSyncTime(new Date());
+
+            // Check for pending transfers for this task
+            if (response.data.status === 'TRANSFER_PENDING') {
+                const transfersRes = await api.get(`/tasks/${taskId}/transfers`);
+                const pending = transfersRes.data.find((t: any) => t.status === 'PENDING');
+                setPendingTransfer(pending);
+            } else {
+                setPendingTransfer(null);
+            }
+
+            // Fetch comments
+            const commentsRes = await api.get(`/tasks/${taskId}/comments`);
+            setComments(commentsRes.data);
         } catch (error) {
             console.error('Error fetching task details:', error);
         } finally {
@@ -134,15 +153,22 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
         const socket = getSocket();
         socket.emit('joinTask', { taskId });
 
-        const handleUpdate = () => fetchTask(); // For simplicity, re-fetch heavily on changes to ensure relations log correctly
+        const handleUpdate = () => fetchTask();
         socket.on('sync:update', handleUpdate);
         socket.on('milestone:updated', handleUpdate);
         socket.on('milestone:created', handleUpdate);
         socket.on('milestone:deleted', handleUpdate);
-        socket.on('task:transfer', handleUpdate);
+        socket.on('transfer:initiated', handleUpdate);
+        socket.on('transfer:accepted', handleUpdate);
+        socket.on('transfer:rejected', handleUpdate);
         socket.on('task:assigned', handleUpdate);
         socket.on('task:updated', handleUpdate);
-        socket.on('comment:new', handleUpdate);
+        socket.on('comment:new', (newComment: any) => {
+            setComments(prev => [...prev.filter(c => c.id !== newComment.id), newComment]);
+        });
+        socket.on('comment:deleted', (del: any) => {
+            setComments(prev => prev.filter(c => c.id !== del.id));
+        });
 
         return () => {
             socket.emit('leaveTask', { taskId });
@@ -150,21 +176,59 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
             socket.off('milestone:updated', handleUpdate);
             socket.off('milestone:created', handleUpdate);
             socket.off('milestone:deleted', handleUpdate);
-            socket.off('task:transfer', handleUpdate);
+            socket.off('transfer:initiated', handleUpdate);
+            socket.off('transfer:accepted', handleUpdate);
+            socket.off('transfer:rejected', handleUpdate);
             socket.off('task:assigned', handleUpdate);
             socket.off('task:updated', handleUpdate);
-            socket.off('comment:new', handleUpdate);
+            socket.off('comment:new');
+            socket.off('comment:deleted');
         };
     }, [taskId]);
 
     // ─── ACTIONS ───────────────────────────────────────────
-    const handleTransfer = async (newOwnerId: string) => {
+    const handleTransferInitiate = async (newOwnerId: string, note?: string) => {
+        setIsTransferring(true);
         try {
-            await api.patch(`/tasks/${taskId}/transfer`, { newOwnerId });
+            await api.patch(`/tasks/${taskId}/transfer`, { newOwnerId, note });
             setShowTransferModal(false);
             setUserSearch('');
             setUsers([]);
             fetchTask();
+            Alert.alert('Success', 'Responsibility transfer initiated. Awaiting acceptance.');
+        } catch (err) {
+            console.log(err);
+            Alert.alert('Error', 'Failed to initiate transfer');
+        } finally {
+            setIsTransferring(false);
+        }
+    };
+
+    const handleAcceptTransfer = async (transferId: string) => {
+        try {
+            await api.patch(`/tasks/transfers/${transferId}/accept`);
+            fetchTask();
+            Alert.alert('Success', 'You are now the responsible owner of this track.');
+        } catch (err) {
+            console.log(err);
+            Alert.alert('Error', 'Failed to accept transfer');
+        }
+    };
+
+    const handleRejectTransfer = async (transferId: string) => {
+        try {
+            await api.patch(`/tasks/transfers/${transferId}/reject`);
+            fetchTask();
+            Alert.alert('Transfer Rejected', 'Original owner remains responsible.');
+        } catch (err) {
+            console.log(err);
+            Alert.alert('Error', 'Failed to reject transfer');
+        }
+    };
+
+    const handleDeleteComment = async (commentId: string) => {
+        try {
+            await api.delete(`/tasks/comments/${commentId}`);
         } catch (err) {
             console.log(err);
         }
@@ -679,6 +743,38 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                 </ScrollView>
             </View>
 
+            {/* 4️⃣ TAB BAR */}
+            <View style={{
+                flexDirection: 'row',
+                backgroundColor: '#FFFFFF',
+                borderBottomWidth: 1,
+                borderBottomColor: '#F3F4F6',
+                paddingHorizontal: 10,
+            }}>
+                {(['overview', 'tree', 'graph', 'logs', 'comments'] as const).map((tab) => (
+                    <TouchableOpacity
+                        key={tab}
+                        onPress={() => setActiveTab(tab)}
+                        style={{
+                            flex: 1,
+                            paddingVertical: 14,
+                            alignItems: 'center',
+                            borderBottomWidth: activeTab === tab ? 2 : 0,
+                            borderBottomColor: '#3B82F6',
+                        }}
+                    >
+                        <Text style={{
+                            fontSize: 12,
+                            fontWeight: activeTab === tab ? '700' : '600',
+                            color: activeTab === tab ? '#3B82F6' : '#6B7280',
+                            textTransform: 'capitalize'
+                        }}>
+                            {tab}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
             {/* MAIN SCROLL VIEW */}
             <ScrollView
                 style={{ flex: 1 }}
@@ -686,6 +782,63 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchTask(true)} />}
             >
+                {/* 🚨 PENDING TRANSFER BANNER */}
+                {task?.status === 'TRANSFER_PENDING' && pendingTransfer && (
+                    <View style={{
+                        backgroundColor: '#FFFBEB',
+                        margin: 20,
+                        padding: 16,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: '#FDE68A',
+                    }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                            <ArrowRightLeft size={20} color="#F59E0B" />
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#92400E', marginLeft: 10 }}>
+                                Responsibility Transfer Pending
+                            </Text>
+                        </View>
+                        <Text style={{ fontSize: 13, color: '#B45309', marginBottom: 16 }}>
+                            {pendingTransfer.fromUser?.name} wants to transfer responsibility to {pendingTransfer.toUser?.role === user?.id ? 'YOU' : pendingTransfer.toUser?.name}.
+                            {pendingTransfer.note ? `\n\nNote: "${pendingTransfer.note}"` : ''}
+                        </Text>
+
+                        {pendingTransfer.toUserId === user?.id ? (
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                                <TouchableOpacity
+                                    onPress={() => handleAcceptTransfer(pendingTransfer.id)}
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: '#10B981',
+                                        paddingVertical: 10,
+                                        borderRadius: 8,
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Accept</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => handleRejectTransfer(pendingTransfer.id)}
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: '#EF4444',
+                                        paddingVertical: 10,
+                                        borderRadius: 8,
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Reject</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <View style={{ backgroundColor: '#FEF3C7', padding: 8, borderRadius: 6, alignItems: 'center' }}>
+                                <Text style={{ fontSize: 12, color: '#92400E', fontWeight: '600' }}>
+                                    Awaiting response from {pendingTransfer.toUser?.name}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                )}
                 {/* 2️⃣ RESPONSIBILITY SUMMARY BAR */}
                 <View style={{ padding: 20 }}>
                     <View style={{

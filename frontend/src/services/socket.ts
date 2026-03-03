@@ -1,11 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/authStore';
 
-const SOCKET_URL = 'http://192.168.8.182:3000'; // Update with your actual Socket URL
+const SOCKET_URL = 'http://192.168.8.182:3000';
 
 let socket: Socket | null = null;
 
-// Mock socket for when real-time sync is disabled
 const mockSocket = {
     on: () => { },
     off: () => { },
@@ -26,18 +25,21 @@ export const getSocket = () => {
     }
 
     if (!socket && token) {
-        socket = io(SOCKET_URL, {
-            auth: { token },
-        });
+        socket = io(SOCKET_URL, { auth: { token } });
     }
     return socket || mockSocket;
 };
 
 export const connectSocket = () => {
-    const { token, settings } = useAuthStore.getState();
+    const { token, settings, user } = useAuthStore.getState();
     if (settings?.realTimeSync && token && !socket) {
-        socket = io(SOCKET_URL, {
-            auth: { token },
+        socket = io(SOCKET_URL, { auth: { token } });
+
+        // Immediately join personal user room for notifications + transfers
+        socket.on('connect', () => {
+            if (user?.id) {
+                socket?.emit('joinUser', { userId: user.id });
+            }
         });
     }
     return socket || mockSocket;
@@ -49,4 +51,3 @@ export const disconnectSocket = () => {
         socket = null;
     }
 };
-
