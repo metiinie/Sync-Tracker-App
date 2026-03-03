@@ -15,7 +15,7 @@ import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
 import { timeAgo } from '../utils/timeAgo';
-import { useTaskDetail, useTaskComments, useTaskMutations, useTransferActions, useTaskTransfers } from '../hooks/useTaskDetail';
+import { useTaskDetail, useTaskComments, useTaskMutations, useTransferActions, useTaskTransfers, useUsers } from '../hooks/useTaskDetail';
 import { useQueryClient } from '@tanstack/react-query';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -68,7 +68,7 @@ const getAvatarColor = (name: string) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
-import { useTaskDetail, useTaskComments, useTaskTransfers, useTaskMutations, useTransferActions, useUsers } from '../hooks/useTaskDetail';
+
 
 const TaskDetailScreen = ({ route, navigation }: any) => {
     const { taskId } = route.params;
