@@ -107,88 +107,69 @@ const ActivityScreen = ({ navigation }: any) => {
     const { user, settings } = useAuthStore();
     const isDark = settings?.theme === 'dark';
     const [scope, setScope] = useState<'my_tasks' | 'delegated' | 'all' | 'workspace'>('all');
-    const [activities, setActivities] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('All');
+    const queryClient = useQueryClient();
 
-    // ─── FETCH ──────────────────────────────────────────
-    const fetchActivities = useCallback(async (showLoading = true, search = '') => {
-        if (showLoading) setLoading(true);
-        try {
-            const res = await api.get(`/activities?scope=${scope}&search=${search}`);
-            setActivities(res.data);
-        } catch (err) {
-            console.error('Failed to fetch activities', err);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [scope]);
+    // ─── QUERY HOOK ─────────────────────────────────────
+    const {
+        data: activities = [],
+        isLoading: activitiesLoading,
+        isRefetching
+    } = useActivities(scope, searchQuery);
 
-    useEffect(() => {
-        const delayDebounceFn = setTimeout(() => {
-            fetchActivities(true, searchQuery);
-        }, 500);
-
-        return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery, scope, fetchActivities]);
+    const onRefresh = () => {
+        queryClient.invalidateQueries({ queryKey: ['activities'] });
+    };
 
     // ─── REAL-TIME SYNC ────────────────────────────────
     useEffect(() => {
         const socket = getSocket();
-        const refresh = () => fetchActivities(false);
+        const invalidate = () => queryClient.invalidateQueries({ queryKey: ['activities'] });
 
-        // Listeners
-        socket.on('sync:update', refresh);
-        socket.on('timelog:created', refresh);
-        socket.on('milestone:created', refresh);
-        socket.on('milestone:updated', refresh);
-        socket.on('milestone:deleted', refresh);
-        socket.on('task:created', refresh);
-        socket.on('task:updated', refresh);
-        socket.on('task:deleted', refresh);
-        socket.on('task:accepted', refresh);
-        socket.on('task:completed', refresh);
-        socket.on('task:transfer', refresh);
-        socket.on('task:join', refresh);
-        socket.on('task:leave', refresh);
-        socket.on('comment:new', refresh);
-        socket.on('task:nudge', refresh);
+        // Listeners for all activity-triggering events
+        socket.on('sync:update', invalidate);
+        socket.on('timelog:created', invalidate);
+        socket.on('milestone:created', invalidate);
+        socket.on('milestone:updated', invalidate);
+        socket.on('milestone:deleted', invalidate);
+        socket.on('task:created', invalidate);
+        socket.on('task:updated', invalidate);
+        socket.on('task:deleted', invalidate);
+        socket.on('task:accepted', invalidate);
+        socket.on('task:completed', invalidate);
+        socket.on('task:transfer', invalidate);
+        socket.on('task:join', invalidate);
+        socket.on('task:leave', invalidate);
+        socket.on('comment:new', invalidate);
+        socket.on('task:nudge', invalidate);
 
         return () => {
-            socket.off('sync:update', refresh);
-            socket.off('timelog:created', refresh);
-            socket.off('milestone:created', refresh);
-            socket.off('milestone:updated', refresh);
-            socket.off('milestone:deleted', refresh);
-            socket.off('task:created', refresh);
-            socket.off('task:updated', refresh);
-            socket.off('task:deleted', refresh);
-            socket.off('task:accepted', refresh);
-            socket.off('task:completed', refresh);
-            socket.off('task:transfer', refresh);
-            socket.off('task:join', refresh);
-            socket.off('task:leave', refresh);
-            socket.off('comment:new', refresh);
-            socket.off('task:nudge', refresh);
+            socket.off('sync:update', invalidate);
+            socket.off('timelog:created', invalidate);
+            socket.off('milestone:created', invalidate);
+            socket.off('milestone:updated', invalidate);
+            socket.off('milestone:deleted', invalidate);
+            socket.off('task:created', invalidate);
+            socket.off('task:updated', invalidate);
+            socket.off('task:deleted', invalidate);
+            socket.off('task:accepted', invalidate);
+            socket.off('task:completed', invalidate);
+            socket.off('task:transfer', invalidate);
+            socket.off('task:join', invalidate);
+            socket.off('task:leave', invalidate);
+            socket.off('comment:new', invalidate);
+            socket.off('task:nudge', invalidate);
         };
-    }, [fetchActivities]);
+    }, [queryClient]);
 
     // Join rooms for all tasks in the feed
     useEffect(() => {
         const socket = getSocket();
         if (activities.length > 0) {
-            const taskIds = [...new Set(activities.map(a => a.taskId).filter(Boolean))];
+            const taskIds = [...new Set(activities.map((a: any) => a.taskId).filter(Boolean))];
             socket.emit('joinTasks', { taskIds });
         }
     }, [activities]);
-
-    const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        fetchActivities(false);
-    }, [fetchActivities]);
 
     // ─── FILTERING ──────────────────────────────────────
     const filteredActivities = useMemo(() => {
