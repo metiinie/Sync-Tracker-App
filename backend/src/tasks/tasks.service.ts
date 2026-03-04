@@ -229,6 +229,15 @@ export class TasksService {
       })
       .returning();
 
+    // Proactively update task sync state to IN_SYNC
+    await this.db
+      .update(schema.tasks)
+      .set({
+        syncState: 'IN_SYNC',
+        lastUpdatedAt: new Date(),
+      })
+      .where(eq(schema.tasks.id, taskId));
+
     await this.logAction(
       taskId,
       userId,
@@ -777,6 +786,8 @@ export class TasksService {
       await tx.delete(schema.syncLogs).where(eq(schema.syncLogs.taskId, taskId));
       await tx.delete(schema.notifications).where(eq(schema.notifications.taskId, taskId));
       await tx.delete(schema.taskComments).where(eq(schema.taskComments.taskId, taskId));
+      await tx.delete(schema.responsibilityTransfers).where(eq(schema.responsibilityTransfers.taskId, taskId));
+      await tx.delete(schema.taskAttachments).where(eq(schema.taskAttachments.taskId, taskId));
 
       // Delete the task
       await tx.delete(schema.tasks).where(eq(schema.tasks.id, taskId));

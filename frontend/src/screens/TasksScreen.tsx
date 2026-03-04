@@ -5,24 +5,24 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
 import { useTasks } from '../hooks/useTasks';
 import { getSocket } from '../services/socket';
-import { Search, Plus, Bell, X } from 'lucide-react-native';
+import { Search, Plus, Activity, X } from 'lucide-react-native';
 import TaskItem from '../components/TaskItem';
 
 // ─── SEGMENT TABS ──────────────────────────────────
 const SEGMENTS = [
-    { id: 'all', label: 'All' },
+    { id: 'all', label: 'Workspace' },
     { id: 'owned', label: 'Owned' },
     { id: 'delegated', label: 'Delegated' },
-    { id: 'participating', label: 'Participating' },
+    { id: 'participating', label: 'Members' },
 ];
 
 // ─── STATUS FILTER CHIPS ───────────────────────────
 const STATUS_FILTERS = [
-    { id: 'HELP_REQUESTED', label: 'Help Requested', color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
-    { id: 'PENDING', label: 'Accept', color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
-    { id: 'BLOCKED', label: 'Blocked', color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' },
-    { id: 'NEEDS_UPDATE', label: 'Needs Update', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
     { id: 'IN_SYNC', label: 'In Sync', color: '#10B981', bg: '#F0FDF4', border: '#BBF7D0' },
+    { id: 'NEEDS_UPDATE', label: 'Needs Update', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
+    { id: 'PENDING', label: 'Pending', color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
+    { id: 'BLOCKED', label: 'Blocked', color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' },
+    { id: 'HELP_REQUESTED', label: 'Help Requested', color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
 ];
 
 // ─── SYNC STATE SORT PRIORITY ──────────────────────
@@ -238,7 +238,7 @@ const TasksScreen = ({ navigation, route }: any) => {
                         justifyContent: 'center',
                     }}
                 >
-                    <Bell size={20} color={isDark ? '#E5E7EB' : '#374151'} />
+                    <Activity size={20} color={isDark ? '#E5E7EB' : '#374151'} />
                 </TouchableOpacity>
             </View>
 

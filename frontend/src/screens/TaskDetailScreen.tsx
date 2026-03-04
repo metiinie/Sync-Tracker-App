@@ -98,6 +98,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const { taskId } = route.params;
     const queryClient = useQueryClient();
     const { user, settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
 
     // ─── QUERY HOOKS ───────────────────────────────────
     const { data: task, isLoading: taskLoading, error: taskError } = useTaskDetail(taskId);
@@ -108,7 +109,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
     const { acceptTransfer, rejectTransfer } = useTransferActions();
 
-    const [activeTab, setActiveTab] = useState<'overview' | 'tree' | 'graph' | 'logs' | 'comments'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'tree' | 'graph' | 'logs' | 'discussion'>('overview');
     const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
     const [visionTab, setVisionTab] = useState<'graph' | 'tree'>('graph');
 
@@ -269,18 +270,12 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     };
 
     const handleDeleteTask = async () => {
-        Alert.alert("Delete Track", "Are you sure? This cannot be undone.", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete",
-                style: "destructive",
-                onPress: () => {
-                    deleteTask.mutate(undefined, {
-                        onSuccess: () => navigation.goBack()
-                    });
-                }
+        deleteTask.mutate(undefined, {
+            onSuccess: () => {
+                setShowEditModal(false);
+                navigation.goBack();
             }
-        ]);
+        });
     };
 
     const handleAddComment = async () => {
@@ -410,21 +405,21 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
         return `${m}m`;
     };
 
-    // Participants list for tree
     const treeParticipants = useMemo(() => {
         if (!task) return [];
         const result = [];
         // Originator
-        if (task.assigner) result.push({ user: task.assigner, role: 'Originator', authority: 'Originator' });
+        if (task.assigner) result.push({ user: task.assigner, role: 'Originator', authority: 'Originator', level: 0 });
         // Responsible
-        if (task.owner) result.push({ user: task.owner, role: 'Responsible', authority: 'OWNER', syncState: task.syncState });
+        if (task.owner) result.push({ user: task.owner, role: 'Responsible', authority: 'OWNER', syncState: task.syncState, level: 1 });
         // Participants
         if (task.participants) {
             task.participants.forEach((p: any) => result.push({
                 user: p.user,
                 role: p.role,
                 authority: p.role === 'contributor' ? 'Contributor' : 'Helper',
-                syncState: p.syncState || 'IN_SYNC'
+                syncState: p.syncState || 'IN_SYNC',
+                level: 2
             }));
         }
         return result;
@@ -447,8 +442,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const assignerName = task.assigner?.name || 'System';
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#111827' : '#FAFAFA'} />
 
             {/* 1️⃣ STICKY HEADER */}
             <View style={{
@@ -457,9 +452,9 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                 justifyContent: 'space-between',
                 paddingHorizontal: 20,
                 paddingVertical: 12,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                 borderBottomWidth: 1,
-                borderBottomColor: '#F3F4F6',
+                borderBottomColor: isDark ? '#374151' : '#F3F4F6',
                 zIndex: 10,
             }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -467,7 +462,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         <ChevronLeft size={24} color="#374151" />
                     </TouchableOpacity>
                     <View style={{ flex: 1, paddingRight: 10 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827' }} numberOfLines={1}>
                             {task.title}
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
@@ -597,7 +592,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* Request Help - Auto sets state to HELP_REQUESTED */}
+                    {/* Request Help - Direct update instead of just opening modal? No, let's keep modal but make note optional */}
                     <TouchableOpacity
                         onPress={() => {
                             setSyncParams({ state: 'HELP_REQUESTED', note: '' });
@@ -606,16 +601,16 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         style={{
                             flexDirection: 'row',
                             alignItems: 'center',
-                            backgroundColor: '#EFF6FF',
+                            backgroundColor: '#FEF2F2',
                             paddingHorizontal: 16,
                             paddingVertical: 10,
                             borderRadius: 20,
                             borderWidth: 1,
-                            borderColor: '#BFDBFE'
+                            borderColor: '#FECACA'
                         }}
                     >
-                        <HelpCircle size={14} color="#3B82F6" />
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#3B82F6', marginLeft: 6 }}>
+                        <HelpCircle size={14} color="#EF4444" />
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#EF4444', marginLeft: 6 }}>
                             Request Help
                         </Text>
                     </TouchableOpacity>
@@ -711,12 +706,12 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
             {/* 4️⃣ TAB BAR */}
             <View style={{
                 flexDirection: 'row',
-                backgroundColor: '#FFFFFF',
+                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                 borderBottomWidth: 1,
-                borderBottomColor: '#F3F4F6',
+                borderBottomColor: isDark ? '#374151' : '#F3F4F6',
                 paddingHorizontal: 10,
             }}>
-                {(['overview', 'tree', 'graph', 'logs', 'comments'] as const).map((tab) => (
+                {(['overview', 'tree', 'graph', 'logs', 'discussion'] as const).map((tab) => (
                     <TouchableOpacity
                         key={tab}
                         onPress={() => setActiveTab(tab)}
@@ -729,9 +724,9 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         }}
                     >
                         <Text style={{
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: activeTab === tab ? '700' : '600',
-                            color: activeTab === tab ? '#3B82F6' : '#6B7280',
+                            color: activeTab === tab ? '#3B82F6' : (isDark ? '#9CA3AF' : '#6B7280'),
                             textTransform: 'capitalize'
                         }}>
                             {tab}
@@ -1004,13 +999,13 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         {/* 6️⃣ CORE LOGS (MINI) */}
                         <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>Recent Audit Chain</Text>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827' }}>Recent Audit Chain</Text>
                                 <TouchableOpacity onPress={() => setActiveTab('logs')}>
                                     <Text style={{ fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>Full Trail</Text>
                                 </TouchableOpacity>
                             </View>
 
-                            <View style={{ backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#F3F4F6' }}>
+                            <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFF', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: isDark ? '#374151' : '#F3F4F6' }}>
                                 {task.syncLogs?.slice(0, 5).map((log: any, i: number) => (
                                     <View key={log.id} style={{
                                         flexDirection: 'row',
@@ -1021,7 +1016,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                     }}>
                                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getSyncConfig(log.syncState || (log.details?.type === 'SYNC_UPDATE' ? log.details.newState : 'STABLE')).color, marginRight: 12 }} />
                                         <View style={{ flex: 1 }}>
-                                            <Text style={{ fontSize: 13, color: '#1F2937', fontWeight: '500' }}>{log.action}</Text>
+                                            <Text style={{ fontSize: 13, color: isDark ? '#F9FAFB' : '#1F2937', fontWeight: '500' }}>{log.action}</Text>
                                             <Text style={{ fontSize: 11, color: '#9CA3AF' }}>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {log.user?.name}</Text>
                                         </View>
                                     </View>
@@ -1031,9 +1026,9 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                     </>
                 )}
 
-                {activeTab === 'comments' && (
+                {activeTab === 'discussion' && (
                     <View style={{ padding: 20 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 20 }}>Internal Communications</Text>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', marginBottom: 20 }}>Track Discussion</Text>
 
                         {comments.length === 0 ? (
                             <View style={{ alignItems: 'center', padding: 40 }}>
@@ -1044,12 +1039,12 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             comments.map((comment: any) => (
                                 <View key={comment.id} style={{ marginBottom: 16, flexDirection: 'row' }}>
                                     <UserAvatar name={comment.user?.name} url={comment.user?.avatarUrl} size={36} />
-                                    <View style={{ flex: 1, backgroundColor: comment.userId === user?.id ? '#EFF6FF' : '#F9FAFB', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: comment.userId === user?.id ? '#DBEAFE' : '#F3F4F6', marginLeft: 12 }}>
+                                    <View style={{ flex: 1, backgroundColor: comment.userId === user?.id ? (isDark ? '#1E3A8A' : '#EFF6FF') : (isDark ? '#374151' : '#F9FAFB'), padding: 12, borderRadius: 12, borderWidth: 1, borderColor: comment.userId === user?.id ? (isDark ? '#1E40AF' : '#DBEAFE') : (isDark ? '#4B5563' : '#F3F4F6'), marginLeft: 12 }}>
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#1F2937' }}>{comment.user?.name}</Text>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#F9FAFB' : '#1F2937' }}>{comment.user?.name}</Text>
                                             <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                                         </View>
-                                        <Text style={{ fontSize: 14, color: '#4B5563', lineHeight: 20 }}>{comment.content}</Text>
+                                        <Text style={{ fontSize: 14, color: isDark ? '#D1D5DB' : '#4B5563', lineHeight: 20 }}>{comment.content}</Text>
 
                                         {comment.userId === user?.id && (
                                             <TouchableOpacity
@@ -1070,8 +1065,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
                 {activeTab === 'logs' && (
                     <View style={{ padding: 20 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 20 }}>Audit Trail</Text>
-                        <View style={{ borderLeftWidth: 1, borderLeftColor: '#E5E7EB', marginLeft: 10, paddingLeft: 20 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', marginBottom: 20 }}>Audit Trail</Text>
+                        <View style={{ borderLeftWidth: 1, borderLeftColor: isDark ? '#374151' : '#E5E7EB', marginLeft: 10, paddingLeft: 20 }}>
                             {task.syncLogs?.map((log: any, i: number) => (
                                 <View key={log.id} style={{ marginBottom: 24, position: 'relative' }}>
                                     <View style={{
@@ -1088,9 +1083,9 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                     <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4 }}>
                                         {new Date(log.timestamp).toLocaleDateString()} at {new Date(log.timestamp).toLocaleTimeString()}
                                     </Text>
-                                    <View style={{ backgroundColor: '#F9FAFB', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#F3F4F6' }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{log.action}</Text>
-                                        <Text style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>Stakeholder: {log.user?.name}</Text>
+                                    <View style={{ backgroundColor: isDark ? '#1F2937' : '#F9FAFB', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: isDark ? '#374151' : '#F3F4F6' }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? '#F9FAFB' : '#111827' }}>{log.action}</Text>
+                                        <Text style={{ fontSize: 12, color: isDark ? '#9CA3AF' : '#4B5563', marginTop: 4 }}>Stakeholder: {log.user?.name}</Text>
                                     </View>
                                 </View>
                             ))}
@@ -1099,34 +1094,104 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                 )}
 
                 {(activeTab === 'tree' || activeTab === 'graph') && (
-                    <View style={{ height: 600, backgroundColor: '#FFF' }}>
+                    <View style={{ height: 600, backgroundColor: isDark ? '#111827' : '#FFF' }}>
                         <View style={{ padding: 20 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Structural Vision</Text>
-                            <Text style={{ fontSize: 12, color: '#6B7280' }}>Click "Expand Vision" in Overview for full interaction</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827' }}>Structural Vision</Text>
+                            <Text style={{ fontSize: 12, color: '#6B7280' }}>Visual representation of authority and sync status.</Text>
                         </View>
                         {activeTab === 'graph' ? (
-                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                                <BarChart2 size={48} color="#E5E7EB" />
-                                <Text style={{ color: '#9CA3AF', marginTop: 10 }}>Graph logic is in modal for optimal performance.</Text>
+                            <View style={{ flex: 1 }}>
+                                <VisionGraph
+                                    task={task}
+                                    ownerName={ownerName}
+                                    assignerName={assignerName}
+                                    height={500}
+                                    isDark={isDark}
+                                />
                             </View>
                         ) : (
-                            <View style={{ flex: 1, padding: 20 }}>
-                                <Text style={{ fontSize: 14, color: '#4B5563' }}>Hierarchy of responsibility is actively maintained.</Text>
-                            </View>
+                            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+                                <View style={{ borderWidth: 1, borderColor: isDark ? '#374151' : '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: isDark ? '#1F2937' : '#FFF' }}>
+                                    {/* Header Row */}
+                                    <View style={{ flexDirection: 'row', backgroundColor: isDark ? '#374151' : '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: isDark ? '#4B5563' : '#F3F4F6' }}>
+                                        <Text style={{ flex: 2, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>STAKEHOLDER</Text>
+                                        <Text style={{ flex: 1.5, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>AUTHORITY</Text>
+                                        <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, textAlign: 'right' }}>STATUS</Text>
+                                    </View>
+
+                                    {/* Hierarchy Rows */}
+                                    {treeParticipants.map((p, i) => {
+                                        const roleCfg = getRoleConfig(p.authority);
+                                        const syncCfg = getSyncConfig(p.syncState || 'IN_SYNC');
+                                        const isNodeBlocked = p.syncState === 'BLOCKED';
+
+                                        return (
+                                            <TouchableOpacity
+                                                key={i}
+                                                onPress={() => {
+                                                    setSelectedUserData({ ...p.user, role: p.role, authority: p.authority });
+                                                    setShowUserModal(true);
+                                                }}
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    paddingVertical: 14,
+                                                    paddingHorizontal: 16,
+                                                    paddingLeft: 16 + (p.level * 20),
+                                                    borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
+                                                    borderBottomColor: isDark ? '#374151' : '#F3F4F6',
+                                                    backgroundColor: isNodeBlocked ? (isDark ? '#451212' : '#FEF2F2') : (isDark ? '#1F2937' : '#FFFFFF'),
+                                                }}
+                                            >
+                                                {/* Stakeholder */}
+                                                <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}>
+                                                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#F9FAFB' : '#111827' }} numberOfLines={1}>
+                                                        {p.user?.name}
+                                                    </Text>
+                                                </View>
+
+                                                {/* Role Authority */}
+                                                <View style={{ flex: 1.5, justifyContent: 'center' }}>
+                                                    <View style={{
+                                                        alignSelf: 'flex-start',
+                                                        backgroundColor: isDark ? '#374151' : roleCfg.bg,
+                                                        paddingHorizontal: 8,
+                                                        paddingVertical: 4,
+                                                        borderRadius: 6,
+                                                    }}>
+                                                        <Text style={{ fontSize: 9, fontWeight: '800', color: isDark ? '#F9FAFB' : roleCfg.color, textTransform: 'uppercase' }}>
+                                                            {p.authority}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+
+                                                {/* Status */}
+                                                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncCfg.color }} />
+                                                    <ArrowRight size={10} color={isDark ? '#4B5563' : '#D1D5DB'} style={{ marginLeft: 8 }} />
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </ScrollView>
                         )}
                     </View>
                 )}
                 {/* 2️⃣ RESPONSIBILITY SUMMARY BAR */}
                 <View style={{ padding: 20 }}>
                     <View style={{
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                         borderRadius: 16,
                         borderWidth: 1,
-                        borderColor: '#F3F4F6',
+                        borderColor: isDark ? '#374151' : '#F3F4F6',
                         padding: 16,
                         shadowColor: '#000',
                         shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.03,
+                        shadowOpacity: isDark ? 0.2 : 0.03,
                         shadowRadius: 8,
                         elevation: 1,
                     }}>
@@ -1206,7 +1271,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 </Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
                                     <History size={14} color="#9CA3AF" />
-                                    <Text style={{ fontSize: 13, fontWeight: '500', color: '#374151', marginLeft: 4 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '500', color: isDark ? '#D1D5DB' : '#374151', marginLeft: 4 }}>
                                         {timeAgo(task.lastUpdatedAt || task.updatedAt)}
                                     </Text>
                                 </View>
@@ -1223,14 +1288,14 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             flexDirection: 'row',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            backgroundColor: '#F9FAFB',
+                            backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
                             padding: 16,
                             borderRadius: 12,
                         }}
                     >
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <FileText size={18} color="#6B7280" />
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#374151', marginLeft: 12 }}>
+                            <FileText size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#F9FAFB' : '#374151', marginLeft: 12 }}>
                                 Task Overview
                             </Text>
                         </View>
@@ -1238,8 +1303,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                     </TouchableOpacity>
 
                     {isOverviewExpanded && (
-                        <View style={{ padding: 16, backgroundColor: '#F9FAFB', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, marginTop: -8 }}>
-                            <Text style={{ fontSize: 14, color: '#4B5563', lineHeight: 22 }}>
+                        <View style={{ padding: 16, backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, marginTop: -8 }}>
+                            <Text style={{ fontSize: 14, color: isDark ? '#D1D5DB' : '#4B5563', lineHeight: 22 }}>
                                 {task.description || 'No description provided.'}
                             </Text>
                             <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
@@ -1289,11 +1354,11 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                     flexDirection: 'row',
                                     alignItems: 'center',
                                     marginBottom: 16,
-                                    backgroundColor: '#FFFFFF',
+                                    backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                                     padding: 12,
                                     borderRadius: 12,
                                     borderWidth: 1,
-                                    borderColor: isOverdue ? '#FCA5A5' : isNear ? '#FDE68A' : '#F3F4F6'
+                                    borderColor: isOverdue ? '#FCA5A5' : isNear ? '#FDE68A' : (isDark ? '#374151' : '#F3F4F6')
                                 }}>
                                     <TouchableOpacity
                                         onPress={() => handleToggleMilestone(m.id, m.isCompleted)}
@@ -1308,7 +1373,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                         {isCompleted && <CheckCircle2 size={12} color="#FFF" />}
                                     </TouchableOpacity>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isCompleted ? '#9CA3AF' : '#111827', textDecorationLine: isCompleted ? 'line-through' : 'none' }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isCompleted ? '#9CA3AF' : (isDark ? '#F9FAFB' : '#111827'), textDecorationLine: isCompleted ? 'line-through' : 'none' }}>
                                             {m.title}
                                         </Text>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
@@ -1365,55 +1430,89 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
                 {/* 8️⃣ TIME ALLOCATION */}
                 <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>TIME ALLOCATION</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2 }}>TIME ALLOCATION</Text>
+                        <TouchableOpacity onPress={() => setShowTimeModal(true)}>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#3B82F6' }}>Add Log</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     <View style={{
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: 16,
+                        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+                        borderRadius: 20,
+                        padding: 24,
                         borderWidth: 1,
-                        borderColor: '#F3F4F6',
-                        padding: 16,
-                        marginBottom: 16,
+                        borderColor: isDark ? '#374151' : '#F3F4F6',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: isDark ? 0.3 : 0.05,
+                        shadowRadius: 12,
+                        elevation: 2,
                     }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <View>
-                                <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827' }}>
-                                    {formatDuration(totalMinutesLogged)}
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 24 }}>
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                    <Clock size={12} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#9CA3AF' : '#6B7280', marginLeft: 4 }}>RESOURCES INVESTED</Text>
+                                </View>
+                                <Text style={{ fontSize: 32, fontWeight: '900', color: isDark ? '#F9FAFB' : '#111827' }}>
+                                    {Math.floor(totalMinutesLogged / 60)}h
+                                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#9CA3AF' }}> {totalMinutesLogged % 60}m</Text>
                                 </Text>
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 1, marginTop: 2 }}>
-                                    TOTAL TIME LOGGED
-                                </Text>
+                            </View>
+                            <View style={{ backgroundColor: isDark ? '#374151' : '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 4 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827' }}>TRACK SYNCED</Text>
                             </View>
                         </View>
 
-                        {/* Breakdown */}
-                        {usersTimeBreakdown.map((ub, i) => (
-                            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: getAvatarColor(ub.name), marginRight: 8 }} />
-                                    <Text style={{ fontSize: 13, color: '#374151', fontWeight: '500' }}>{ub.name}</Text>
-                                </View>
-                                <Text style={{ fontSize: 13, color: '#111827', fontWeight: '600' }}>{formatDuration(ub.duration)}</Text>
+                        {/* Breakdown Chart-like view */}
+                        {usersTimeBreakdown.length > 0 && (
+                            <View style={{ height: 8, flexDirection: 'row', borderRadius: 4, overflow: 'hidden', marginBottom: 20, backgroundColor: isDark ? '#374151' : '#F3F4F6' }}>
+                                {usersTimeBreakdown.map((ub, idx) => (
+                                    <View
+                                        key={idx}
+                                        style={{
+                                            width: `${(ub.duration / totalMinutesLogged) * 100}%`,
+                                            backgroundColor: getAvatarColor(ub.name),
+                                            height: '100%'
+                                        }}
+                                    />
+                                ))}
                             </View>
-                        ))}
+                        )}
 
-                        {/* Detailed Logs List */}
+                        <View style={{ gap: 12 }}>
+                            {usersTimeBreakdown.map((ub, i) => (
+                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: getAvatarColor(ub.name), marginRight: 10 }} />
+                                        <Text style={{ fontSize: 14, color: isDark ? '#D1D5DB' : '#374151', fontWeight: '600' }}>{ub.name}</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 14, color: isDark ? '#F9FAFB' : '#111827', fontWeight: '700' }}>{formatDuration(ub.duration)}</Text>
+                                </View>
+                            ))}
+                        </View>
+
+                        {/* Recent Entries - Enhanced */}
                         {task.timeLogs?.length > 0 && (
-                            <View style={{ marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
-                                <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 12 }}>RECENT ENTRIES</Text>
-                                {task.timeLogs.slice().sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5).map((log: any) => (
-                                    <View key={log.id} style={{ marginBottom: 12 }}>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <View style={{ flex: 1, marginRight: 8 }}>
-                                                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>{log.description || 'No description'}</Text>
-                                                <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
-                                                    {log.user?.name} • {timeAgo(log.createdAt)}
-                                                </Text>
-                                            </View>
-                                            <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#6B7280' }}>{formatDuration(log.durationMinutes)}</Text>
-                                            </View>
+                            <View style={{ marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: isDark ? '#374151' : '#F3F4F6' }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1 }}>RECENT ENTRIES</Text>
+                                </View>
+                                {task.timeLogs.slice().sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3).map((log: any) => (
+                                    <View key={log.id} style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        backgroundColor: isDark ? '#374151' : '#F9FAFB',
+                                        padding: 12,
+                                        borderRadius: 12,
+                                        marginBottom: 8
+                                    }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#F9FAFB' : '#374151' }} numberOfLines={1}>{log.description || 'Log Entry'}</Text>
+                                            <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{log.user?.name} • {timeAgo(log.createdAt)}</Text>
                                         </View>
+                                        <Text style={{ fontSize: 12, fontWeight: '800', color: isDark ? '#9CA3AF' : '#6B7280' }}>{formatDuration(log.durationMinutes)}</Text>
                                     </View>
                                 ))}
                             </View>
@@ -1438,13 +1537,13 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                     <View style={{ width: 16, alignItems: 'center' }}>
                                         <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: iconColor, marginTop: 4, zIndex: 10 }} />
                                         {index !== task.logs.length - 1 && (
-                                            <View style={{ width: 2, flex: 1, backgroundColor: '#F3F4F6', marginTop: 2, marginBottom: -24 }} />
+                                            <View style={{ width: 2, flex: 1, backgroundColor: isDark ? '#374151' : '#F3F4F6', marginTop: 2, marginBottom: -24 }} />
                                         )}
                                     </View>
                                     <View style={{ marginLeft: 16, flex: 1 }}>
-                                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>
+                                        <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#F9FAFB' : '#111827' }}>
                                             {log.user?.name || 'System'}{' '}
-                                            <Text style={{ fontWeight: '400', color: '#4B5563' }}>
+                                            <Text style={{ fontWeight: '400', color: isDark ? '#9CA3AF' : '#4B5563' }}>
                                                 {log.action}
                                             </Text>
                                         </Text>
@@ -1463,10 +1562,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                     <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>DISCUSSION</Text>
 
                     <View style={{
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                         borderRadius: 16,
                         borderWidth: 1,
-                        borderColor: '#F3F4F6',
+                        borderColor: isDark ? '#374151' : '#F3F4F6',
                         padding: 16,
                         marginBottom: 16,
                     }}>
@@ -1478,12 +1577,12 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                     <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: getAvatarColor(c.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
                                         <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFF' }}>{getInitials(c.user?.name)}</Text>
                                     </View>
-                                    <View style={{ flex: 1, backgroundColor: '#F9FAFB', padding: 10, borderRadius: 12 }}>
+                                    <View style={{ flex: 1, backgroundColor: isDark ? '#2D3748' : '#F9FAFB', padding: 10, borderRadius: 12 }}>
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#111827' }}>{c.user?.name}</Text>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827' }}>{c.user?.name}</Text>
                                             <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{timeAgo(c.createdAt)}</Text>
                                         </View>
-                                        <Text style={{ fontSize: 13, color: '#374151', lineHeight: 18 }}>{c.content}</Text>
+                                        <Text style={{ fontSize: 13, color: isDark ? '#D1D5DB' : '#374151', lineHeight: 18 }}>{c.content}</Text>
                                     </View>
                                 </View>
                             ))
@@ -1494,7 +1593,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
             {/* 💬 STICKY COMMENT INPUT */}
             {
-                activeTab === 'comments' && (
+                activeTab === 'discussion' && (
                     <KeyboardAvoidingView
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
@@ -1503,10 +1602,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             bottom: 0,
                             left: 0,
                             right: 0,
-                            backgroundColor: '#FFF',
+                            backgroundColor: isDark ? '#1F2937' : '#FFF',
                             padding: 12,
                             borderTopWidth: 1,
-                            borderTopColor: '#F3F4F6',
+                            borderTopColor: isDark ? '#374151' : '#F3F4F6',
                             flexDirection: 'row',
                             alignItems: 'center',
                         }}
@@ -1514,12 +1613,12 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         <TextInput
                             style={{
                                 flex: 1,
-                                backgroundColor: '#F9FAFB',
+                                backgroundColor: isDark ? '#374151' : '#F9FAFB',
                                 borderRadius: 20,
                                 paddingHorizontal: 16,
                                 paddingVertical: 10,
                                 fontSize: 14,
-                                color: '#111827',
+                                color: isDark ? '#FFF' : '#111827',
                                 maxHeight: 100,
                             }}
                             placeholder="Add a remark..."
@@ -1558,9 +1657,9 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
             {/* SYNC UPDATE MODAL */}
             <Modal visible={showSyncModal} transparent animationType="slide">
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                    <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Update Sync State</Text>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+                    <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', marginBottom: 16 }}>Update Sync State</Text>
 
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 16 }}>
                             {[
@@ -1578,14 +1677,14 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                             width: '48%',
                                             padding: 12,
                                             borderRadius: 12,
-                                            backgroundColor: isSelected ? s.bg : '#F9FAFB',
+                                            backgroundColor: isSelected ? s.bg : (isDark ? '#374151' : '#F9FAFB'),
                                             borderWidth: 2,
-                                            borderColor: isSelected ? s.color : '#F3F4F6',
+                                            borderColor: isSelected ? s.color : (isDark ? '#4B5563' : '#F3F4F6'),
                                             marginBottom: 8,
                                             alignItems: 'center'
                                         }}
                                     >
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? s.color : '#4B5563' }}>
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? s.color : (isDark ? '#9CA3AF' : '#4B5563') }}>
                                             {s.label}
                                         </Text>
                                     </TouchableOpacity>
@@ -1595,7 +1694,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
                         {(syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && (
                             <TextInput
-                                style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', minHeight: 80, textAlignVertical: 'top', marginBottom: 16 }}
+                                style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: isDark ? '#FFF' : '#111827', minHeight: 80, textAlignVertical: 'top', marginBottom: 16 }}
                                 placeholder="Why? (Required)"
                                 placeholderTextColor="#9CA3AF"
                                 multiline
@@ -1605,10 +1704,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         )}
 
                         <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity onPress={() => setShowSyncModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                            <TouchableOpacity onPress={() => setShowSyncModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: isDark ? '#374151' : '#F3F4F6', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#9CA3AF' : '#4B5563' }}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={handleUpdateSync} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center', opacity: (!syncParams.state || ((syncParams.state === 'BLOCKED' || syncParams.state === 'HELP_REQUESTED') && !syncParams.note.trim())) ? 0.5 : 1 }}>
+                            <TouchableOpacity onPress={handleUpdateSync} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: isDark ? '#3B82F6' : '#111827', alignItems: 'center', opacity: !syncParams.state ? 0.5 : 1 }}>
                                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Commit</Text>
                             </TouchableOpacity>
                         </View>
@@ -1618,12 +1717,12 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
             {/* LOG TIME MODAL */}
             <Modal visible={showTimeModal} transparent animationType="slide">
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                    <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Log Time</Text>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+                    <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', marginBottom: 16 }}>Log Time</Text>
                         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
                             <TextInput
-                                style={{ flex: 1, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: '#111827', textAlign: 'center' }}
+                                style={{ flex: 1, backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: isDark ? '#FFF' : '#111827', textAlign: 'center' }}
                                 placeholder="Hours"
                                 placeholderTextColor="#9CA3AF"
                                 keyboardType="numeric"
@@ -1631,7 +1730,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 onChangeText={t => setTimeLog({ ...timeLog, hours: t })}
                             />
                             <TextInput
-                                style={{ flex: 1, backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: '#111827', textAlign: 'center' }}
+                                style={{ flex: 1, backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 16, color: isDark ? '#FFF' : '#111827', textAlign: 'center' }}
                                 placeholder="Mins"
                                 placeholderTextColor="#9CA3AF"
                                 keyboardType="numeric"
@@ -1640,7 +1739,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             />
                         </View>
                         <TextInput
-                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                            style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: isDark ? '#FFF' : '#111827', marginBottom: 24 }}
                             placeholder="What did you work on? (Optional)"
                             placeholderTextColor="#9CA3AF"
                             value={timeLog.note}
@@ -1660,10 +1759,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
             {/* ADD MILESTONE MODAL */}
             <Modal visible={showMilestoneModal} transparent animationType="fade">
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20 }}>
-                    <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 24 }}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', padding: 20 }}>
+                    <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFF', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: isDark ? '#374151' : 'transparent' }}>
                         <TextInput
-                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
+                            style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: isDark ? '#FFF' : '#111827', marginBottom: 12 }}
                             placeholder="Milestone title..."
                             placeholderTextColor="#9CA3AF"
                             value={newMilestone}
@@ -1671,15 +1770,15 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             autoFocus
                         />
                         <TextInput
-                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                            style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: isDark ? '#FFF' : '#111827', marginBottom: 24 }}
                             placeholder="Due Date (YYYY-MM-DD)"
                             placeholderTextColor="#9CA3AF"
                             value={newMilestoneDate}
                             onChangeText={setNewMilestoneDate}
                         />
                         <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity onPress={() => setShowMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                            <TouchableOpacity onPress={() => setShowMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: isDark ? '#374151' : '#F3F4F6', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#9CA3AF' : '#4B5563' }}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={handleAddMilestone} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#3B82F6', alignItems: 'center' }}>
                                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Add</Text>
@@ -1691,11 +1790,11 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
             {/* EDIT MILESTONE MODAL */}
             <Modal visible={showEditMilestoneModal} transparent animationType="fade">
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)', padding: 20 }}>
-                    <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 24 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Edit Milestone</Text>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.6)', padding: 20 }}>
+                    <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFF', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: isDark ? '#374151' : 'transparent' }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', marginBottom: 16 }}>Edit Milestone</Text>
                         <TextInput
-                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
+                            style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: isDark ? '#FFF' : '#111827', marginBottom: 12 }}
                             placeholder="Milestone title..."
                             placeholderTextColor="#9CA3AF"
                             value={editMilestoneData.title}
@@ -1703,17 +1802,17 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         />
                         <Text style={{ fontSize: 12, fontWeight: '700', color: '#9CA3AF', marginBottom: 8, marginLeft: 4 }}>DUE DATE</Text>
                         <TextInput
-                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 24 }}
+                            style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: isDark ? '#FFF' : '#111827', marginBottom: 24 }}
                             placeholder="YYYY-MM-DD"
                             placeholderTextColor="#9CA3AF"
                             value={editMilestoneData.dueDate}
                             onChangeText={t => setEditMilestoneData({ ...editMilestoneData, dueDate: t })}
                         />
                         <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity onPress={() => setShowEditMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                            <TouchableOpacity onPress={() => setShowEditMilestoneModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: isDark ? '#374151' : '#F3F4F6', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#9CA3AF' : '#4B5563' }}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={handleUpdateMilestone} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}>
+                            <TouchableOpacity onPress={handleUpdateMilestone} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: isDark ? '#3B82F6' : '#111827', alignItems: 'center' }}>
                                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Save</Text>
                             </TouchableOpacity>
                         </View>
@@ -1723,19 +1822,21 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
             {/* EDIT TASK MODAL */}
             <Modal visible={showEditModal} transparent animationType="slide">
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                    <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 20 }}>Edit Task</Text>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+                    <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', marginBottom: 20 }}>Edit Task</Text>
 
                         <TextInput
-                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 12 }}
+                            style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: isDark ? '#FFF' : '#111827', marginBottom: 12 }}
                             placeholder="Task Title"
+                            placeholderTextColor="#9CA3AF"
                             value={editTaskData.title}
                             onChangeText={t => setEditTaskData({ ...editTaskData, title: t })}
                         />
                         <TextInput
-                            style={{ backgroundColor: '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: '#111827', marginBottom: 20, minHeight: 100, textAlignVertical: 'top' }}
+                            style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 16, borderRadius: 12, fontSize: 14, color: isDark ? '#FFF' : '#111827', marginBottom: 20, minHeight: 100, textAlignVertical: 'top' }}
                             placeholder="Task Description"
+                            placeholderTextColor="#9CA3AF"
                             multiline
                             value={editTaskData.description}
                             onChangeText={t => setEditTaskData({ ...editTaskData, description: t })}
@@ -1768,10 +1869,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         </View>
 
                         <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity onPress={() => setShowEditModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' }}>
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#4B5563' }}>Cancel</Text>
+                            <TouchableOpacity onPress={() => setShowEditModal(false)} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: isDark ? '#374151' : '#F3F4F6', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#9CA3AF' : '#4B5563' }}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={handleUpdateTask} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}>
+                            <TouchableOpacity onPress={handleUpdateTask} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: isDark ? '#3B82F6' : '#111827', alignItems: 'center' }}>
                                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Save Changes</Text>
                             </TouchableOpacity>
                         </View>
@@ -1799,12 +1900,12 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
             {/* MANAGE PARTICIPANTS MODAL */}
             <Modal visible={showParticipantsModal} transparent animationType="slide">
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                    <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_HEIGHT * 0.8 }}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+                    <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_HEIGHT * 0.8 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Manage Participants</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827' }}>Manage Participants</Text>
                             <TouchableOpacity onPress={() => setShowParticipantsModal(false)}>
-                                <X size={24} color="#9CA3AF" />
+                                <X size={24} color={isDark ? '#9CA3AF' : '#9CA3AF'} />
                             </TouchableOpacity>
                         </View>
 
@@ -1812,17 +1913,18 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         <View style={{
                             flexDirection: 'row',
                             alignItems: 'center',
-                            backgroundColor: '#F3F4F6',
+                            backgroundColor: isDark ? '#374151' : '#F3F4F6',
                             borderRadius: 12,
                             paddingHorizontal: 12,
                             borderWidth: 1,
-                            borderColor: '#E5E7EB',
+                            borderColor: isDark ? '#4B5563' : '#E5E7EB',
                             marginBottom: 16
                         }}>
                             <Users size={18} color="#9CA3AF" />
                             <TextInput
-                                style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: '#111827' }}
+                                style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: isDark ? '#FFF' : '#111827' }}
                                 placeholder="Search by name..."
+                                placeholderTextColor="#9CA3AF"
                                 value={userSearch}
                                 onChangeText={searchUsers}
                             />
@@ -1841,13 +1943,13 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                             alignItems: 'center',
                                             paddingVertical: 10,
                                             borderBottomWidth: 1,
-                                            borderBottomColor: '#F3F4F6'
+                                            borderBottomColor: isDark ? '#374151' : '#F3F4F6'
                                         }}
                                     >
                                         <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: getAvatarColor(u.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
                                             <Text style={{ fontSize: 8, fontWeight: '700', color: '#FFF' }}>{getInitials(u.name)}</Text>
                                         </View>
-                                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827', flex: 1 }}>{u.name}</Text>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? '#D1D5DB' : '#111827', flex: 1 }}>{u.name}</Text>
                                         <Plus size={16} color="#3B82F6" />
                                     </TouchableOpacity>
                                 ))
@@ -1859,12 +1961,12 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginTop: 20, marginBottom: 12 }}>CURRENT PARTICIPANTS</Text>
                         <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
                             {task.participants?.map((p: any) => (
-                                <View key={p.userId} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                                <View key={p.userId} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: isDark ? '#374151' : '#F3F4F6' }}>
                                     <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                                         <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
                                     </View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{p.user?.name}</Text>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? '#F9FAFB' : '#111827' }}>{p.user?.name}</Text>
                                         <Text style={{ fontSize: 11, color: '#9CA3AF', textTransform: 'uppercase' }}>{p.role}</Text>
                                     </View>
                                     {isAssigner && p.userId !== task.responsibleOwner && (
@@ -1888,12 +1990,12 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
             {/* TRANSFER MODAL */}
             <Modal visible={showTransferModal} transparent animationType="slide">
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                    <View style={{ backgroundColor: '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_HEIGHT * 0.8 }}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+                    <View style={{ backgroundColor: isDark ? '#1F2937' : '#FFF', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: SCREEN_HEIGHT * 0.8 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Transfer Responsibility</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827' }}>Transfer Responsibility</Text>
                             <TouchableOpacity onPress={() => setShowTransferModal(false)}>
-                                <X size={24} color="#9CA3AF" />
+                                <X size={24} color={isDark ? '#9CA3AF' : '#9CA3AF'} />
                             </TouchableOpacity>
                         </View>
 
@@ -1901,16 +2003,17 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             <View style={{
                                 flexDirection: 'row',
                                 alignItems: 'center',
-                                backgroundColor: '#F3F4F6',
+                                backgroundColor: isDark ? '#374151' : '#F3F4F6',
                                 borderRadius: 12,
                                 paddingHorizontal: 12,
                                 borderWidth: 1,
-                                borderColor: '#E5E7EB'
+                                borderColor: isDark ? '#4B5563' : '#E5E7EB'
                             }}>
                                 <Users size={18} color="#9CA3AF" />
                                 <TextInput
-                                    style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: '#111827' }}
+                                    style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 10, fontSize: 14, color: isDark ? '#FFF' : '#111827' }}
                                     placeholder="Search by name or email..."
+                                    placeholderTextColor="#9CA3AF"
                                     value={userSearch}
                                     onChangeText={searchUsers}
                                 />
@@ -1930,8 +2033,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                             alignItems: 'center',
                                             paddingVertical: 12,
                                             borderBottomWidth: 1,
-                                            borderBottomColor: '#F3F4F6',
-                                            backgroundColor: selectedNewOwner?.id === u.id ? '#EFF6FF' : 'transparent',
+                                            borderBottomColor: isDark ? '#374151' : '#F3F4F6',
+                                            backgroundColor: selectedNewOwner?.id === u.id ? (isDark ? '#2D3748' : '#EFF6FF') : 'transparent',
                                             paddingHorizontal: 10,
                                             borderRadius: 8
                                         }}
@@ -1940,8 +2043,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                             <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>{getInitials(u.name)}</Text>
                                         </View>
                                         <View style={{ flex: 1 }}>
-                                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{u.name}</Text>
-                                            <Text style={{ fontSize: 12, color: '#6B7280' }}>{u.email}</Text>
+                                            <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? '#D1D5DB' : '#111827' }}>{u.name}</Text>
+                                            <Text style={{ fontSize: 12, color: '#9CA3AF' }}>{u.email}</Text>
                                         </View>
                                         {selectedNewOwner?.id === u.id && <Check size={18} color="#3B82F6" />}
                                     </TouchableOpacity>
@@ -1955,8 +2058,9 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             <View style={{ marginTop: 20 }}>
                                 <Text style={{ fontSize: 12, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>TRANSFER NOTE (OPTIONAL)</Text>
                                 <TextInput
-                                    style={{ backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, fontSize: 14, color: '#111827', minHeight: 80, textAlignVertical: 'top' }}
+                                    style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', padding: 12, borderRadius: 12, fontSize: 14, color: isDark ? '#FFF' : '#111827', minHeight: 80, textAlignVertical: 'top' }}
                                     placeholder="Why are you transferring this track?"
+                                    placeholderTextColor="#9CA3AF"
                                     multiline
                                     value={transferNote}
                                     onChangeText={setTransferNote}
@@ -1980,27 +2084,27 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
             {/* FULLSCREEN VISION MODAL */}
             <Modal visible={showVisionModal} animationType="slide">
-                <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', zIndex: 10 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Vision</Text>
+                <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: isDark ? '#1F2937' : '#FFF', borderBottomWidth: 1, borderBottomColor: isDark ? '#374151' : '#F3F4F6', zIndex: 10 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827' }}>Vision</Text>
 
-                        <View style={{ flexDirection: 'row', backgroundColor: '#F3F4F6', padding: 4, borderRadius: 8 }}>
+                        <View style={{ flexDirection: 'row', backgroundColor: isDark ? '#374151' : '#F3F4F6', padding: 4, borderRadius: 8 }}>
                             <TouchableOpacity
                                 onPress={() => setVisionTab('graph')}
-                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'graph' ? '#FFF' : 'transparent', shadowOpacity: visionTab === 'graph' ? 0.05 : 0 }}
+                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'graph' ? (isDark ? '#4B5563' : '#FFF') : 'transparent', shadowOpacity: visionTab === 'graph' ? 0.05 : 0 }}
                             >
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'graph' ? '#111827' : '#6B7280' }}>Graph</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'graph' ? (isDark ? '#F9FAFB' : '#111827') : (isDark ? '#9CA3AF' : '#6B7280') }}>Graph</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={() => setVisionTab('tree')}
-                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'tree' ? '#FFF' : 'transparent', shadowOpacity: visionTab === 'tree' ? 0.05 : 0 }}
+                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: visionTab === 'tree' ? (isDark ? '#4B5563' : '#FFF') : 'transparent', shadowOpacity: visionTab === 'tree' ? 0.05 : 0 }}
                             >
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'tree' ? '#111827' : '#6B7280' }}>Tree</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: visionTab === 'tree' ? (isDark ? '#F9FAFB' : '#111827') : (isDark ? '#9CA3AF' : '#6B7280') }}>Tree</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity onPress={() => setShowVisionModal(false)} style={{ backgroundColor: '#F3F4F6', padding: 8, borderRadius: 20 }}>
-                            <X size={20} color="#374151" />
+                        <TouchableOpacity onPress={() => setShowVisionModal(false)} style={{ backgroundColor: isDark ? '#374151' : '#F3F4F6', padding: 8, borderRadius: 20 }}>
+                            <X size={20} color={isDark ? '#E5E7EB' : '#374151'} />
                         </TouchableOpacity>
                     </View>
 
@@ -2043,10 +2147,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             </View>
                         </View>
                     ) : (
-                        <ScrollView style={{ flex: 1, backgroundColor: '#FAFAFA' }} contentContainerStyle={{ padding: 20 }}>
-                            <View style={{ borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFF' }}>
+                        <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }} contentContainerStyle={{ padding: 20 }}>
+                            <View style={{ borderWidth: 1, borderColor: isDark ? '#374151' : '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: isDark ? '#1F2937' : '#FFF' }}>
                                 {/* Header Row */}
-                                <View style={{ flexDirection: 'row', backgroundColor: '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                                <View style={{ flexDirection: 'row', backgroundColor: isDark ? '#1F2937' : '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: isDark ? '#374151' : '#F3F4F6' }}>
                                     <Text style={{ flex: 2, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>STAKEHOLDER</Text>
                                     <Text style={{ flex: 1.5, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>ROLE AUTHORITY</Text>
                                     <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, textAlign: 'right' }}>STATUS</Text>
@@ -2065,8 +2169,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                             paddingVertical: 14,
                                             paddingHorizontal: 16,
                                             borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
-                                            borderBottomColor: '#F3F4F6',
-                                            backgroundColor: isNodeBlocked ? '#FEF2F2' : '#FFFFFF',
+                                            borderBottomColor: isDark ? '#374151' : '#F3F4F6',
+                                            backgroundColor: isNodeBlocked ? (isDark ? '#7F1D1D' : '#FEF2F2') : (isDark ? '#1F2937' : '#FFFFFF'),
                                         }}>
                                             {/* Stakeholder */}
                                             <TouchableOpacity
@@ -2080,7 +2184,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                                     <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
                                                 </View>
                                                 <View>
-                                                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
+                                                    <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#F9FAFB' : '#111827' }} numberOfLines={1}>
                                                         {p.user?.name}
                                                     </Text>
                                                 </View>

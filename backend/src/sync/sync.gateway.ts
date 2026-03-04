@@ -14,13 +14,9 @@ export class SyncGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
-  }
+  handleConnection(client: Socket) { }
 
-  handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
-  }
+  handleDisconnect(client: Socket) { }
 
   // Join a single task room
   @SubscribeMessage('joinTask')
@@ -55,7 +51,6 @@ export class SyncGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ) {
     client.join(`user:${data.userId}`);
-    console.log(`Client ${client.id} joined user room: user:${data.userId}`);
   }
 
   @SubscribeMessage('leaveUser')

@@ -15,14 +15,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
       try {
-        const decoded = jwt.decode(token, { complete: true });
-        console.log(
-          'JWT Debug - Header:',
-          JSON.stringify(decoded?.header, null, 2),
-        );
-        console.log('JWT Debug - Algorithm from Token:', decoded?.header?.alg);
+        jwt.decode(token, { complete: true });
       } catch (e) {
-        console.error('JWT Debug - Failed to decode token header:', e.message);
+        // Silently fail decoding for debug purposes in the guard
       }
     }
 

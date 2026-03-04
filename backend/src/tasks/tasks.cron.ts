@@ -17,8 +17,6 @@ export class TasksCron {
 
   @Cron(CronExpression.EVERY_HOUR)
   async handleSyncDecay() {
-    this.logger.debug('Running sync decay check');
-
     const threshold = new Date();
     threshold.setHours(threshold.getHours() - 24);
 

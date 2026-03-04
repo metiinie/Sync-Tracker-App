@@ -25,6 +25,7 @@ interface VisionGraphProps {
     ownerName: string;
     assignerName: string;
     height?: number;
+    isDark?: boolean;
 }
 
 const getSyncColor = (state: string) => {
@@ -44,7 +45,7 @@ const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
 };
 
-const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName, height = 500 }) => {
+const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName, height = 500, isDark = false }) => {
     const [nodes, setNodes] = useState<Node[]>([]);
     const [links, setLinks] = useState<Link[]>([]);
     const simulationRef = useRef<d3.Simulation<Node, undefined> | null>(null);
@@ -112,7 +113,7 @@ const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName
     }, [nodes.length, height, links]);
 
     return (
-        <View style={{ height, width: SCREEN_WIDTH, backgroundColor: '#FAFAFA' }}>
+        <View style={{ height, width: SCREEN_WIDTH, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
             <Svg height={height} width={SCREEN_WIDTH}>
                 <Defs>
                     <RadialGradient id="blockedGlow" cx="50%" cy="50%" rx="50%" ry="50%">
@@ -139,7 +140,7 @@ const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName
                             y1={sourceNode.y}
                             x2={targetNode.x}
                             y2={targetNode.y}
-                            stroke={link.type === 'auth' ? '#D1D5DB' : '#E5E7EB'}
+                            stroke={link.type === 'auth' ? (isDark ? '#4B5563' : '#D1D5DB') : (isDark ? '#374151' : '#E5E7EB')}
                             strokeWidth={link.type === 'auth' ? 2 : 1.5}
                             strokeDasharray={link.type === 'auth' ? '0' : '5,5'}
                         />
@@ -194,7 +195,7 @@ const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName
                             {/* Node Label (External) */}
                             <SvgText
                                 y={size + 15}
-                                fill="#4B5563"
+                                fill={isDark ? '#9CA3AF' : '#4B5563'}
                                 fontSize="10"
                                 fontWeight="bold"
                                 textAnchor="middle"

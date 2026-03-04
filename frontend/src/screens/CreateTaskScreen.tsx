@@ -41,7 +41,8 @@ const getPriorityConfig = (priority: string) => {
 };
 
 const CreateTaskScreen = ({ navigation }: any) => {
-    const { token, user } = useAuthStore();
+    const { token, user, settings } = useAuthStore();
+    const isDark = settings?.theme === 'dark';
     const queryClient = useQueryClient();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -121,8 +122,8 @@ const CreateTaskScreen = ({ navigation }: any) => {
     const selectedOwner = allUsers.find((u: any) => u.id === responsibleOwnerId);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#111827' : '#FAFAFA'} />
 
             {/* ─── HEADER ───────────────────────────────────────── */}
             <View style={{
@@ -131,15 +132,15 @@ const CreateTaskScreen = ({ navigation }: any) => {
                 justifyContent: 'space-between',
                 paddingHorizontal: 20,
                 paddingVertical: 14,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                 borderBottomWidth: 1,
-                borderBottomColor: '#F3F4F6',
+                borderBottomColor: isDark ? '#374151' : '#F3F4F6',
             }}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
                     <ChevronLeft size={24} color="#374151" />
                 </TouchableOpacity>
                 <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827' }}>
                         New Track
                     </Text>
                     <Text style={{ fontSize: 11, color: '#9CA3AF', fontWeight: '500', marginTop: 1 }}>
@@ -154,9 +155,9 @@ const CreateTaskScreen = ({ navigation }: any) => {
                 flexDirection: 'row',
                 paddingHorizontal: 20,
                 paddingVertical: 16,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: isDark ? '#111827' : '#FFFFFF',
                 borderBottomWidth: 1,
-                borderBottomColor: '#F3F4F6',
+                borderBottomColor: isDark ? '#374151' : '#F3F4F6',
                 gap: 8,
             }}>
                 {steps.map((step, i) => {
@@ -174,20 +175,20 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                 justifyContent: 'center',
                                 paddingVertical: 8,
                                 borderRadius: 12,
-                                backgroundColor: isActive ? '#111827' : isFilled ? '#F0FDF4' : '#F9FAFB',
+                                backgroundColor: isActive ? (isDark ? '#F9FAFB' : '#111827') : isFilled ? (isDark ? '#064E3B' : '#F0FDF4') : (isDark ? '#374151' : '#F9FAFB'),
                                 borderWidth: 1,
-                                borderColor: isActive ? '#111827' : isFilled ? '#BBF7D0' : '#E5E7EB',
+                                borderColor: isActive ? (isDark ? '#F9FAFB' : '#111827') : isFilled ? (isDark ? '#065F46' : '#BBF7D0') : (isDark ? '#4B5563' : '#E5E7EB'),
                             }}
                         >
                             {isFilled && !isActive ? (
                                 <CheckCircle2 size={14} color="#10B981" />
                             ) : (
-                                <Icon size={14} color={isActive ? '#FFFFFF' : '#6B7280'} />
+                                <Icon size={14} color={isActive ? (isDark ? '#111827' : '#FFFFFF') : (isDark ? '#9CA3AF' : '#6B7280')} />
                             )}
                             <Text style={{
                                 fontSize: 11,
                                 fontWeight: '700',
-                                color: isActive ? '#FFFFFF' : isFilled ? '#10B981' : '#6B7280',
+                                color: isActive ? (isDark ? '#111827' : '#FFFFFF') : isFilled ? '#10B981' : (isDark ? '#9CA3AF' : '#6B7280'),
                                 marginLeft: 4,
                             }}>
                                 {step.label}
@@ -216,10 +217,10 @@ const CreateTaskScreen = ({ navigation }: any) => {
 
                         {/* Title */}
                         <View style={{
-                            backgroundColor: '#FFFFFF',
+                            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                             borderRadius: 16,
                             borderWidth: 1,
-                            borderColor: title.trim() ? '#10B981' : '#F3F4F6',
+                            borderColor: title.trim() ? '#10B981' : (isDark ? '#374151' : '#F3F4F6'),
                             padding: 16,
                             marginBottom: 12,
                             shadowColor: '#000',
@@ -232,7 +233,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                 TRACK TITLE *
                             </Text>
                             <TextInput
-                                style={{ fontSize: 16, fontWeight: '600', color: '#111827', padding: 0 }}
+                                style={{ fontSize: 16, fontWeight: '600', color: isDark ? '#F9FAFB' : '#111827', padding: 0 }}
                                 placeholder="e.g., Q1 Revenue Optimization"
                                 placeholderTextColor="#D1D5DB"
                                 value={title}
@@ -243,10 +244,10 @@ const CreateTaskScreen = ({ navigation }: any) => {
 
                         {/* Description */}
                         <View style={{
-                            backgroundColor: '#FFFFFF',
+                            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                             borderRadius: 16,
                             borderWidth: 1,
-                            borderColor: '#F3F4F6',
+                            borderColor: isDark ? '#374151' : '#F3F4F6',
                             padding: 16,
                             marginBottom: 8,
                             shadowColor: '#000',
@@ -259,7 +260,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                 MISSION CONTEXT
                             </Text>
                             <TextInput
-                                style={{ fontSize: 14, color: '#374151', minHeight: 80, padding: 0, textAlignVertical: 'top' }}
+                                style={{ fontSize: 14, color: isDark ? '#D1D5DB' : '#374151', minHeight: 80, padding: 0, textAlignVertical: 'top' }}
                                 placeholder="Describe the mission and expectations..."
                                 placeholderTextColor="#D1D5DB"
                                 value={description}
@@ -288,9 +289,9 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                             paddingHorizontal: 12,
                                             paddingVertical: 10,
                                             borderRadius: 12,
-                                            backgroundColor: isSelected ? cfg.bg : '#FFFFFF',
+                                            backgroundColor: isSelected ? cfg.bg : (isDark ? '#1F2937' : '#FFFFFF'),
                                             borderWidth: 1,
-                                            borderColor: isSelected ? cfg.color : '#E5E7EB',
+                                            borderColor: isSelected ? cfg.color : (isDark ? '#374151' : '#E5E7EB'),
                                             flex: 1,
                                             marginRight: p === 'CRITICAL' ? 0 : 8,
                                             alignItems: 'center',
@@ -301,7 +302,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                             elevation: isSelected ? 0 : 1,
                                         }}
                                     >
-                                        <Text style={{ fontSize: 10, fontWeight: '800', color: isSelected ? cfg.color : '#6B7280' }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: isSelected ? cfg.color : (isDark ? '#9CA3AF' : '#6B7280') }}>
                                             {p}
                                         </Text>
                                     </TouchableOpacity>
@@ -319,10 +320,10 @@ const CreateTaskScreen = ({ navigation }: any) => {
                         {/* Selected Owner Card */}
                         {selectedOwner && (
                             <View style={{
-                                backgroundColor: '#FFFFFF',
+                                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                                 borderRadius: 16,
                                 borderWidth: 2,
-                                borderColor: '#111827',
+                                borderColor: isDark ? '#6366F1' : '#111827',
                                 padding: 16,
                                 marginBottom: 16,
                                 flexDirection: 'row',
@@ -338,14 +339,14 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                     </Text>
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 12 }}>
-                                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>
+                                    <Text style={{ fontSize: 15, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827' }}>
                                         {selectedOwner.name}
                                     </Text>
                                     <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
                                         {selectedOwner.email}
                                     </Text>
                                 </View>
-                                <View style={{ backgroundColor: '#111827', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}>
+                                <View style={{ backgroundColor: isDark ? '#6366F1' : '#111827', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}>
                                     <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 }}>OWNER</Text>
                                 </View>
                             </View>
@@ -373,9 +374,9 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                                     paddingHorizontal: 12,
                                                     paddingVertical: 12,
                                                     borderRadius: 16,
-                                                    backgroundColor: isSelected ? '#111827' : '#FFFFFF',
+                                                    backgroundColor: isSelected ? (isDark ? '#6366F1' : '#111827') : (isDark ? '#1F2937' : '#FFFFFF'),
                                                     borderWidth: 1,
-                                                    borderColor: isSelected ? '#111827' : '#E5E7EB',
+                                                    borderColor: isSelected ? (isDark ? '#6366F1' : '#111827') : (isDark ? '#374151' : '#E5E7EB'),
                                                     minWidth: 80,
                                                     shadowColor: '#000',
                                                     shadowOffset: { width: 0, height: 1 },
@@ -395,7 +396,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                                 </View>
                                                 <Text style={{
                                                     fontSize: 12, fontWeight: '600',
-                                                    color: isSelected ? '#FFFFFF' : '#374151',
+                                                    color: isSelected ? '#FFFFFF' : (isDark ? '#D1D5DB' : '#374151'),
                                                 }} numberOfLines={1}>
                                                     {u.name.split(' ')[0]}
                                                 </Text>
@@ -420,7 +421,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                         </Text>
 
                         {/* Role Selector Toggle */}
-                        <View style={{ flexDirection: 'row', backgroundColor: '#F3F4F6', borderRadius: 12, padding: 4, marginBottom: 16, width: '60%' }}>
+                        <View style={{ flexDirection: 'row', backgroundColor: isDark ? '#1F2937' : '#F3F4F6', borderRadius: 12, padding: 4, marginBottom: 16, width: '60%' }}>
                             {['contributor', 'helper'].map(r => {
                                 const isSelected = selectedRole === r;
                                 return (
@@ -431,7 +432,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                             flex: 1,
                                             paddingVertical: 8,
                                             borderRadius: 8,
-                                            backgroundColor: isSelected ? '#FFFFFF' : 'transparent',
+                                            backgroundColor: isSelected ? (isDark ? '#374151' : '#FFFFFF') : 'transparent',
                                             alignItems: 'center',
                                             shadowColor: '#000',
                                             shadowOffset: { width: 0, height: 1 },
@@ -440,7 +441,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                             elevation: isSelected ? 1 : 0,
                                         }}
                                     >
-                                        <Text style={{ fontSize: 11, fontWeight: '700', color: isSelected ? '#111827' : '#6B7280', textTransform: 'capitalize' }}>
+                                        <Text style={{ fontSize: 11, fontWeight: '700', color: isSelected ? (isDark ? '#F9FAFB' : '#111827') : (isDark ? '#9CA3AF' : '#6B7280'), textTransform: 'capitalize' }}>
                                             {r}
                                         </Text>
                                     </TouchableOpacity>
@@ -458,13 +459,13 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                         <View key={p.userId} style={{
                                             flexDirection: 'row',
                                             alignItems: 'center',
-                                            backgroundColor: '#FFFFFF',
+                                            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                                             paddingLeft: 4,
                                             paddingRight: 10,
                                             paddingVertical: 4,
                                             borderRadius: 20,
                                             borderWidth: 1,
-                                            borderColor: '#E5E7EB',
+                                            borderColor: isDark ? '#374151' : '#E5E7EB',
                                         }}>
                                             <View style={{
                                                 width: 24, height: 24, borderRadius: 12,
@@ -476,7 +477,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                                 </Text>
                                             </View>
                                             <View style={{ marginLeft: 8 }}>
-                                                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
+                                                <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#D1D5DB' : '#374151' }}>
                                                     {userObj.name}
                                                 </Text>
                                                 <Text style={{ fontSize: 9, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase' }}>
@@ -515,9 +516,9 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                                     paddingHorizontal: 12,
                                                     paddingVertical: 12,
                                                     borderRadius: 16,
-                                                    backgroundColor: isAdded ? '#EFF6FF' : '#FFFFFF',
+                                                    backgroundColor: isAdded ? (isDark ? '#1E3A8A' : '#EFF6FF') : (isDark ? '#1F2937' : '#FFFFFF'),
                                                     borderWidth: 1,
-                                                    borderColor: isAdded ? '#3B82F6' : '#E5E7EB',
+                                                    borderColor: isAdded ? '#3B82F6' : (isDark ? '#374151' : '#E5E7EB'),
                                                     minWidth: 80,
                                                 }}
                                             >
@@ -536,7 +537,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                                                 </View>
                                                 <Text style={{
                                                     fontSize: 12, fontWeight: '600',
-                                                    color: isAdded ? '#3B82F6' : '#374151',
+                                                    color: isAdded ? '#3B82F6' : (isDark ? '#D1D5DB' : '#374151'),
                                                 }} numberOfLines={1}>
                                                     {u.name.split(' ')[0]}
                                                 </Text>
@@ -569,16 +570,16 @@ const CreateTaskScreen = ({ navigation }: any) => {
                             <TextInput
                                 style={{
                                     flex: 1,
-                                    backgroundColor: '#FFFFFF',
+                                    backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                                     paddingHorizontal: 16,
                                     paddingVertical: 14,
                                     borderTopLeftRadius: 14,
                                     borderBottomLeftRadius: 14,
                                     borderWidth: 1,
                                     borderRightWidth: 0,
-                                    borderColor: '#E5E7EB',
+                                    borderColor: isDark ? '#374151' : '#E5E7EB',
                                     fontSize: 14,
-                                    color: '#111827',
+                                    color: isDark ? '#F9FAFB' : '#111827',
                                 }}
                                 placeholder="Add a milestone..."
                                 placeholderTextColor="#D1D5DB"
@@ -590,7 +591,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                             <TouchableOpacity
                                 onPress={addMilestone}
                                 style={{
-                                    backgroundColor: '#111827',
+                                    backgroundColor: isDark ? '#374151' : '#111827',
                                     paddingHorizontal: 20,
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -607,12 +608,12 @@ const CreateTaskScreen = ({ navigation }: any) => {
                             <View key={index} style={{
                                 flexDirection: 'row',
                                 alignItems: 'center',
-                                backgroundColor: '#FFFFFF',
+                                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                                 paddingHorizontal: 16,
                                 paddingVertical: 14,
                                 borderRadius: 14,
                                 borderWidth: 1,
-                                borderColor: '#F3F4F6',
+                                borderColor: isDark ? '#374151' : '#F3F4F6',
                                 marginBottom: 8,
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 1 },
@@ -622,13 +623,13 @@ const CreateTaskScreen = ({ navigation }: any) => {
                             }}>
                                 <View style={{
                                     width: 24, height: 24, borderRadius: 12,
-                                    backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',
+                                    backgroundColor: isDark ? '#064E3B' : '#F0FDF4', alignItems: 'center', justifyContent: 'center',
                                 }}>
                                     <Text style={{ fontSize: 11, fontWeight: '800', color: '#10B981' }}>
                                         {index + 1}
                                     </Text>
                                 </View>
-                                <Text style={{ flex: 1, fontSize: 14, fontWeight: '500', color: '#374151', marginLeft: 12 }}>
+                                <Text style={{ flex: 1, fontSize: 14, fontWeight: '500', color: isDark ? '#D1D5DB' : '#374151', marginLeft: 12 }}>
                                     {m}
                                 </Text>
                                 <TouchableOpacity onPress={() => removeMilestone(index)} style={{ padding: 4 }}>
@@ -656,9 +657,9 @@ const CreateTaskScreen = ({ navigation }: any) => {
                 paddingHorizontal: 20,
                 paddingTop: 16,
                 paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
                 borderTopWidth: 1,
-                borderTopColor: '#F3F4F6',
+                borderTopColor: isDark ? '#374151' : '#F3F4F6',
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: -4 },
                 shadowOpacity: 0.05,
@@ -669,7 +670,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                 <View style={{ flexDirection: 'row', marginBottom: 14, gap: 8 }}>
                     <View style={{
                         flexDirection: 'row', alignItems: 'center',
-                        backgroundColor: title.trim() ? '#F0FDF4' : '#FEF2F2',
+                        backgroundColor: title.trim() ? (isDark ? '#064E3B' : '#F0FDF4') : (isDark ? '#451212' : '#FEF2F2'),
                         paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
                     }}>
                         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: title.trim() ? '#10B981' : '#EF4444', marginRight: 6 }} />
@@ -677,7 +678,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                     </View>
                     <View style={{
                         flexDirection: 'row', alignItems: 'center',
-                        backgroundColor: responsibleOwnerId ? '#F0FDF4' : '#FEF2F2',
+                        backgroundColor: responsibleOwnerId ? (isDark ? '#064E3B' : '#F0FDF4') : (isDark ? '#451212' : '#FEF2F2'),
                         paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
                     }}>
                         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: responsibleOwnerId ? '#10B981' : '#EF4444', marginRight: 6 }} />
@@ -685,19 +686,19 @@ const CreateTaskScreen = ({ navigation }: any) => {
                     </View>
                     <View style={{
                         flexDirection: 'row', alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: isDark ? '#374151' : '#F3F4F6',
                         paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
                     }}>
-                        <Users size={10} color="#6B7280" />
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#6B7280', marginLeft: 4 }}>{participants.length}</Text>
+                        <Users size={10} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? '#9CA3AF' : '#6B7280', marginLeft: 4 }}>{participants.length}</Text>
                     </View>
                     <View style={{
                         flexDirection: 'row', alignItems: 'center',
-                        backgroundColor: '#F3F4F6',
+                        backgroundColor: isDark ? '#374151' : '#F3F4F6',
                         paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
                     }}>
-                        <Target size={10} color="#6B7280" />
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#6B7280', marginLeft: 4 }}>{milestones.length}</Text>
+                        <Target size={10} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? '#9CA3AF' : '#6B7280', marginLeft: 4 }}>{milestones.length}</Text>
                     </View>
                 </View>
 
@@ -709,7 +710,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                         flexDirection: 'row',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: (title.trim() && responsibleOwnerId) ? '#111827' : '#D1D5DB',
+                        backgroundColor: (title.trim() && responsibleOwnerId) ? (isDark ? '#6366F1' : '#111827') : (isDark ? '#374151' : '#D1D5DB'),
                         paddingVertical: 16,
                         borderRadius: 16,
                         shadowColor: '#000',
@@ -731,7 +732,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                     )}
                 </TouchableOpacity>
             </View>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 };
 
