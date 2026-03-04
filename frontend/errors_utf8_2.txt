@@ -1,2 +1,0 @@
-﻿src/screens/TaskDetailScreen.tsx(107,236): error TS2554: Expected 1 arguments, but got 2.
-src/screens/TaskDetailScreen.tsx(1949,76): error TS2304: Cannot find name 'Check'.

@@ -78,7 +78,8 @@ const TasksScreen = ({ navigation, route }: any) => {
             'sync:update', 'task:blocked', 'task:helpRequested',
             'task:assigned', 'task:transferred', 'task:updated',
             'task:deleted', 'milestone:completed', 'task:created',
-            'task:accepted', 'comment:new'
+            'task:accepted', 'comment:new', 'timelog:created',
+            'milestone:created', 'milestone:updated', 'milestone:deleted'
         ];
 
         events.forEach(event => socket.on(event, invalidateTasks));

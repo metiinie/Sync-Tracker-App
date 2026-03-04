@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import Svg, { Circle, Line, Text as SvgText, G } from 'react-native-svg';
 import api from '../services/api';
+import { API_BASE_URL } from '../config/apiConfig';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
 import { timeAgo } from '../utils/timeAgo';
@@ -148,21 +149,31 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
             try {
                 const uri = result.assets[0].uri;
                 const formData = new FormData();
-                const filename = uri.split('/').pop();
-                const match = /\.(\w+)$/.exec(filename || '');
-                const type = match ? `${result.assets[0].type}/${match[1]}` : result.assets[0].type;
+                const filename = uri.split('/').pop() || 'attachment.jpg';
+                const match = /\.(\w+)$/.exec(filename);
+                const ext = match ? match[1] : (result.assets[0].type === 'image' ? 'jpg' : 'mp4');
+                let type = `${result.assets[0].type}/${ext}`;
+                if (type === 'image/jpg') type = 'image/jpeg';
 
                 formData.append('file', {
                     uri,
                     name: filename,
-                    type: result.assets[0].type === 'image' ? `image/${match ? match[1] : 'jpg'}` : `video/${match ? match[1] : 'mp4'}`,
+                    type,
                 } as any);
 
-                await api.post(`/upload/task-attachment/${taskId}`, formData, {
+                const token = useAuthStore.getState().token;
+
+                const res = await fetch(`${API_BASE_URL}/upload/task-attachment/${taskId}`, {
+                    method: 'POST',
                     headers: {
-                        'Content-Type': 'multipart/form-data',
+                        'Authorization': `Bearer ${token}`
                     },
+                    body: formData,
                 });
+
+                if (!res.ok) {
+                    throw new Error(`Upload failed with status ${res.status}`);
+                }
 
                 queryClient.invalidateQueries({ queryKey: ['task', taskId] });
                 Alert.alert('Success', 'Attachment uploaded.');
@@ -273,6 +284,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
         deleteTask.mutate(undefined, {
             onSuccess: () => {
                 setShowEditModal(false);
+                Alert.alert("Success", "Track has been permanently removed.");
                 navigation.goBack();
             }
         });
@@ -743,7 +755,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                 refreshControl={<RefreshControl refreshing={taskLoading} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['task', taskId] })} />}
             >
                 {/* 🚨 NEW TASK ACCEPTANCE BANNER */}
-                {task?.status === 'PENDING' && isOwner && (
+                {task?.status === 'PENDING' && isOwner && activeTab === 'overview' && (
                     <View style={{
                         backgroundColor: '#F5F3FF',
                         margin: 20,
@@ -781,7 +793,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                 )}
 
                 {/* 🚨 PENDING TRANSFER BANNER */}
-                {task?.status === 'TRANSFER_PENDING' && pendingTransfer && (
+                {task?.status === 'TRANSFER_PENDING' && pendingTransfer && activeTab === 'overview' && (
                     <View style={{
                         backgroundColor: '#FFFBEB',
                         margin: 20,
@@ -1028,7 +1040,6 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
 
                 {activeTab === 'discussion' && (
                     <View style={{ padding: 20 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827', marginBottom: 20 }}>Track Discussion</Text>
 
                         {comments.length === 0 ? (
                             <View style={{ alignItems: 'center', padding: 40 }}>
@@ -1181,414 +1192,399 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         )}
                     </View>
                 )}
-                {/* 2️⃣ RESPONSIBILITY SUMMARY BAR */}
-                <View style={{ padding: 20 }}>
-                    <View style={{
-                        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-                        borderRadius: 16,
-                        borderWidth: 1,
-                        borderColor: isDark ? '#374151' : '#F3F4F6',
-                        padding: 16,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: isDark ? 0.2 : 0.03,
-                        shadowRadius: 8,
-                        elevation: 1,
-                    }}>
-                        {/* Assigned By */}
-                        <View style={{ marginBottom: 16 }}>
-                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
-                                ASSIGNED BY
-                            </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <UserAvatar name={assignerName} url={task.assigner?.avatarUrl} size={24} />
-                                <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151', marginLeft: 8 }}>{assignerName}</Text>
-                            </View>
-                        </View>
-
-                        {/* Responsible Owner */}
-                        <View style={{ marginBottom: 16 }}>
-                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
-                                RESPONSIBLE OWNER
-                            </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <UserAvatar name={ownerName} url={task.owner?.avatarUrl} size={24} />
-                                    <Text style={{ fontSize: 14, fontWeight: '500', color: '#111827', marginLeft: 8 }}>{ownerName}</Text>
-                                </View>
-                                {task.status === 'PENDING' ? (
-                                    <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444' }}>PENDING</Text>
-                                    </View>
-                                ) : (
-                                    <View style={{ backgroundColor: '#F0FDF4', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#10B981' }}>ACCEPTED</Text>
-                                    </View>
-                                )}
-                            </View>
-                            {task.status === 'PENDING' && isOwner && (
-                                <View style={{ flexDirection: 'row', marginTop: 12 }}>
-                                    <TouchableOpacity
-                                        onPress={handleAcceptResponsibility}
-                                        style={{ flex: 1, backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 12, alignItems: 'center', marginRight: 8 }}
-                                    >
-                                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Accept</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={handleRejectResponsibility}
-                                        style={{ flex: 1, backgroundColor: '#EF4444', paddingVertical: 10, borderRadius: 12, alignItems: 'center' }}
-                                    >
-                                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Reject</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </View>
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 16 }}>
-                            {/* Participants */}
-                            <View>
-                                <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
-                                    PARTICIPANTS
-                                </Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <View style={{ flexDirection: 'row', marginLeft: 4 }}>
-                                        {task.participants?.slice(0, 3).map((p: any, i: number) => (
-                                            <View key={i} style={{ marginLeft: i === 0 ? 0 : -8 }}>
-                                                <UserAvatar name={p.user?.name} url={p.user?.avatarUrl} size={24} border={2} borderColor="#FFF" />
-                                            </View>
-                                        ))}
-                                    </View>
-                                    <Text style={{ fontSize: 13, fontWeight: '500', color: '#6B7280', marginLeft: 8 }}>
-                                        {task.participants?.length || 0} Active
+                {activeTab === 'overview' && (
+                    <>
+                        {/* 2️⃣ RESPONSIBILITY SUMMARY BAR */}
+                        <View style={{ padding: 20 }}>
+                            <View style={{
+                                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+                                borderRadius: 16,
+                                borderWidth: 1,
+                                borderColor: isDark ? '#374151' : '#F3F4F6',
+                                padding: 16,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: isDark ? 0.2 : 0.03,
+                                shadowRadius: 8,
+                                elevation: 1,
+                            }}>
+                                {/* Assigned By */}
+                                <View style={{ marginBottom: 16 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
+                                        ASSIGNED BY
                                     </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <UserAvatar name={assignerName} url={task.assigner?.avatarUrl} size={24} />
+                                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151', marginLeft: 8 }}>{assignerName}</Text>
+                                    </View>
                                 </View>
-                            </View>
 
-                            {/* Refresh Time */}
-                            <View>
-                                <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8, textAlign: 'right' }}>
-                                    STATUS REFRESH
-                                </Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-                                    <History size={14} color="#9CA3AF" />
-                                    <Text style={{ fontSize: 13, fontWeight: '500', color: isDark ? '#D1D5DB' : '#374151', marginLeft: 4 }}>
-                                        {timeAgo(task.lastUpdatedAt || task.updatedAt)}
+                                {/* Responsible Owner */}
+                                <View style={{ marginBottom: 16 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
+                                        RESPONSIBLE OWNER
                                     </Text>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
-                {/* 4️⃣ TASK OVERVIEW (Expandable) */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-                    <TouchableOpacity
-                        onPress={() => setIsOverviewExpanded(!isOverviewExpanded)}
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
-                            padding: 16,
-                            borderRadius: 12,
-                        }}
-                    >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <FileText size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#F9FAFB' : '#374151', marginLeft: 12 }}>
-                                Task Overview
-                            </Text>
-                        </View>
-                        {isOverviewExpanded ? <ChevronUp size={20} color="#9CA3AF" /> : <ChevronDown size={20} color="#9CA3AF" />}
-                    </TouchableOpacity>
-
-                    {isOverviewExpanded && (
-                        <View style={{ padding: 16, backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, marginTop: -8 }}>
-                            <Text style={{ fontSize: 14, color: isDark ? '#D1D5DB' : '#4B5563', lineHeight: 22 }}>
-                                {task.description || 'No description provided.'}
-                            </Text>
-                            <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
-                                <Text style={{ fontSize: 12, color: '#9CA3AF' }}>Created: {new Date(task.createdAt).toLocaleDateString()}</Text>
-                            </View>
-                        </View>
-                    )}
-                </View>
-
-                {/* 5️⃣ RESPONSIBILITY HIERARCHY MOVED TO VISION MODAL */}
-                {/* 7️⃣ PROJECT MILESTONES */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>MILESTONES & PROGRESS</Text>
-
-                    {/* Progress Bar */}
-                    {task.milestones?.length > 0 && (
-                        <View style={{ marginBottom: 20 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563' }}>
-                                    Track Progress
-                                </Text>
-                                <Text style={{ fontSize: 12, fontWeight: '800', color: '#10B981' }}>
-                                    {Math.round((task.milestones?.filter((m: any) => m.isCompleted === 'true').length || 0) / (task.milestones?.length || 1) * 100)}%
-                                </Text>
-                            </View>
-                            <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
-                                <View style={{
-                                    height: '100%',
-                                    backgroundColor: '#10B981',
-                                    width: `${(task.milestones.filter((m: any) => m.isCompleted === 'true').length / task.milestones.length) * 100}%`
-                                }} />
-                            </View>
-                        </View>
-                    )}
-
-                    {task.milestones?.length === 0 ? (
-                        <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>No milestones defined.</Text>
-                    ) : (
-                        task.milestones?.map((m: any, i: number) => {
-                            const isCompleted = m.isCompleted === 'true';
-                            const dueDate = m.dueDate ? new Date(m.dueDate) : null;
-                            const isOverdue = dueDate && !isCompleted && dueDate < new Date();
-                            const isNear = dueDate && !isCompleted && (dueDate.getTime() - new Date().getTime()) < 172800000; // 48h
-
-                            return (
-                                <View key={m.id} style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    marginBottom: 16,
-                                    backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-                                    padding: 12,
-                                    borderRadius: 12,
-                                    borderWidth: 1,
-                                    borderColor: isOverdue ? '#FCA5A5' : isNear ? '#FDE68A' : (isDark ? '#374151' : '#F3F4F6')
-                                }}>
-                                    <TouchableOpacity
-                                        onPress={() => handleToggleMilestone(m.id, m.isCompleted)}
-                                        style={{
-                                            width: 20, height: 20, borderRadius: 10,
-                                            borderWidth: 2, borderColor: isCompleted ? '#10B981' : '#D1D5DB',
-                                            alignItems: 'center', justifyContent: 'center',
-                                            backgroundColor: isCompleted ? '#10B981' : 'transparent',
-                                            marginRight: 12,
-                                        }}
-                                    >
-                                        {isCompleted && <CheckCircle2 size={12} color="#FFF" />}
-                                    </TouchableOpacity>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '600', color: isCompleted ? '#9CA3AF' : (isDark ? '#F9FAFB' : '#111827'), textDecorationLine: isCompleted ? 'line-through' : 'none' }}>
-                                            {m.title}
-                                        </Text>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                            <Clock size={10} color={isOverdue ? '#EF4444' : '#9CA3AF'} />
-                                            <Text style={{ fontSize: 11, color: isOverdue ? '#EF4444' : '#9CA3AF', marginLeft: 4, fontWeight: isOverdue || isNear ? '700' : '400' }}>
-                                                {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : 'No due date'}
-                                                {isOverdue && ' • OVERDUE'}
-                                                {isNear && !isOverdue && ' • APPROACHING'}
-                                            </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <UserAvatar name={ownerName} url={task.owner?.avatarUrl} size={24} />
+                                            <Text style={{ fontSize: 14, fontWeight: '500', color: '#111827', marginLeft: 8 }}>{ownerName}</Text>
                                         </View>
-                                        {isCompleted && m.completedByUser && (
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                                <UserAvatar name={m.completedByUser.name} url={m.completedByUser.avatarUrl} size={14} />
-                                                <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600', marginLeft: 6 }}>
-                                                    Completed by {m.completedByUser.name.split(' ')[0]}
-                                                </Text>
+                                        {task.status === 'PENDING' ? (
+                                            <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444' }}>PENDING</Text>
+                                            </View>
+                                        ) : (
+                                            <View style={{ backgroundColor: '#F0FDF4', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#10B981' }}>ACCEPTED</Text>
                                             </View>
                                         )}
                                     </View>
-                                    {(isOwner || isAssigner) && (
-                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    {task.status === 'PENDING' && isOwner && (
+                                        <View style={{ flexDirection: 'row', marginTop: 12 }}>
                                             <TouchableOpacity
-                                                onPress={() => {
-                                                    setEditMilestoneData({
-                                                        id: m.id,
-                                                        title: m.title,
-                                                        dueDate: m.dueDate ? new Date(m.dueDate).toISOString().split('T')[0] : ''
-                                                    });
-                                                    setShowEditMilestoneModal(true);
-                                                }}
-                                                style={{ marginRight: 12 }}
+                                                onPress={handleAcceptResponsibility}
+                                                style={{ flex: 1, backgroundColor: '#10B981', paddingVertical: 10, borderRadius: 12, alignItems: 'center', marginRight: 8 }}
                                             >
-                                                <FileText size={16} color="#9CA3AF" />
+                                                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Accept</Text>
                                             </TouchableOpacity>
-                                            <TouchableOpacity onPress={() => handleDeleteMilestone(m.id)}>
-                                                <X size={16} color="#9CA3AF" />
+                                            <TouchableOpacity
+                                                onPress={handleRejectResponsibility}
+                                                style={{ flex: 1, backgroundColor: '#EF4444', paddingVertical: 10, borderRadius: 12, alignItems: 'center' }}
+                                            >
+                                                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Reject</Text>
                                             </TouchableOpacity>
                                         </View>
                                     )}
                                 </View>
-                            );
-                        })
-                    )}
-                    {(isOwner || isAssigner) && (
-                        <TouchableOpacity
-                            onPress={() => setShowMilestoneModal(true)}
-                            style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}
-                        >
-                            <Plus size={16} color="#3B82F6" />
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#3B82F6', marginLeft: 6 }}>Add Milestone</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
 
-                {/* 8️⃣ TIME ALLOCATION */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2 }}>TIME ALLOCATION</Text>
-                        <TouchableOpacity onPress={() => setShowTimeModal(true)}>
-                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#3B82F6' }}>Add Log</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={{
-                        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-                        borderRadius: 20,
-                        padding: 24,
-                        borderWidth: 1,
-                        borderColor: isDark ? '#374151' : '#F3F4F6',
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: isDark ? 0.3 : 0.05,
-                        shadowRadius: 12,
-                        elevation: 2,
-                    }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 24 }}>
-                            <View style={{ flex: 1 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                                    <Clock size={12} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                                    <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#9CA3AF' : '#6B7280', marginLeft: 4 }}>RESOURCES INVESTED</Text>
-                                </View>
-                                <Text style={{ fontSize: 32, fontWeight: '900', color: isDark ? '#F9FAFB' : '#111827' }}>
-                                    {Math.floor(totalMinutesLogged / 60)}h
-                                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#9CA3AF' }}> {totalMinutesLogged % 60}m</Text>
-                                </Text>
-                            </View>
-                            <View style={{ backgroundColor: isDark ? '#374151' : '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 4 }}>
-                                <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#F9FAFB' : '#111827' }}>TRACK SYNCED</Text>
-                            </View>
-                        </View>
-
-                        {/* Breakdown Chart-like view */}
-                        {usersTimeBreakdown.length > 0 && (
-                            <View style={{ height: 8, flexDirection: 'row', borderRadius: 4, overflow: 'hidden', marginBottom: 20, backgroundColor: isDark ? '#374151' : '#F3F4F6' }}>
-                                {usersTimeBreakdown.map((ub, idx) => (
-                                    <View
-                                        key={idx}
-                                        style={{
-                                            width: `${(ub.duration / totalMinutesLogged) * 100}%`,
-                                            backgroundColor: getAvatarColor(ub.name),
-                                            height: '100%'
-                                        }}
-                                    />
-                                ))}
-                            </View>
-                        )}
-
-                        <View style={{ gap: 12 }}>
-                            {usersTimeBreakdown.map((ub, i) => (
-                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: getAvatarColor(ub.name), marginRight: 10 }} />
-                                        <Text style={{ fontSize: 14, color: isDark ? '#D1D5DB' : '#374151', fontWeight: '600' }}>{ub.name}</Text>
-                                    </View>
-                                    <Text style={{ fontSize: 14, color: isDark ? '#F9FAFB' : '#111827', fontWeight: '700' }}>{formatDuration(ub.duration)}</Text>
-                                </View>
-                            ))}
-                        </View>
-
-                        {/* Recent Entries - Enhanced */}
-                        {task.timeLogs?.length > 0 && (
-                            <View style={{ marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: isDark ? '#374151' : '#F3F4F6' }}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1 }}>RECENT ENTRIES</Text>
-                                </View>
-                                {task.timeLogs.slice().sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3).map((log: any) => (
-                                    <View key={log.id} style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        backgroundColor: isDark ? '#374151' : '#F9FAFB',
-                                        padding: 12,
-                                        borderRadius: 12,
-                                        marginBottom: 8
-                                    }}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#F9FAFB' : '#374151' }} numberOfLines={1}>{log.description || 'Log Entry'}</Text>
-                                            <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{log.user?.name} • {timeAgo(log.createdAt)}</Text>
-                                        </View>
-                                        <Text style={{ fontSize: 12, fontWeight: '800', color: isDark ? '#9CA3AF' : '#6B7280' }}>{formatDuration(log.durationMinutes)}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-                    </View>
-                </View>
-
-                {/* 9️⃣ SYSTEM AUDIT LOG */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>SYSTEM AUDIT LOG</Text>
-
-                    {task.logs?.length === 0 ? (
-                        <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>No logs yet.</Text>
-                    ) : (
-                        task.logs?.slice().sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((log: any, index: number) => {
-                            const isBlockCall = log.action.includes('BLOCKED');
-                            const isHelpCall = log.action.includes('HELP_REQUESTED');
-                            const iconColor = isBlockCall ? '#EF4444' : isHelpCall ? '#3B82F6' : '#10B981';
-
-                            return (
-                                <View key={log.id} style={{ flexDirection: 'row', marginBottom: 20 }}>
-                                    <View style={{ width: 16, alignItems: 'center' }}>
-                                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: iconColor, marginTop: 4, zIndex: 10 }} />
-                                        {index !== task.logs.length - 1 && (
-                                            <View style={{ width: 2, flex: 1, backgroundColor: isDark ? '#374151' : '#F3F4F6', marginTop: 2, marginBottom: -24 }} />
-                                        )}
-                                    </View>
-                                    <View style={{ marginLeft: 16, flex: 1 }}>
-                                        <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#F9FAFB' : '#111827' }}>
-                                            {log.user?.name || 'System'}{' '}
-                                            <Text style={{ fontWeight: '400', color: isDark ? '#9CA3AF' : '#4B5563' }}>
-                                                {log.action}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 16 }}>
+                                    {/* Participants */}
+                                    <View>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8 }}>
+                                            PARTICIPANTS
+                                        </Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <View style={{ flexDirection: 'row', marginLeft: 4 }}>
+                                                {task.participants?.slice(0, 3).map((p: any, i: number) => (
+                                                    <View key={i} style={{ marginLeft: i === 0 ? 0 : -8 }}>
+                                                        <UserAvatar name={p.user?.name} url={p.user?.avatarUrl} size={24} border={2} borderColor="#FFF" />
+                                                    </View>
+                                                ))}
+                                            </View>
+                                            <Text style={{ fontSize: 13, fontWeight: '500', color: '#6B7280', marginLeft: 8 }}>
+                                                {task.participants?.length || 0} Active
                                             </Text>
-                                        </Text>
-                                        <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
-                                            {timeAgo(log.timestamp)}
-                                        </Text>
-                                    </View>
-                                </View>
-                            );
-                        })
-                    )}
-                </View>
-
-                {/* 10️⃣ DISCUSSION / COMMENTS */}
-                <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>DISCUSSION</Text>
-
-                    <View style={{
-                        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-                        borderRadius: 16,
-                        borderWidth: 1,
-                        borderColor: isDark ? '#374151' : '#F3F4F6',
-                        padding: 16,
-                        marginBottom: 16,
-                    }}>
-                        {task.comments?.length === 0 ? (
-                            <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', marginVertical: 20 }}>No discussion yet. Be the first to comment!</Text>
-                        ) : (
-                            task.comments?.map((c: any) => (
-                                <View key={c.id} style={{ flexDirection: 'row', marginBottom: 16 }}>
-                                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: getAvatarColor(c.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                                        <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFF' }}>{getInitials(c.user?.name)}</Text>
-                                    </View>
-                                    <View style={{ flex: 1, backgroundColor: isDark ? '#2D3748' : '#F9FAFB', padding: 10, borderRadius: 12 }}>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                            <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827' }}>{c.user?.name}</Text>
-                                            <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{timeAgo(c.createdAt)}</Text>
                                         </View>
-                                        <Text style={{ fontSize: 13, color: isDark ? '#D1D5DB' : '#374151', lineHeight: 18 }}>{c.content}</Text>
+                                    </View>
+
+                                    {/* Refresh Time */}
+                                    <View>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1, marginBottom: 8, textAlign: 'right' }}>
+                                            STATUS REFRESH
+                                        </Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                            <History size={14} color="#9CA3AF" />
+                                            <Text style={{ fontSize: 13, fontWeight: '500', color: isDark ? '#D1D5DB' : '#374151', marginLeft: 4 }}>
+                                                {timeAgo(task.lastUpdatedAt || task.updatedAt)}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
-                            ))
-                        )}
-                    </View>
-                </View>
+                            </View>
+                        </View>
+
+                        {/* 4️⃣ TASK OVERVIEW (Expandable) */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+                            <TouchableOpacity
+                                onPress={() => setIsOverviewExpanded(!isOverviewExpanded)}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
+                                    padding: 16,
+                                    borderRadius: 12,
+                                }}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <FileText size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                                    <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#F9FAFB' : '#374151', marginLeft: 12 }}>
+                                        Task Overview
+                                    </Text>
+                                </View>
+                                {isOverviewExpanded ? <ChevronUp size={20} color="#9CA3AF" /> : <ChevronDown size={20} color="#9CA3AF" />}
+                            </TouchableOpacity>
+
+                            {isOverviewExpanded && (
+                                <View style={{ padding: 16, backgroundColor: isDark ? '#1F2937' : '#F9FAFB', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, marginTop: -8 }}>
+                                    <Text style={{ fontSize: 14, color: isDark ? '#D1D5DB' : '#4B5563', lineHeight: 22 }}>
+                                        {task.description || 'No description provided.'}
+                                    </Text>
+                                    <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
+                                        <Text style={{ fontSize: 12, color: '#9CA3AF' }}>Created: {new Date(task.createdAt).toLocaleDateString()}</Text>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* 7️⃣ PROJECT MILESTONES */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>MILESTONES & PROGRESS</Text>
+
+                            {/* Progress Bar */}
+                            {task.milestones?.length > 0 && (
+                                <View style={{ marginBottom: 20 }}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563' }}>
+                                            Track Progress
+                                        </Text>
+                                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#10B981' }}>
+                                            {Math.round((task.milestones?.filter((m: any) => m.isCompleted === 'true').length || 0) / (task.milestones?.length || 1) * 100)}%
+                                        </Text>
+                                    </View>
+                                    <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+                                        <View style={{
+                                            height: '100%',
+                                            backgroundColor: '#10B981',
+                                            width: `${(task.milestones.filter((m: any) => m.isCompleted === 'true').length / task.milestones.length) * 100}%`
+                                        }} />
+                                    </View>
+                                </View>
+                            )}
+
+                            {task.milestones?.length === 0 ? (
+                                <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>No milestones defined.</Text>
+                            ) : (
+                                task.milestones?.map((m: any, i: number) => {
+                                    const isCompleted = m.isCompleted === 'true';
+                                    const dueDate = m.dueDate ? new Date(m.dueDate) : null;
+                                    const isOverdue = dueDate && !isCompleted && dueDate < new Date();
+                                    const isNear = dueDate && !isCompleted && (dueDate.getTime() - new Date().getTime()) < 172800000; // 48h
+
+                                    return (
+                                        <View key={m.id} style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            marginBottom: 16,
+                                            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+                                            padding: 12,
+                                            borderRadius: 12,
+                                            borderWidth: 1,
+                                            borderColor: isOverdue ? '#FCA5A5' : isNear ? '#FDE68A' : (isDark ? '#374151' : '#F3F4F6')
+                                        }}>
+                                            <TouchableOpacity
+                                                onPress={() => handleToggleMilestone(m.id, m.isCompleted)}
+                                                style={{
+                                                    width: 20, height: 20, borderRadius: 10,
+                                                    borderWidth: 2, borderColor: isCompleted ? '#10B981' : '#D1D5DB',
+                                                    alignItems: 'center', justifyContent: 'center',
+                                                    backgroundColor: isCompleted ? '#10B981' : 'transparent',
+                                                    marginRight: 12,
+                                                }}
+                                            >
+                                                {isCompleted && <CheckCircle2 size={12} color="#FFF" />}
+                                            </TouchableOpacity>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 14, fontWeight: '600', color: isCompleted ? '#9CA3AF' : (isDark ? '#F9FAFB' : '#111827'), textDecorationLine: isCompleted ? 'line-through' : 'none' }}>
+                                                    {m.title}
+                                                </Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                                    <Clock size={10} color={isOverdue ? '#EF4444' : '#9CA3AF'} />
+                                                    <Text style={{ fontSize: 11, color: isOverdue ? '#EF4444' : '#9CA3AF', marginLeft: 4, fontWeight: isOverdue || isNear ? '700' : '400' }}>
+                                                        {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : 'No due date'}
+                                                        {isOverdue && ' • OVERDUE'}
+                                                        {isNear && !isOverdue && ' • APPROACHING'}
+                                                    </Text>
+                                                </View>
+                                                {isCompleted && m.completedByUser && (
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                                        <UserAvatar name={m.completedByUser.name} url={m.completedByUser.avatarUrl} size={14} />
+                                                        <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600', marginLeft: 6 }}>
+                                                            Completed by {m.completedByUser.name.split(' ')[0]}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            {(isOwner || isAssigner) && (
+                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                    <TouchableOpacity
+                                                        onPress={() => {
+                                                            setEditMilestoneData({
+                                                                id: m.id,
+                                                                title: m.title,
+                                                                dueDate: m.dueDate ? new Date(m.dueDate).toISOString().split('T')[0] : ''
+                                                            });
+                                                            setShowEditMilestoneModal(true);
+                                                        }}
+                                                        style={{ marginRight: 12 }}
+                                                    >
+                                                        <FileText size={16} color="#9CA3AF" />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity onPress={() => handleDeleteMilestone(m.id)}>
+                                                        <X size={16} color="#9CA3AF" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            )}
+                                        </View>
+                                    );
+                                })
+                            )}
+                            {(isOwner || isAssigner) && (
+                                <TouchableOpacity
+                                    onPress={() => setShowMilestoneModal(true)}
+                                    style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}
+                                >
+                                    <Plus size={16} color="#3B82F6" />
+                                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#3B82F6', marginLeft: 6 }}>Add Milestone</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {/* 8️⃣ TIME ALLOCATION */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2 }}>TIME ALLOCATION</Text>
+                                <TouchableOpacity onPress={() => setShowTimeModal(true)}>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#3B82F6' }}>Add Log</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={{
+                                backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+                                borderRadius: 20,
+                                padding: 24,
+                                borderWidth: 1,
+                                borderColor: isDark ? '#374151' : '#F3F4F6',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: isDark ? 0.3 : 0.05,
+                                shadowRadius: 12,
+                                elevation: 2,
+                            }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 24 }}>
+                                    <View style={{ flex: 1 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                            <Clock size={14} color={isDark ? '#3B82F6' : '#2563EB'} />
+                                            <Text style={{ fontSize: 11, fontWeight: '800', color: isDark ? '#9CA3AF' : '#4B5563', marginLeft: 6, letterSpacing: 0.5 }}>TOTAL TIME LOGGED</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                                            <Text style={{ fontSize: 36, fontWeight: '900', color: isDark ? '#F9FAFB' : '#111827' }}>
+                                                {Math.floor(totalMinutesLogged / 60)}
+                                                <Text style={{ fontSize: 18, fontWeight: '700', color: '#9CA3AF' }}>h</Text>
+                                            </Text>
+                                            <Text style={{ fontSize: 36, fontWeight: '900', color: isDark ? '#F9FAFB' : '#111827', marginLeft: 8 }}>
+                                                {totalMinutesLogged % 60}
+                                                <Text style={{ fontSize: 18, fontWeight: '700', color: '#9CA3AF' }}>m</Text>
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View style={{
+                                        backgroundColor: isDark ? `${getSyncConfig(task.syncState || 'IN_SYNC').color}30` : getSyncConfig(task.syncState || 'IN_SYNC').bg,
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 6,
+                                        borderRadius: 10,
+                                        borderWidth: 1,
+                                        borderColor: isDark ? `${getSyncConfig(task.syncState || 'IN_SYNC').color}50` : 'transparent',
+                                        marginBottom: 4
+                                    }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '900', color: getSyncConfig(task.syncState || 'IN_SYNC').color }}>{getSyncConfig(task.syncState || 'IN_SYNC').label.toUpperCase()}</Text>
+                                    </View>
+                                </View>
+
+                                {/* Breakdown Chart-like view */}
+                                {usersTimeBreakdown.length > 0 && (
+                                    <View style={{ height: 8, flexDirection: 'row', borderRadius: 4, overflow: 'hidden', marginBottom: 20, backgroundColor: isDark ? '#374151' : '#F3F4F6' }}>
+                                        {usersTimeBreakdown.map((ub, idx) => (
+                                            <View
+                                                key={idx}
+                                                style={{
+                                                    width: `${(ub.duration / totalMinutesLogged) * 100}%`,
+                                                    backgroundColor: getAvatarColor(ub.name),
+                                                    height: '100%'
+                                                }}
+                                            />
+                                        ))}
+                                    </View>
+                                )}
+
+                                <View style={{ gap: 12 }}>
+                                    {usersTimeBreakdown.map((ub, i) => (
+                                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: getAvatarColor(ub.name), marginRight: 10 }} />
+                                                <Text style={{ fontSize: 14, color: isDark ? '#D1D5DB' : '#374151', fontWeight: '600' }}>{ub.name}</Text>
+                                            </View>
+                                            <Text style={{ fontSize: 14, color: isDark ? '#F9FAFB' : '#111827', fontWeight: '700' }}>{formatDuration(ub.duration)}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+
+                                {/* Recent Entries - Enhanced */}
+                                {task.timeLogs?.length > 0 && (
+                                    <View style={{ marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: isDark ? '#374151' : '#F3F4F6' }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1 }}>RECENT ENTRIES</Text>
+                                        </View>
+                                        {task.timeLogs.slice().sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3).map((log: any) => (
+                                            <View key={log.id} style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                backgroundColor: isDark ? '#374151' : '#F9FAFB',
+                                                padding: 12,
+                                                borderRadius: 12,
+                                                marginBottom: 8
+                                            }}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#F9FAFB' : '#374151' }} numberOfLines={1}>{log.description || 'Log Entry'}</Text>
+                                                    <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{log.user?.name} • {timeAgo(log.createdAt)}</Text>
+                                                </View>
+                                                <Text style={{ fontSize: 12, fontWeight: '800', color: isDark ? '#9CA3AF' : '#6B7280' }}>{formatDuration(log.durationMinutes)}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+
+                        {/* 9️⃣ SYSTEM AUDIT LOG */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.2, marginBottom: 16 }}>SYSTEM AUDIT LOG</Text>
+
+                            {task.logs?.length === 0 ? (
+                                <Text style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>No logs yet.</Text>
+                            ) : (
+                                task.logs?.slice().sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((log: any, index: number) => {
+                                    const isBlockCall = log.action.includes('BLOCKED');
+                                    const isHelpCall = log.action.includes('HELP_REQUESTED');
+                                    const iconColor = isBlockCall ? '#EF4444' : isHelpCall ? '#3B82F6' : '#10B981';
+
+                                    return (
+                                        <View key={log.id} style={{ flexDirection: 'row', marginBottom: 20 }}>
+                                            <View style={{ width: 16, alignItems: 'center' }}>
+                                                <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: iconColor, marginTop: 4, zIndex: 10 }} />
+                                                {index !== task.logs.length - 1 && (
+                                                    <View style={{ width: 2, flex: 1, backgroundColor: isDark ? '#374151' : '#F3F4F6', marginTop: 2, marginBottom: -24 }} />
+                                                )}
+                                            </View>
+                                            <View style={{ marginLeft: 16, flex: 1 }}>
+                                                <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#F9FAFB' : '#111827' }}>
+                                                    {log.user?.name || 'System'}{' '}
+                                                    <Text style={{ fontWeight: '400', color: isDark ? '#9CA3AF' : '#4B5563' }}>
+                                                        {log.action}
+                                                    </Text>
+                                                </Text>
+                                                <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                                                    {timeAgo(log.timestamp)}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    );
+                                })
+                            )}
+                        </View>
+                    </>
+                )}
+
             </ScrollView>
 
             {/* 💬 STICKY COMMENT INPUT */}
@@ -1708,7 +1704,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#9CA3AF' : '#4B5563' }}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={handleUpdateSync} style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: isDark ? '#3B82F6' : '#111827', alignItems: 'center', opacity: !syncParams.state ? 0.5 : 1 }}>
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Commit</Text>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Send</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -1855,14 +1851,14 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                             paddingHorizontal: 10,
                                             paddingVertical: 8,
                                             borderRadius: 8,
-                                            backgroundColor: isSelected ? cfg.bg : '#F3F4F6',
+                                            backgroundColor: isSelected ? cfg.bg : (isDark ? '#374151' : '#F3F4F6'),
                                             borderWidth: 1,
-                                            borderColor: isSelected ? cfg.color : 'transparent',
+                                            borderColor: isSelected ? cfg.color : (isDark ? '#4B5563' : 'transparent'),
                                             minWidth: '22%',
                                             alignItems: 'center'
                                         }}
                                     >
-                                        <Text style={{ fontSize: 10, fontWeight: '700', color: isSelected ? cfg.color : '#6B7280' }}>{p}</Text>
+                                        <Text style={{ fontSize: 10, fontWeight: '700', color: isSelected ? cfg.color : (isDark ? '#9CA3AF' : '#6B7280') }}>{p}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
@@ -2168,6 +2164,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                             alignItems: 'center',
                                             paddingVertical: 14,
                                             paddingHorizontal: 16,
+                                            paddingLeft: 16 + (p.level * 24),
                                             borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
                                             borderBottomColor: isDark ? '#374151' : '#F3F4F6',
                                             backgroundColor: isNodeBlocked ? (isDark ? '#7F1D1D' : '#FEF2F2') : (isDark ? '#1F2937' : '#FFFFFF'),

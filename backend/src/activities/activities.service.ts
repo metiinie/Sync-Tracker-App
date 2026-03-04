@@ -8,28 +8,38 @@ import { eq, or, desc, and, ne, sql, ilike } from 'drizzle-orm';
 export class ActivitiesService {
     constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) { }
 
-    async getActivities(userId: string, scope: 'my_tasks' | 'delegated' | 'all' | 'workspace', limit = 200, search?: string) {
+    async getActivities(userId: string, scope: 'my_tasks' | 'delegated' | 'all' | 'workspace' | 'owned' | 'participated' | 'personal', limit = 200, search?: string) {
         // Determine the tasks in scope
         let taskIdsQuery: string[] | null = [];
 
-        if (scope === 'my_tasks') {
+        if (scope === 'my_tasks' || scope === 'owned') {
+            // Tasks I am responsible for
             const owned = await this.db.query.tasks.findMany({
                 where: eq(schema.tasks.responsibleOwner, userId),
                 columns: { id: true }
             });
-            const participated = await this.db.query.taskParticipants.findMany({
-                where: eq(schema.taskParticipants.userId, userId),
-                columns: { taskId: true }
-            });
-
-            const ids = [...owned.map(t => t.id), ...participated.map(p => p.taskId)];
-            taskIdsQuery = [...new Set(ids)];
+            taskIdsQuery = owned.map(t => t.id);
         } else if (scope === 'delegated') {
+            // Tasks I assigned to OTHERS
             const delegated = await this.db.query.tasks.findMany({
-                where: eq(schema.tasks.assignedBy, userId),
+                where: and(
+                    eq(schema.tasks.assignedBy, userId),
+                    ne(schema.tasks.responsibleOwner, userId)
+                ),
                 columns: { id: true }
             });
             taskIdsQuery = delegated.map(t => t.id);
+        } else if (scope === 'participated') {
+            // Tasks where I am a participant but NOT the owner or assigner
+            const participated = await this.db.query.taskParticipants.findMany({
+                where: eq(schema.taskParticipants.userId, userId),
+                with: {
+                    task: true
+                }
+            });
+            taskIdsQuery = participated
+                .filter(p => p.task.responsibleOwner !== userId && p.task.assignedBy !== userId)
+                .map(p => p.taskId);
         } else if (scope === 'all') {
             const owned = await this.db.query.tasks.findMany({
                 where: or(
@@ -44,6 +54,8 @@ export class ActivitiesService {
             });
             const ids = [...owned.map(t => t.id), ...participated.map(p => p.taskId)];
             taskIdsQuery = [...new Set(ids)];
+        } else if (scope === 'personal') {
+            taskIdsQuery = null; // Will filter by log.userId instead
         } else {
             // scope === 'workspace' - show everything
             taskIdsQuery = null;
@@ -52,11 +64,14 @@ export class ActivitiesService {
         if (taskIdsQuery !== null && taskIdsQuery.length === 0) return [];
 
         const logs = await this.db.query.syncLogs.findMany({
-            where: (l, { and, sql }) => {
+            where: (l, { and, sql, eq }) => {
                 const conditions: any[] = [];
-                if (taskIdsQuery) {
+                if (scope === 'personal') {
+                    conditions.push(sql`${l.userId} = ${userId}`);
+                } else if (taskIdsQuery) {
                     conditions.push(sql`${l.taskId} = ANY(${taskIdsQuery})`);
                 }
+
                 if (search) {
                     const searchPattern = `%${search}%`;
                     conditions.push(or(

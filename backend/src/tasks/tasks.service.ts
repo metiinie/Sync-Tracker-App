@@ -886,39 +886,46 @@ export class TasksService {
   }
 
   async getUserStats(userId: string) {
+    // 1. Tasks owned
     const ownedTasks = await this.db.query.tasks.findMany({
       where: eq(schema.tasks.responsibleOwner, userId),
     });
 
-    const delegatedTasksCount = await this.db
-      .select()
-      .from(schema.tasks)
-      .where(eq(schema.tasks.assignedBy, userId));
+    // 2. Tasks participated in
+    const participations = await this.db.query.taskParticipants.findMany({
+      where: eq(schema.taskParticipants.userId, userId),
+      with: { task: true }
+    });
 
+    // 3. Time logs
     const timeLogs = await this.db.query.timeLogs.findMany({
       where: eq(schema.timeLogs.userId, userId),
     });
 
+    // Calculate Blocked: Owned tasks blocked + Participated tasks where I am blocked
+    const ownedBlocked = ownedTasks.filter(t => t.syncState === 'BLOCKED').length;
+    const participatedBlocked = participations.filter(p => p.syncState === 'BLOCKED').length;
+
+    // Calculate Help Requested: Owned tasks help requested + Participated tasks where I requested help
+    const ownedHelp = ownedTasks.filter(t => t.syncState === 'HELP_REQUESTED').length;
+    const participatedHelp = participations.filter(p => p.syncState === 'HELP_REQUESTED').length;
+
+    // Total Participated (excluding owned to avoid double counting for some stats if they somehow overlap)
+    const distinctTaskIds = new Set([
+      ...ownedTasks.map(t => t.id),
+      ...participations.map(p => p.taskId)
+    ]);
+
     const stats = {
-      active: ownedTasks.filter((t) => t.status === 'ACTIVE').length,
+      active: ownedTasks.filter((t) => t.status === 'ACTIVE').length + participations.filter(p => p.task.status === 'ACTIVE').length,
       pending: ownedTasks.filter((t) => t.status === 'PENDING').length,
-      blocked: ownedTasks.filter((t) => t.syncState === 'BLOCKED').length,
-      helpRequested: ownedTasks.filter((t) => t.syncState === 'HELP_REQUESTED')
-        .length,
-      delegated: delegatedTasksCount.length,
+      blocked: ownedBlocked + participatedBlocked,
+      helpRequested: ownedHelp + participatedHelp,
+      total: distinctTaskIds.size,
       totalTimeMins: timeLogs.reduce(
         (sum, log) => sum + parseInt(log.durationMinutes || '0'),
         0,
       ),
-      syncStates: {
-        IN_SYNC: ownedTasks.filter((t) => t.syncState === 'IN_SYNC').length,
-        NEEDS_UPDATE: ownedTasks.filter((t) => t.syncState === 'NEEDS_UPDATE')
-          .length,
-        BLOCKED: ownedTasks.filter((t) => t.syncState === 'BLOCKED').length,
-        HELP_REQUESTED: ownedTasks.filter(
-          (t) => t.syncState === 'HELP_REQUESTED',
-        ).length,
-      },
     };
 
     return stats;

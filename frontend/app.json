@@ -3,6 +3,7 @@
     "name": "SyncTracker",
     "slug": "sync-tracker",
     "version": "1.0.0",
+    "scheme": "synctracker",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

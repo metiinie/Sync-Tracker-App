@@ -137,7 +137,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                 borderBottomColor: isDark ? '#374151' : '#F3F4F6',
             }}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
-                    <ChevronLeft size={24} color="#374151" />
+                    <ChevronLeft size={24} color={isDark ? '#E5E7EB' : '#374151'} />
                 </TouchableOpacity>
                 <View style={{ alignItems: 'center' }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#F9FAFB' : '#111827' }}>
@@ -235,7 +235,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                             <TextInput
                                 style={{ fontSize: 16, fontWeight: '600', color: isDark ? '#F9FAFB' : '#111827', padding: 0 }}
                                 placeholder="e.g., Q1 Revenue Optimization"
-                                placeholderTextColor="#D1D5DB"
+                                placeholderTextColor={isDark ? '#4B5563' : '#D1D5DB'}
                                 value={title}
                                 onChangeText={setTitle}
                                 onFocus={() => setActiveSection(0)}
@@ -262,7 +262,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                             <TextInput
                                 style={{ fontSize: 14, color: isDark ? '#D1D5DB' : '#374151', minHeight: 80, padding: 0, textAlignVertical: 'top' }}
                                 placeholder="Describe the mission and expectations..."
-                                placeholderTextColor="#D1D5DB"
+                                placeholderTextColor={isDark ? '#4B5563' : '#D1D5DB'}
                                 value={description}
                                 onChangeText={setDescription}
                                 multiline

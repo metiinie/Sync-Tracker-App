@@ -10,10 +10,10 @@ export class ActivitiesController {
     @Get()
     async getActivities(
         @Request() req: any,
-        @Query('scope') scope: 'my_tasks' | 'delegated' | 'all' | 'workspace' = 'workspace',
+        @Query('scope') scope: 'my_tasks' | 'delegated' | 'all' | 'workspace' | 'owned' | 'participated' | 'personal' = 'workspace',
         @Query('limit') limit?: number,
         @Query('search') search?: string,
     ) {
-        return this.activitiesService.getActivities(req.user.sub, scope, limit ? Number(limit) : 200, search);
+        return this.activitiesService.getActivities(req.user.userId, scope, limit ? Number(limit) : 200, search);
     }
 }

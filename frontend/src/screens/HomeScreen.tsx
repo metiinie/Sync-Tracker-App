@@ -62,28 +62,18 @@ const HomeScreen = ({ navigation }: any) => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
         };
 
-        socket.on('sync:update', (data: any) => {
-            // Optimistic update or just invalidate
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        });
-
         const events = [
             'task:created', 'task:updated', 'task:deleted',
             'task:transfer', 'task:accepted', 'task:completed',
             'milestone:created', 'milestone:updated', 'milestone:deleted',
-            'comment:new', 'task:join', 'task:leave'
+            'comment:new', 'task:join', 'task:leave', 'sync:update',
+            'notification:new'
         ];
 
         events.forEach(event => socket.on(event, invalidateAll));
 
-        socket.on('notification:new', () => {
-            queryClient.invalidateQueries({ queryKey: ['notifications'] });
-        });
-
         return () => {
-            socket.off('sync:update');
-            events.forEach(event => socket.off(event));
-            socket.off('notification:new');
+            events.forEach(event => socket.off(event, invalidateAll));
         };
     }, [queryClient]);
 
@@ -103,12 +93,19 @@ const HomeScreen = ({ navigation }: any) => {
         const attentionItems: { task: any; role: 'Owner' | 'Assigner' | 'Participant'; riskState: string }[] = [];
 
         tasks.forEach((t: any) => {
+            const userParticipantRecord = t.participants?.find((p: any) => p.userId === userId);
+            const mySyncState = t.responsibleOwner === userId ? t.syncState : (userParticipantRecord?.syncState);
+
             if (t.responsibleOwner === userId && t.status === 'PENDING') {
                 attentionItems.push({ task: t, role: 'Owner', riskState: 'PENDING_ACCEPTANCE' });
             } else if (t.responsibleOwner === userId && t.syncState === 'BLOCKED') {
                 attentionItems.push({ task: t, role: 'Owner', riskState: 'BLOCKED' });
             } else if (t.responsibleOwner === userId && t.syncState === 'HELP_REQUESTED') {
                 attentionItems.push({ task: t, role: 'Owner', riskState: 'HELP_REQUESTED' });
+            } else if (userParticipantRecord && userParticipantRecord.syncState === 'BLOCKED') {
+                attentionItems.push({ task: t, role: 'Member' as any, riskState: 'BLOCKED' });
+            } else if (userParticipantRecord && userParticipantRecord.syncState === 'HELP_REQUESTED') {
+                attentionItems.push({ task: t, role: 'Member' as any, riskState: 'HELP_REQUESTED' });
             } else if (t.assignedBy === userId && t.responsibleOwner !== userId && t.syncState === 'BLOCKED') {
                 attentionItems.push({ task: t, role: 'Assigner', riskState: 'BLOCKED' });
             } else if (t.assignedBy === userId && t.responsibleOwner !== userId && t.syncState === 'HELP_REQUESTED') {

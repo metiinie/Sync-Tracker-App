@@ -4,6 +4,11 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../services/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+
+// Complete auth session if returning from OAuth browser flow
+WebBrowser.maybeCompleteAuthSession();
 
 const LoginScreen = () => {
     const [email, setEmail] = useState('');
@@ -38,15 +43,35 @@ const LoginScreen = () => {
         }
     };
 
-    const handleSSO = async (provider: 'google' | 'azure') => {
+    const handleSSO = async (provider: 'google') => {
         try {
-            const { error } = await supabase.auth.signInWithOAuth({
+            const redirectUrl = Linking.createURL('auth');
+            const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
                 options: {
-                    redirectTo: 'https://wqvsmotfimbfhmsbuiom.supabase.co/auth/v1/callback',
+                    redirectTo: redirectUrl,
+                    skipBrowserRedirect: true,
                 },
             });
+
             if (error) throw error;
+
+            if (data?.url) {
+                const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+
+                if (result.type === 'success' && result.url) {
+                    // @ts-ignore - Supabase types might be outdated, but getSessionFromUrl exists in runtime for OAuth parsing
+                    const { data: sessionData, error: sessionError } = await supabase.auth.getSessionFromUrl({
+                        url: result.url,
+                    });
+
+                    if (sessionError) throw sessionError;
+
+                    if (sessionData.session) {
+                        setSession(sessionData.session);
+                    }
+                }
+            }
         } catch (error: any) {
             Alert.alert('SSO Failed', error.message || 'Something went wrong');
         }
@@ -127,14 +152,7 @@ const LoginScreen = () => {
                             className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
                         >
                             <Ionicons name="logo-google" size={20} color="#ea4335" />
-                            <Text className="ml-2 font-semibold text-gray-700">Google</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleSSO('azure')}
-                            className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
-                        >
-                            <Ionicons name="logo-windows" size={20} color="#00a1f1" />
-                            <Text className="ml-2 font-semibold text-gray-700">Microsoft</Text>
+                            <Text className="ml-2 font-semibold text-gray-700">Continue with Google</Text>
                         </TouchableOpacity>
                     </View>
 

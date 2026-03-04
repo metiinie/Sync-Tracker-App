@@ -8,11 +8,13 @@ import {
     CheckCircle2, LayoutList, Activity, Clock,
     ChevronDown, ChevronUp, ChevronRight, Edit2, Lock,
     Bell, Mail, Timer, Info, Sun, Moon, Database, Share2, RefreshCw,
-    Briefcase, Shield, User as UserIcon, HelpCircle, MapPin
+    Briefcase, Shield, User as UserIcon, HelpCircle, MapPin, Camera
 } from 'lucide-react-native';
 import api from '../services/api';
+import { API_BASE_URL } from '../config/apiConfig';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useProfileStats } from '../hooks/useProfile';
 import { useActivities } from '../hooks/useActivities';
@@ -70,9 +72,81 @@ const ProfileScreen = ({ navigation }: any) => {
     const [view, setView] = useState<'profile' | 'settings'>('profile');
     const [isExporting, setIsExporting] = useState(false);
     const [isClearingCache, setIsClearingCache] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            uploadImage(result.assets[0].uri);
+        }
+    };
+
+    const uploadImage = async (uri: string) => {
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            const filename = uri.split('/').pop() || 'avatar.jpg';
+            const match = /\.(\w+)$/.exec(filename);
+            let type = match ? `image/${match[1]}` : `image/jpeg`;
+            if (type === 'image/jpg') type = 'image/jpeg';
+
+            formData.append('file', {
+                uri,
+                name: filename,
+                type,
+            } as any);
+
+            const token = useAuthStore.getState().token;
+
+            const res = await fetch(`${API_BASE_URL}/upload/avatar`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData,
+            });
+
+            if (!res.ok) {
+                throw new Error(`Upload failed with status ${res.status}`);
+            }
+
+            const data = await res.json();
+            const newAvatarUrl = data.url;
+
+            // Update Supabase metadata for the current session
+            await supabase.auth.updateUser({
+                data: { avatar_url: newAvatarUrl }
+            });
+
+            // Update local auth store state
+            if (user) {
+                useAuthStore.getState().setUser({
+                    ...user,
+                    user_metadata: {
+                        ...(user.user_metadata || {}),
+                        avatar_url: newAvatarUrl
+                    }
+                });
+            }
+
+            Alert.alert('Success', 'Profile photo updated.');
+            queryClient.invalidateQueries({ queryKey: ['profile', 'stats'] });
+        } catch (error: any) {
+            console.error('Upload error:', error);
+            Alert.alert('Error', 'Failed to upload image. Network issue or server error.');
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const { data: stats, isLoading: statsLoading, isRefetching: statsRefetching } = useProfileStats();
-    const { data: recentActivitiesData = [], isLoading: activitiesLoading, isRefetching: activitiesRefetching } = useActivities('my_tasks', '', 3);
+    const { data: recentActivitiesData = [], isLoading: activitiesLoading, isRefetching: activitiesRefetching } = useActivities('personal', '', 3);
 
     const recentActivities = Array.isArray(recentActivitiesData) ? recentActivitiesData : [];
 
@@ -81,27 +155,38 @@ const ProfileScreen = ({ navigation }: any) => {
 
     const onRefresh = () => {
         queryClient.invalidateQueries({ queryKey: ['profile', 'stats'] });
-        queryClient.invalidateQueries({ queryKey: ['activities', 'my_tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['activities', 'personal'] });
     };
 
     useEffect(() => {
         const socket = getSocket();
-        const invalidate = () => queryClient.invalidateQueries({ queryKey: ['profile', 'stats'] });
-        socket.on('task:created', invalidate);
-        socket.on('task:updated', invalidate);
-        socket.on('task:deleted', invalidate);
-        socket.on('task:completed', invalidate);
-        socket.on('task:accepted', invalidate);
-        socket.on('milestone:completed', invalidate);
-        socket.on('sync:update', invalidate);
+        const invalidateStats = () => queryClient.invalidateQueries({ queryKey: ['profile', 'stats'] });
+        const invalidateActivities = () => queryClient.invalidateQueries({ queryKey: ['activities', 'personal'] });
+        const invalidateAll = () => {
+            invalidateStats();
+            invalidateActivities();
+        };
+
+        socket.on('task:created', invalidateAll);
+        socket.on('task:updated', invalidateAll);
+        socket.on('task:deleted', invalidateAll);
+        socket.on('task:completed', invalidateAll);
+        socket.on('task:accepted', invalidateAll);
+        socket.on('milestone:completed', invalidateAll);
+        socket.on('sync:update', invalidateAll);
+        socket.on('timelog:created', invalidateAll);
+        socket.on('comment:new', invalidateActivities);
+
         return () => {
-            socket.off('task:created', invalidate);
-            socket.off('task:updated', invalidate);
-            socket.off('task:deleted', invalidate);
-            socket.off('task:completed', invalidate);
-            socket.off('task:accepted', invalidate);
-            socket.off('milestone:completed', invalidate);
-            socket.off('sync:update', invalidate);
+            socket.off('task:created', invalidateAll);
+            socket.off('task:updated', invalidateAll);
+            socket.off('task:deleted', invalidateAll);
+            socket.off('task:completed', invalidateAll);
+            socket.off('task:accepted', invalidateAll);
+            socket.off('milestone:completed', invalidateAll);
+            socket.off('sync:update', invalidateAll);
+            socket.off('timelog:created', invalidateAll);
+            socket.off('comment:new', invalidateActivities);
         };
     }, [queryClient]);
 
@@ -191,10 +276,15 @@ const ProfileScreen = ({ navigation }: any) => {
                         )}
                     </View>
                     <TouchableOpacity
-                        onPress={() => navigation.navigate('EditProfile')}
+                        onPress={pickImage}
+                        disabled={uploading}
                         className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-gray-100 rounded-full items-center justify-center shadow-sm"
                     >
-                        <Edit2 size={12} color="#1f2937" />
+                        {uploading ? (
+                            <ActivityIndicator size={12} color="#3b82f6" />
+                        ) : (
+                            <Camera size={12} color="#1f2937" />
+                        )}
                     </TouchableOpacity>
                 </View>
 
@@ -231,7 +321,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 Performance Overview
             </Text>
             <View className="flex-row flex-wrap justify-between mb-4">
-                <KPICard label="Tasks Owned" value={stats?.active ?? '0'} isDark={isDark} />
+                <KPICard label="Active Tracks" value={stats?.active ?? '0'} isDark={isDark} />
                 <KPICard label="Tasks Blocked" value={stats?.blocked ?? '0'} valueColor="#EF4444" isDark={isDark} />
                 <KPICard label="Help Requests" value={stats?.helpRequested ?? '0'} valueColor="#3B82F6" isDark={isDark} />
                 <KPICard label="Time Logged" value={stats?.totalTimeMins ? `${Math.floor(stats.totalTimeMins / 60)}h ${stats.totalTimeMins % 60}m` : '0h 0m'} isDark={isDark} />

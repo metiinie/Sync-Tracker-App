@@ -33,9 +33,9 @@ const EditProfileScreen = ({ navigation }: any) => {
         setUploading(true);
         try {
             const formData = new FormData();
-            const filename = uri.split('/').pop();
-            const match = /\.(\w+)$/.exec(filename || '');
-            const type = match ? `image/${match[1]}` : `image`;
+            const filename = uri.split('/').pop() || 'avatar.jpg';
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : `image/jpeg`;
 
             formData.append('file', {
                 uri,
@@ -43,11 +43,7 @@ const EditProfileScreen = ({ navigation }: any) => {
                 type,
             } as any);
 
-            const res = await api.post('/upload/avatar', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            const res = await api.post('/upload/avatar', formData);
 
             const newAvatarUrl = res.data.url;
             setAvatarUrl(newAvatarUrl);

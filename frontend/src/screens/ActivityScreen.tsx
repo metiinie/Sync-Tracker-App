@@ -8,7 +8,7 @@ import {
     Search, Activity as ActivityIcon, Clock, Ban, HelpCircle,
     CheckCircle2, ArrowRightLeft, Flag, RefreshCcw, History,
     ExternalLink, LifeBuoy, Unlock, CheckCircle, X,
-    MessageSquare, Bell, Users
+    MessageSquare, Users, Zap
 } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -63,7 +63,7 @@ const getStatusConfig = (badge: string) => {
         case 'ACTIVE':
             return { color: '#10B981', bg: '#F0FDF4', border: '#BBF7D0', label: 'ACCEPTED' };
         case 'COMMENT':
-            return { color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE', label: 'COMMENT' };
+            return { color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE', label: 'DISCUSSION' };
         case 'NUDGE':
             return { color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', label: 'NUDGE' };
         case 'PARTICIPANT':
@@ -84,7 +84,7 @@ const getStatusIcon = (badge: string, size: number = 22) => {
         case 'IN_SYNC': return <CheckCircle size={size} color="#10B981" strokeWidth={2.5} />;
         case 'NEEDS_UPDATE': return <RefreshCcw size={size} color="#F59E0B" strokeWidth={2.5} />;
         case 'COMMENT': return <MessageSquare size={size} color="#3B82F6" strokeWidth={2.5} />;
-        case 'NUDGE': return <Bell size={size} color="#F59E0B" strokeWidth={2.5} />;
+        case 'NUDGE': return <Zap size={size} color="#F59E0B" strokeWidth={2.5} />;
         case 'PARTICIPANT': return <Users size={size} color="#8B5CF6" strokeWidth={2.5} />;
         default: return <ActivityIcon size={size} color="#6B7280" strokeWidth={2.5} />;
     }
@@ -100,7 +100,7 @@ const FILTERS = [
     { id: 'Transfers', label: 'Transfers', color: '#F59E0B', bg: '#FFFBEB' },
     { id: 'Milestones', label: 'Milestones', color: '#8B5CF6', bg: '#F5F3FF' },
     { id: 'Time Logged', label: 'Time Logged', color: '#14B8A6', bg: '#F0FDFA' },
-    { id: 'Communication', label: 'Communication', color: '#3B82F6', bg: '#EFF6FF' },
+    { id: 'Communication', label: 'Discussion', color: '#3B82F6', bg: '#EFF6FF' },
     { id: 'Team', label: 'Team', color: '#8B5CF6', bg: '#F5F3FF' }
 ];
 
@@ -130,6 +130,13 @@ const ActivityScreen = ({ navigation }: any) => {
         const invalidate = () => queryClient.invalidateQueries({ queryKey: ['activities'] });
 
         // Listeners for all activity-triggering events
+        socket.on('sync:update', invalidate);
+        socket.on('timelog:created', invalidate);
+        socket.on('milestone:created', invalidate);
+        socket.on('milestone:updated', invalidate);
+        socket.on('milestone:deleted', invalidate);
+        socket.on('task:created', invalidate);
+        socket.on('task:updated', invalidate);
         socket.on('sync:update', invalidate);
         socket.on('timelog:created', invalidate);
         socket.on('milestone:created', invalidate);
@@ -338,9 +345,9 @@ const ActivityScreen = ({ navigation }: any) => {
 
     const SCOPE_OPTIONS = [
         { id: 'workspace', label: 'Workspace' },
-        { id: 'my_tasks', label: 'Owned' },
+        { id: 'owned', label: 'Owned' },
         { id: 'delegated', label: 'Delegated' },
-        { id: 'all', label: 'Members' }
+        { id: 'participated', label: 'Members' }
     ];
 
     // ─── MAIN RENDER ────────────────────────────────────
