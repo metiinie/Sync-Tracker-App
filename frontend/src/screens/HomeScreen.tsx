@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../services/socket';
-import { Bell, Shield, X, Clock, ChevronRight } from 'lucide-react-native';
+import { Bell, Shield, X, Clock, ChevronRight, User } from 'lucide-react-native';
 import { isStale, getGreeting } from '../utils/timeAgo';
 
 import AttentionPanel from '../components/dashboard/AttentionPanel';
@@ -236,39 +236,40 @@ const HomeScreen = ({ navigation }: any) => {
                 alignItems: 'center',
             }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    {/* App Icon */}
-                    <View style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 14,
-                        backgroundColor: '#1A1A2E',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 12,
-                    }}>
-                        <View style={{
-                            width: 14,
-                            height: 14,
-                            borderRadius: 7,
-                            borderWidth: 2.5,
-                            borderColor: '#FFFFFF',
-                        }} />
+                    {/* User Profile Avatar */}
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('Profile')}
+                        style={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: 21,
+                            backgroundColor: isDark ? '#1F2937' : '#EFF6FF',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: 12,
+                            borderWidth: 2,
+                            borderColor: isDark ? '#374151' : '#DBEAFE',
+                        }}
+                    >
+                        <User size={20} color="#3B82F6" />
                         <View style={{
                             position: 'absolute',
-                            width: 6,
-                            height: 6,
-                            borderRadius: 3,
+                            width: 10,
+                            height: 10,
+                            borderRadius: 5,
                             backgroundColor: '#10B981',
-                            bottom: 8,
-                            right: 8,
+                            bottom: -2,
+                            right: -2,
+                            borderWidth: 2,
+                            borderColor: isDark ? '#111827' : '#FAFAFA'
                         }} />
-                    </View>
+                    </TouchableOpacity>
                     <View>
                         <Text style={{ fontSize: 20, fontWeight: '800', color: isDark ? '#FFFFFF' : '#111827' }}>
-                            SyncTracker
+                            {displayName}
                         </Text>
-                        <Text style={{ fontSize: 12, color: isDark ? '#9CA3AF' : '#9CA3AF', fontWeight: '500' }}>
-                            {getGreeting()}, {firstName}
+                        <Text style={{ fontSize: 13, color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '600' }}>
+                            {getGreeting()}
                         </Text>
                     </View>
                 </View>
@@ -308,15 +309,8 @@ const HomeScreen = ({ navigation }: any) => {
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={<RefreshControl refreshing={tasksLoading} onRefresh={onRefresh} tintColor="#3B82F6" />}
             >
-                {/* ─── GREETING ────────────────────── */}
-                <View style={{ paddingHorizontal: 24, paddingTop: 20, marginBottom: 24 }}>
-                    <Text style={{ fontSize: 14, color: isDark ? '#9CA3AF' : '#6B7280', fontWeight: '500', marginBottom: 4 }}>
-                        {getGreeting()},
-                    </Text>
-                    <Text style={{ fontSize: 26, fontWeight: '800', color: isDark ? '#FFFFFF' : '#111827' }}>
-                        {firstName}
-                    </Text>
-                </View>
+                {/* ─── TOP CONTENT SPACING ────────────────────── */}
+                <View style={{ paddingTop: 16 }} />
 
                 {/* ─── ATTENTION PANEL ────────────────────── */}
                 {dashboard && (

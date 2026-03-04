@@ -42,7 +42,7 @@ const QuickActionButton = ({ icon: Icon, label, onPress, active }: TabButtonProp
 
 const KPICard = ({ label, value, valueColor = '#111827', isDark }: { label: string, value: string | number, valueColor?: string, isDark: boolean }) => (
     <View
-        className={`p-6 rounded-3xl w-[48%] mb-4 border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
+        className={`p-4 rounded-2xl w-[48%] mb-4 border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
         style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0.3 : 0.03, shadowRadius: 4, elevation: 2 }}
     >
         <Text className="text-gray-400 text-[10px] font-black tracking-widest uppercase mb-2">{label}</Text>
@@ -176,25 +176,19 @@ const ProfileScreen = ({ navigation }: any) => {
             contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
             showsVerticalScrollIndicator={false}
         >
-            {/* Redesigned User Card - Matching Image 1 */}
+            {/* Redesigned User Card */}
             <LinearGradient
                 colors={isDark ? ['#1e293b', '#0f172a'] : ['#f0f7ff', '#ffffff']}
-                className="rounded-[40px] p-8 items-center mb-8 border border-white/50"
+                className="rounded-3xl p-6 items-center mb-8 border border-white/50"
                 style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.05, shadowRadius: 20, elevation: 5 }}
             >
                 <View className="relative mb-4">
-                    <View className="w-28 h-28 rounded-full border-4 border-white shadow-sm overflow-hidden bg-gray-100">
-                        {user?.user_metadata?.avatar_url ? (
-                            <Image source={{ uri: user.user_metadata.avatar_url }} className="w-full h-full" />
-                        ) : (
-                            <View className="w-full h-full items-center justify-center" style={{ backgroundColor: isDark ? '#1e293b' : '#eff6ff' }}>
-                                <UserIcon size={40} color="#3b82f6" />
-                            </View>
-                        )}
+                    <View className="w-20 h-20 rounded-full border-4 border-white shadow-sm items-center justify-center bg-blue-50">
+                        <UserIcon size={40} color="#3b82f6" />
                     </View>
                     <TouchableOpacity
                         onPress={() => navigation.navigate('EditProfile')}
-                        className="absolute bottom-1 right-1 w-8 h-8 bg-white border border-gray-100 rounded-full items-center justify-center shadow-sm"
+                        className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-gray-100 rounded-full items-center justify-center shadow-sm"
                     >
                         <Edit2 size={12} color="#1f2937" />
                     </TouchableOpacity>
@@ -211,7 +205,7 @@ const ProfileScreen = ({ navigation }: any) => {
 
                     <View className="flex-row">
                         <View className="bg-purple-50 px-4 py-1.5 rounded-full mr-2">
-                            <Text className="text-purple-600 font-bold text-[10px] uppercase">Standard</Text>
+                            <Text className="text-purple-600 font-bold text-[10px] uppercase">User</Text>
                         </View>
                         <View className="bg-green-50 px-4 py-1.5 rounded-full flex-row items-center">
                             <View className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5" />
@@ -221,7 +215,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 </View>
             </LinearGradient>
 
-            {/* Quick Actions - Card Style */}
+            {/* Quick Actions */}
             <View className="flex-row mb-10 -mx-1">
                 <QuickActionButton icon={LayoutList} label="Tasks" onPress={() => navigation.navigate('Tasks')} />
                 <QuickActionButton icon={Activity} label="Activity" onPress={() => navigation.navigate('Activity')} />
@@ -249,7 +243,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
             </View>
 
-            <View className={`rounded-[32px] mb-8 border shadow-sm ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-50'}`}>
+            <View className={`rounded-3xl mb-8 border shadow-sm ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-50'}`}>
                 {recentActivities.length > 0 ? recentActivities.map((act: any, idx: number, arr: any[]) => (
                     <TouchableOpacity
                         key={act.id}
@@ -277,46 +271,29 @@ const ProfileScreen = ({ navigation }: any) => {
 
     const renderSettings = () => (
         <ScrollView className={`flex-1 ${isDark ? 'bg-gray-900' : 'bg-[#f8f9fb]'}`} showsVerticalScrollIndicator={false}>
-            {/* Header Section from Image 2 */}
-            <View className="items-center pt-6 pb-8">
-                <View className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden bg-gray-100 mb-4">
-                    {user?.user_metadata?.avatar_url ? (
-                        <Image source={{ uri: user.user_metadata.avatar_url }} className="w-full h-full" />
-                    ) : (
-                        <View className="w-full h-full bg-blue-100 items-center justify-center">
-                            <UserIcon size={32} color="#3b82f6" />
-                        </View>
-                    )}
-                </View>
-                <Text className={`text-xl font-black ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{displayName}</Text>
-                <View className="flex-row items-center mt-1">
-                    <MapPin size={12} color="#9ca3af" />
-                    <Text className="text-gray-400 text-xs font-bold ml-1">Global Workspace</Text>
-                </View>
-                <Text className="text-gray-400 text-xs font-bold mt-1">System User</Text>
-
-                <TouchableOpacity className="bg-[#e91e63] px-8 py-3 rounded-2xl mt-6 shadow-lg shadow-pink-200">
-                    <Text className="text-white font-black text-sm">Upgrade Now - Go Pro</Text>
-                </TouchableOpacity>
+            {/* Header Section simplified */}
+            <View className="items-center pt-12 pb-10">
+                <Text className={`text-2xl font-black ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>{displayName}</Text>
             </View>
 
             {/* Settings Card */}
-            <View className={`flex-1 bg-white rounded-t-[40px] pt-8 pb-32 border-t border-gray-100 ${isDark ? 'bg-gray-800 border-gray-700' : ''}`}>
+            <View className={`flex-1 bg-white rounded-t-3xl pt-6 pb-24 border-t border-gray-100 ${isDark ? 'bg-gray-800 border-gray-700' : ''}`}>
                 <Text className={`px-8 text-xl font-black mb-4 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>Settings</Text>
 
                 <SettingItem
                     isDark={isDark}
-                    icon={Moon}
-                    label="Dark Mode"
-                    color="#000000"
-                    rightElement={
-                        <Switch
-                            value={isDark}
-                            onValueChange={() => updateSettings({ theme: isDark ? 'light' : 'dark' })}
-                            trackColor={{ false: '#e2e8f0', true: '#000' }}
-                            thumbColor="#fff"
-                        />
-                    }
+                    icon={UserIcon}
+                    label="Edit Account"
+                    color="#4dd0e1"
+                    onPress={() => navigation.navigate('EditProfile')}
+                />
+
+                <SettingItem
+                    isDark={isDark}
+                    icon={Lock}
+                    label="Password"
+                    color="#ff5252"
+                    onPress={() => navigation.navigate('Security')}
                 />
 
                 <SettingItem
@@ -335,26 +312,10 @@ const ProfileScreen = ({ navigation }: any) => {
 
                 <SettingItem
                     isDark={isDark}
-                    icon={Lock}
+                    icon={Shield}
                     label="Privacy"
                     color="#f06292"
-                    onPress={() => navigation.navigate('Security')}
-                />
-
-                <SettingItem
-                    isDark={isDark}
-                    icon={Shield}
-                    label="Security"
-                    color="#ff5252"
-                    onPress={() => navigation.navigate('Security')}
-                />
-
-                <SettingItem
-                    isDark={isDark}
-                    icon={UserIcon}
-                    label="Account"
-                    color="#4dd0e1"
-                    onPress={() => navigation.navigate('EditProfile')}
+                    onPress={() => navigation.navigate('Privacy')}
                 />
 
                 <SettingItem
@@ -367,10 +328,39 @@ const ProfileScreen = ({ navigation }: any) => {
 
                 <SettingItem
                     isDark={isDark}
+                    icon={RefreshCw}
+                    label="Real-time Sync"
+                    color="#6366f1"
+                    rightElement={
+                        <Switch
+                            value={settings?.realTimeSync}
+                            onValueChange={handleRealTimeSyncToggle}
+                            trackColor={{ false: '#e2e8f0', true: '#6366f1' }}
+                            thumbColor="#fff"
+                        />
+                    }
+                />
+                <SettingItem
+                    isDark={isDark}
+                    icon={Share2}
+                    label="Export Logs"
+                    color="#8b5cf6"
+                    onPress={handleExportLogs}
+                />
+                <SettingItem
+                    isDark={isDark}
+                    icon={Database}
+                    label="Clear Cache"
+                    color="#64748b"
+                    onPress={handleClearCache}
+                />
+
+                <SettingItem
+                    isDark={isDark}
                     icon={HelpCircle}
                     label="Help"
                     color="#4fc3f7"
-                    onPress={() => Alert.alert("Help Center", "Visit our help center at support.synctracker.io")}
+                    onPress={() => navigation.navigate('Help')}
                 />
 
                 <SettingItem
@@ -378,40 +368,8 @@ const ProfileScreen = ({ navigation }: any) => {
                     icon={Info}
                     label="About"
                     color="#80deea"
-                    onPress={() => Alert.alert("About", "Sync Tracker v1.0.4\nDeveloped by Google Deepmind Team")}
+                    onPress={() => navigation.navigate('About')}
                 />
-
-                {/* Additional Utility Settings from original */}
-                <View className="mt-4 border-t border-gray-50 pt-4">
-                    <SettingItem
-                        isDark={isDark}
-                        icon={RefreshCw}
-                        label="Real-time Sync"
-                        color="#6366f1"
-                        rightElement={
-                            <Switch
-                                value={settings?.realTimeSync}
-                                onValueChange={handleRealTimeSyncToggle}
-                                trackColor={{ false: '#e2e8f0', true: '#6366f1' }}
-                                thumbColor="#fff"
-                            />
-                        }
-                    />
-                    <SettingItem
-                        isDark={isDark}
-                        icon={Share2}
-                        label="Export Logs"
-                        color="#8b5cf6"
-                        onPress={handleExportLogs}
-                    />
-                    <SettingItem
-                        isDark={isDark}
-                        icon={Database}
-                        label="Clear Cache"
-                        color="#64748b"
-                        onPress={handleClearCache}
-                    />
-                </View>
 
                 <TouchableOpacity
                     onPress={handleLogout}
@@ -449,7 +407,12 @@ const ProfileScreen = ({ navigation }: any) => {
                         <SettingsIcon size={20} color="#111827" />
                     </TouchableOpacity>
                 ) : (
-                    <View className="w-10" />
+                    <TouchableOpacity
+                        onPress={() => updateSettings({ theme: isDark ? 'light' : 'dark' })}
+                        className={`w-10 h-10 items-center justify-center rounded-full border shadow-sm ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-50'}`}
+                    >
+                        {isDark ? <Sun size={20} color="#FBBF24" /> : <Moon size={20} color="#6366f1" />}
+                    </TouchableOpacity>
                 )}
             </View>
 

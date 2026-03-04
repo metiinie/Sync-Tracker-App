@@ -70,7 +70,7 @@ const SecurityScreen = ({ navigation }: any) => {
                     <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
                         <ArrowLeft size={24} color={isDark ? '#F9FAFB' : '#111827'} />
                     </TouchableOpacity>
-                    <Text className={`text-lg font-black ml-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Security</Text>
+                    <Text className={`text-lg font-black ml-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Password</Text>
                     <View className="flex-1" />
                 </View>
 

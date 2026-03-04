@@ -15,8 +15,10 @@ export class WsJwtGuard implements CanActivate {
     this.client = new JwksClient({
       jwksUri: `${supabaseUrl}/auth/v1/.well-known/jwks.json`,
       cache: true,
+      cacheMaxEntries: 10,
+      cacheMaxAge: 10 * 60 * 60 * 1000, // 10 hours
       rateLimit: true,
-      jwksRequestsPerMinute: 5,
+      jwksRequestsPerMinute: 20, // Increased to handle network retry bursts
     });
   }
 

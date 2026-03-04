@@ -55,7 +55,7 @@ const EditProfileScreen = ({ navigation }: any) => {
                     <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
                         <ArrowLeft size={24} color={isDark ? '#F9FAFB' : '#111827'} />
                     </TouchableOpacity>
-                    <Text className={`text-lg font-black ml-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Edit Profile</Text>
+                    <Text className={`text-lg font-black ml-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Edit Account</Text>
                     <View className="flex-1" />
                 </View>
 
@@ -99,7 +99,7 @@ const EditProfileScreen = ({ navigation }: any) => {
                         ) : (
                             <>
                                 <Save size={20} color="#fff" />
-                                <Text className="text-white font-bold text-base ml-2">Save Profile</Text>
+                                <Text className="text-white font-bold text-base ml-2">Save Account Details</Text>
                             </>
                         )}
                     </TouchableOpacity>

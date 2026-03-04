@@ -19,7 +19,9 @@ import EditProfileScreen from './src/screens/EditProfileScreen';
 import SecurityScreen from './src/screens/SecurityScreen';
 import WorkspacesScreen from './src/screens/WorkspacesScreen';
 import NotificationSettingsScreen from './src/screens/NotificationSettingsScreen';
-
+import PrivacyScreen from './src/screens/PrivacyScreen';
+import HelpScreen from './src/screens/HelpScreen';
+import AboutScreen from './src/screens/AboutScreen';
 const Stack = createNativeStackNavigator();
 const queryClient = new QueryClient();
 
@@ -107,6 +109,21 @@ export default function App() {
             <Stack.Screen
               name="NotificationSettings"
               component={NotificationSettingsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Privacy"
+              component={PrivacyScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Help"
+              component={HelpScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="About"
+              component={AboutScreen}
               options={{ headerShown: false }}
             />
           </>
