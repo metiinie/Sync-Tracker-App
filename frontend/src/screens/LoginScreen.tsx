@@ -38,10 +38,13 @@ const LoginScreen = () => {
         }
     };
 
-    const handleSSO = async (provider: 'google' | 'linkedin_oidc') => {
+    const handleSSO = async (provider: 'google' | 'azure') => {
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider,
+                options: {
+                    redirectTo: 'https://wqvsmotfimbfhmsbuiom.supabase.co/auth/v1/callback',
+                },
             });
             if (error) throw error;
         } catch (error: any) {
@@ -127,11 +130,11 @@ const LoginScreen = () => {
                             <Text className="ml-2 font-semibold text-gray-700">Google</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            onPress={() => handleSSO('linkedin_oidc')}
+                            onPress={() => handleSSO('azure')}
                             className="flex-1 flex-row items-center justify-center p-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
                         >
-                            <Ionicons name="logo-linkedin" size={20} color="#0077b5" />
-                            <Text className="ml-2 font-semibold text-gray-700">LinkedIn</Text>
+                            <Ionicons name="logo-windows" size={20} color="#00a1f1" />
+                            <Text className="ml-2 font-semibold text-gray-700">Microsoft</Text>
                         </TouchableOpacity>
                     </View>
 

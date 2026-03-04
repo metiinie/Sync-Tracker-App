@@ -1,26 +1,29 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Dimensions } from 'react-native';
-import Svg, { G, Circle, Line, Text as SvgText, Image as SvgImage } from 'react-native-svg';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Dimensions, Text } from 'react-native';
+import Svg, { G, Circle, Line, Text as SvgText, Defs, RadialGradient, Stop } from 'react-native-svg';
 import * as d3 from 'd3-force';
+import { MotiView } from 'moti';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Node extends d3.SimulationNodeDatum {
     id: string;
-    type: 'TASK' | 'OWNER' | 'PARTICIPANT' | 'ASSIGNER';
     label: string;
+    type: 'task' | 'owner' | 'participant' | 'assigner';
+    state?: string;
     avatarUrl?: string;
-    status?: string;
 }
 
 interface Link extends d3.SimulationLinkDatum<Node> {
     source: string;
     target: string;
+    type: 'auth' | 'participation';
 }
 
 interface VisionGraphProps {
     task: any;
-    width?: number;
+    ownerName: string;
+    assignerName: string;
     height?: number;
 }
 
@@ -30,178 +33,159 @@ const getSyncColor = (state: string) => {
         case 'NEEDS_UPDATE': return '#F59E0B';
         case 'BLOCKED': return '#EF4444';
         case 'HELP_REQUESTED': return '#3B82F6';
+        case 'PENDING': return '#8B5CF6';
+        case 'COMPLETED': return '#111827';
         default: return '#6B7280';
     }
 };
 
 const getInitials = (name: string) => {
     if (!name) return '??';
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.substring(0, 2).toUpperCase();
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
 };
 
-const VisionGraph = ({ task, width = SCREEN_WIDTH, height = 500 }: VisionGraphProps) => {
+const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName, height = 500 }) => {
     const [nodes, setNodes] = useState<Node[]>([]);
-    const [links, setLinks] = useState<any[]>([]);
+    const [links, setLinks] = useState<Link[]>([]);
+    const simulationRef = useRef<d3.Simulation<Node, undefined> | null>(null);
 
+    // Create graph data
     useEffect(() => {
-        if (!task) return;
-
-        // 1. Prepare Nodes
-        const graphNodes: Node[] = [
-            { id: 'task', type: 'TASK', label: 'TASK', fx: width / 2, fy: 80 },
-            {
-                id: `owner-${task.responsibleOwner}`,
-                type: 'OWNER',
-                label: task.owner?.name || 'Owner',
-                avatarUrl: task.owner?.avatarUrl,
-                status: task.syncState,
-                fx: width / 2,
-                fy: 180
-            }
+        const newNodes: Node[] = [
+            { id: 'task', label: 'TASK', type: 'task' },
+            { id: 'assigner', label: assignerName, type: 'assigner' },
+            { id: 'owner', label: ownerName, type: 'owner', state: task.syncState },
         ];
 
-        if (task.assigner) {
-            graphNodes.push({
-                id: `assigner-${task.assignerId}`,
-                type: 'ASSIGNER',
-                label: 'ORIGIN',
-                avatarUrl: task.assigner.avatarUrl,
-                fx: (width / 2) - 100,
-                fy: 80
+        const newLinks: Link[] = [
+            { source: 'assigner', target: 'task', type: 'auth' },
+            { source: 'task', target: 'owner', type: 'auth' },
+        ];
+
+        if (task.participants) {
+            task.participants.forEach((p: any) => {
+                newNodes.push({
+                    id: p.userId,
+                    label: p.user?.name || 'User',
+                    type: 'participant',
+                    state: p.syncState || 'IN_SYNC'
+                });
+                newLinks.push({ source: 'owner', target: p.userId, type: 'participation' });
             });
         }
 
-        task.participants?.forEach((p: any, i: number) => {
-            graphNodes.push({
-                id: `participant-${p.userId}`,
-                type: 'PARTICIPANT',
-                label: p.user?.name || 'Participant',
-                avatarUrl: p.user?.avatarUrl,
-                status: p.syncState || 'IN_SYNC'
+        setNodes(newNodes);
+        setLinks(newLinks);
+    }, [task, ownerName, assignerName, simulationRef]);
+
+    // Initialize Simulation
+    useEffect(() => {
+        if (nodes.length === 0) return;
+
+        const simulation = d3.forceSimulation<Node>(nodes)
+            .force('link', d3.forceLink<Node, Link>(links).id(d => (d as Node).id).distance(d => (d as Link).type === 'auth' ? 80 : 100))
+            .force('charge', d3.forceManyBody().strength(-300))
+            .force('center', d3.forceCenter(SCREEN_WIDTH / 2, height / 2))
+            .force('x', d3.forceX(SCREEN_WIDTH / 2).strength(0.1))
+            .force('y', d3.forceY<Node>().y(d => {
+                const node = d as Node;
+                if (node.type === 'assigner') return height * 0.2;
+                if (node.type === 'task') return height * 0.4;
+                if (node.type === 'owner') return height * 0.6;
+                return height * 0.8;
+            }).strength(0.5))
+            .on('tick', () => {
+                setNodes([...nodes]);
             });
-        });
 
-        // 2. Prepare Links
-        const graphLinks: Link[] = [
-            { source: 'task', target: `owner-${task.responsibleOwner}` }
-        ];
+        simulationRef.current = simulation;
 
-        if (task.assigner) {
-            graphLinks.push({ source: `assigner-${task.assignerId}`, target: 'task' });
-        }
-
-        task.participants?.forEach((p: any) => {
-            graphLinks.push({ source: `owner-${task.responsibleOwner}`, target: `participant-${p.userId}` });
-        });
-
-        // 3. Initialize Simulation
-        const simulation = d3.forceSimulation<Node>(graphNodes)
-            .force('link', d3.forceLink<Node, Link>(graphLinks).id(d => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-500))
-            .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(40));
-
-        // Let simulation run for a bit to stabilize
-        for (let i = 0; i < 100; ++i) simulation.tick();
-
-        setNodes([...graphNodes]);
-        setLinks([...graphLinks]);
-
-        return () => simulation.stop();
-    }, [task, width, height]);
+        return () => {
+            simulation.stop();
+        };
+    }, [nodes.length, height, links]);
 
     return (
-        <View style={{ width, height, backgroundColor: '#FAFAFA' }}>
-            <Svg width={width} height={height}>
-                {/* Render Links */}
-                {links.map((link, i) => (
-                    <Line
-                        key={`link-${i}`}
-                        x1={link.source.x}
-                        y1={link.source.y}
-                        x2={link.target.x}
-                        y2={link.target.y}
-                        stroke="#E2E8F0"
-                        strokeWidth="2"
-                        strokeDasharray={link.source.type === 'TASK' ? "5,5" : "0"}
-                    />
-                ))}
+        <View style={{ height, width: SCREEN_WIDTH, backgroundColor: '#FAFAFA' }}>
+            <Svg height={height} width={SCREEN_WIDTH}>
+                <Defs>
+                    <RadialGradient id="blockedGlow" cx="50%" cy="50%" rx="50%" ry="50%">
+                        <Stop offset="0%" stopColor="#EF4444" stopOpacity="0.3" />
+                        <Stop offset="100%" stopColor="#EF4444" stopOpacity="0" />
+                    </RadialGradient>
+                    <RadialGradient id="helpGlow" cx="50%" cy="50%" rx="50%" ry="50%">
+                        <Stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
+                        <Stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
+                    </RadialGradient>
+                </Defs>
 
-                {/* Render Nodes */}
-                {nodes.map((node, i) => {
-                    const isTask = node.type === 'TASK';
-                    const isOwner = node.type === 'OWNER';
-                    const color = node.status ? getSyncColor(node.status) : (isTask ? '#111827' : '#9CA3AF');
-                    const size = isTask ? 30 : (isOwner ? 36 : 28);
+                {/* Draw Links */}
+                {links.map((link, i) => {
+                    const sourceNode = typeof link.source === 'string' ? nodes.find(n => n.id === link.source) : (link.source as Node);
+                    const targetNode = typeof link.target === 'string' ? nodes.find(n => n.id === link.target) : (link.target as Node);
+
+                    if (!sourceNode || !targetNode || sourceNode.x === undefined || sourceNode.y === undefined || targetNode.x === undefined || targetNode.y === undefined) return null;
 
                     return (
-                        <G key={`node-${node.id}`} translate={`${node.x},${node.y}`}>
-                            {/* Outline/Aura for status */}
-                            {node.status && (
-                                <Circle
-                                    r={size + 4}
-                                    fill={color}
-                                    opacity={0.2}
-                                />
+                        <Line
+                            key={`link-${i}`}
+                            x1={sourceNode.x}
+                            y1={sourceNode.y}
+                            x2={targetNode.x}
+                            y2={targetNode.y}
+                            stroke={link.type === 'auth' ? '#D1D5DB' : '#E5E7EB'}
+                            strokeWidth={link.type === 'auth' ? 2 : 1.5}
+                            strokeDasharray={link.type === 'auth' ? '0' : '5,5'}
+                        />
+                    );
+                })}
+
+                {/* Draw Nodes */}
+                {nodes.map((node) => {
+                    if (node.x === undefined || node.y === undefined) return null;
+                    const isBlocked = node.state === 'BLOCKED';
+                    const isHelp = node.state === 'HELP_REQUESTED';
+                    const color = node.type === 'task' ? '#111827' : getSyncColor(node.state || 'IN_SYNC');
+                    const size = node.type === 'task' ? 30 : node.type === 'owner' ? 35 : 28;
+
+                    return (
+                        <G key={`node-${node.id}`} x={node.x} y={node.y}>
+                            {/* Glow effects for urgent states */}
+                            {isBlocked && (
+                                <Circle r={size * 1.5} fill="url(#blockedGlow)" />
+                            )}
+                            {isHelp && (
+                                <Circle r={size * 1.5} fill="url(#helpGlow)" />
                             )}
 
-                            {/* Main Circle */}
+                            {/* Node Body */}
                             <Circle
                                 r={size}
-                                fill={isTask ? '#111827' : '#FFF'}
-                                stroke={color}
-                                strokeWidth={isOwner ? 3 : 2}
+                                fill={node.type === 'assigner' ? '#F3F4F6' : color}
+                                stroke={node.type === 'assigner' ? '#D1D5DB' : '#FFF'}
+                                strokeWidth={2}
                             />
 
-                            {/* Avatar or Initial */}
-                            {isTask ? (
-                                <SvgText
-                                    y={5}
-                                    fill="#FFF"
-                                    fontSize="10"
-                                    fontWeight="900"
-                                    textAnchor="middle"
-                                >
-                                    TASK
-                                </SvgText>
-                            ) : (
-                                <G>
-                                    <View style={{ width: size * 2, height: size * 2, borderRadius: size, overflow: 'hidden', position: 'absolute', top: -size, left: -size }}>
-                                        {node.avatarUrl ? (
-                                            <SvgImage
-                                                x={-size}
-                                                y={-size}
-                                                width={size * 2}
-                                                height={size * 2}
-                                                href={{ uri: node.avatarUrl }}
-                                                clipPath={`circle(${size}px at ${size}px ${size}px)`}
-                                            />
-                                        ) : (
-                                            <SvgText
-                                                y={size * 0.15}
-                                                fill={color}
-                                                fontSize={size * 0.4}
-                                                fontWeight="bold"
-                                                textAnchor="middle"
-                                            >
-                                                {getInitials(node.label)}
-                                            </SvgText>
-                                        )}
-                                    </View>
-                                </G>
-                            )}
+                            {/* Initials for owners/participants */}
+                            <SvgText
+                                y={5}
+                                fill={node.type === 'assigner' ? '#6B7280' : '#FFF'}
+                                fontSize={size * 0.4}
+                                fontWeight="bold"
+                                textAnchor="middle"
+                            >
+                                {node.type === 'task' ? 'TRACK' : getInitials(node.label)}
+                            </SvgText>
 
-                            {/* Label */}
+                            {/* Node Label (External) */}
                             <SvgText
                                 y={size + 15}
                                 fill="#4B5563"
                                 fontSize="10"
-                                fontWeight="700"
+                                fontWeight="bold"
                                 textAnchor="middle"
                             >
-                                {isTask ? task.title.substring(0, 15) + (task.title.length > 15 ? '...' : '') : node.label.split(' ')[0]}
+                                {node.label.length > 12 ? node.label.substring(0, 10) + '...' : node.label}
                             </SvgText>
                         </G>
                     );

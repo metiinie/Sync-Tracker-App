@@ -7,8 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     ChevronLeft, Network, Clock, FileText, CheckCircle2,
     AlertCircle, HelpCircle, User, Users, Plus, X, ArrowRightLeft,
-    ChevronDown, ChevronUp, History, Eye, Send, RefreshCcw, Paperclip, Image as ImageIcon
+    ChevronDown, ChevronUp, History, Eye, Send, RefreshCcw, Paperclip, Image as ImageIcon, MessageCircle, Trash2, BarChart2, Target
 } from 'lucide-react-native';
+import VisionGraph from '../components/vision/VisionGraph';
 import * as ImagePicker from 'expo-image-picker';
 
 import Svg, { Circle, Line, Text as SvgText, G } from 'react-native-svg';
@@ -18,8 +19,6 @@ import { getSocket } from '../services/socket';
 import { timeAgo } from '../utils/timeAgo';
 import { useTaskDetail, useTaskComments, useTaskMutations, useTransferActions, useTaskTransfers, useUsers } from '../hooks/useTaskDetail';
 import { useQueryClient } from '@tanstack/react-query';
-import VisionGraph from '../components/vision/VisionGraph';
-import { Image } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -845,7 +844,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                     </View>
                                     <View style={{ alignItems: 'flex-end' }}>
                                         <Text style={{ fontSize: 10, fontWeight: '800', color: '#9CA3AF', letterSpacing: 0.5, marginBottom: 4 }}>LAST SYNC</Text>
-                                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563' }}>{lastSyncTime ? lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Never'}</Text>
+                                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563' }}>{task.lastUpdatedAt ? new Date(task.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Never'}</Text>
                                     </View>
                                 </View>
                             </View>
@@ -1930,10 +1929,10 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 />
                                 <TouchableOpacity
                                     onPress={() => handleTransferInitiate(selectedNewOwner.id, transferNote)}
-                                    disabled={isTransferring}
+                                    disabled={transferTask.isPending}
                                     style={{ marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center' }}
                                 >
-                                    {isTransferring ? (
+                                    {transferTask.isPending ? (
                                         <ActivityIndicator size="small" color="#FFF" />
                                     ) : (
                                         <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Initiate Transfer to {selectedNewOwner.name.split(' ')[0]}</Text>
@@ -1972,131 +1971,115 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                     </View>
 
                     {visionTab === 'graph' ? (
-                        <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-                            <VisionGraph task={task} height={SCREEN_HEIGHT - 150} />
+                        <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+                            <VisionGraph
+                                task={task}
+                                ownerName={ownerName}
+                                assignerName={assignerName}
+                                height={SCREEN_HEIGHT * 0.7}
+                            />
 
                             {/* Legend */}
-                            <View style={{ position: 'absolute', bottom: 30, left: 20, right: 20, backgroundColor: '#FFF', padding: 15, borderRadius: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 12, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 }}>
+                            <View style={{
+                                position: 'absolute',
+                                bottom: 20,
+                                left: 20,
+                                right: 20,
+                                backgroundColor: 'rgba(255,255,255,0.9)',
+                                padding: 12,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: '#F3F4F6',
+                                flexDirection: 'row',
+                                flexWrap: 'wrap',
+                                justifyContent: 'center',
+                                gap: 12
+                            }}>
                                 {[
                                     { label: 'In Sync', color: '#10B981' },
-                                    { label: 'Needs Update', color: '#F59E0B' },
+                                    { label: 'Stale', color: '#F59E0B' },
                                     { label: 'Blocked', color: '#EF4444' },
-                                    { label: 'Help Requested', color: '#3B82F6' }
-                                ].map(l => (
-                                    <View key={l.label} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <Circle cx={0} cy={0} r={5} fill={l.color} />
-                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: l.color, marginRight: 6 }} />
-                                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#4B5563' }}>{l.label}</Text>
+                                    { label: 'Help', color: '#3B82F6' }
+                                ].map(item => (
+                                    <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color, marginRight: 6 }} />
+                                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#6B7280' }}>{item.label}</Text>
                                     </View>
                                 ))}
                             </View>
                         </View>
-                                        {getInitials(ownerName)}
-                </SvgText>
-                <SvgText x={SCREEN_WIDTH / 2} y={230} fill="#4B5563" fontSize="11" textAnchor="middle" fontWeight="600">
-                    {ownerName}
-                </SvgText>
-                <SvgText x={SCREEN_WIDTH / 2} y={245} fill="#9CA3AF" fontSize="9" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
-                    OWNER
-                </SvgText>
-            </G>
-
-            {/* Participant Nodes */}
-            {task.participants?.map((p: any, i: number) => {
-                const total = task.participants.length;
-                const radius = 120;
-                const angle = (Math.PI / (total + 1)) * (i + 1);
-                const pos = {
-                    x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
-                    y: 180 + radius * Math.sin(Math.PI + angle)
-                };
-                const roleColor = getRoleConfig(p.role === 'contributor' ? 'Contributor' : 'Helper').color;
-                return (
-                    <G key={`p-${i}`}>
-                        <Circle cx={pos.x} cy={pos.y} r="22" fill="#F8FAFC" stroke={getSyncConfig(p.syncState || 'IN_SYNC').color} strokeWidth="2.5" />
-                        <SvgText x={pos.x} y={pos.y + 4} fill="#64748B" fontSize="9" textAnchor="middle" fontWeight="700">
-                            {getInitials(p.user?.name)}
-                        </SvgText>
-                        <SvgText x={pos.x} y={pos.y + 35} fill="#9CA3AF" fontSize="8" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
-                            {p.role.toUpperCase()}
-                        </SvgText>
-                    </G>
-                );
-            })}
-        </Svg>
-                        </View >
                     ) : (
-    <ScrollView style={{ flex: 1, backgroundColor: '#FAFAFA' }} contentContainerStyle={{ padding: 20 }}>
-        <View style={{ borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFF' }}>
-            {/* Header Row */}
-            <View style={{ flexDirection: 'row', backgroundColor: '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-                <Text style={{ flex: 2, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>STAKEHOLDER</Text>
-                <Text style={{ flex: 1.5, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>ROLE AUTHORITY</Text>
-                <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, textAlign: 'right' }}>STATUS</Text>
-            </View>
+                        <ScrollView style={{ flex: 1, backgroundColor: '#FAFAFA' }} contentContainerStyle={{ padding: 20 }}>
+                            <View style={{ borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFF' }}>
+                                {/* Header Row */}
+                                <View style={{ flexDirection: 'row', backgroundColor: '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                                    <Text style={{ flex: 2, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>STAKEHOLDER</Text>
+                                    <Text style={{ flex: 1.5, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>ROLE AUTHORITY</Text>
+                                    <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, textAlign: 'right' }}>STATUS</Text>
+                                </View>
 
-            {/* Hierarchy Rows */}
-            {treeParticipants.map((p, i) => {
-                const roleCfg = getRoleConfig(p.authority);
-                const syncCfg = getSyncConfig(p.syncState || 'IN_SYNC');
-                const isNodeBlocked = p.syncState === 'BLOCKED';
+                                {/* Hierarchy Rows */}
+                                {treeParticipants.map((p, i) => {
+                                    const roleCfg = getRoleConfig(p.authority);
+                                    const syncCfg = getSyncConfig(p.syncState || 'IN_SYNC');
+                                    const isNodeBlocked = p.syncState === 'BLOCKED';
 
-                return (
-                    <View key={i} style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingVertical: 14,
-                        paddingHorizontal: 16,
-                        borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
-                        borderBottomColor: '#F3F4F6',
-                        backgroundColor: isNodeBlocked ? '#FEF2F2' : '#FFFFFF',
-                    }}>
-                        {/* Stakeholder */}
-                        <TouchableOpacity
-                            onPress={() => {
-                                setSelectedUserData({ ...p.user, role: p.role, authority: p.authority });
-                                setShowUserModal(true);
-                            }}
-                            style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}
-                        >
-                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
+                                    return (
+                                        <View key={i} style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            paddingVertical: 14,
+                                            paddingHorizontal: 16,
+                                            borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
+                                            borderBottomColor: '#F3F4F6',
+                                            backgroundColor: isNodeBlocked ? '#FEF2F2' : '#FFFFFF',
+                                        }}>
+                                            {/* Stakeholder */}
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setSelectedUserData({ ...p.user, role: p.role, authority: p.authority });
+                                                    setShowUserModal(true);
+                                                }}
+                                                style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}
+                                            >
+                                                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
+                                                </View>
+                                                <View>
+                                                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
+                                                        {p.user?.name}
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
+
+                                            {/* Role Authority */}
+                                            <View style={{ flex: 1.5, justifyContent: 'center' }}>
+                                                <View style={{
+                                                    alignSelf: 'flex-start',
+                                                    backgroundColor: roleCfg.bg,
+                                                    paddingHorizontal: 8,
+                                                    paddingVertical: 4,
+                                                    borderRadius: 6,
+                                                }}>
+                                                    <Text style={{ fontSize: 10, fontWeight: '800', color: roleCfg.color, textTransform: 'uppercase' }}>
+                                                        {p.authority}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            {/* Status */}
+                                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncCfg.color }} />
+                                            </View>
+                                        </View>
+                                    );
+                                })}
                             </View>
-                            <View>
-                                <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
-                                    {p.user?.name}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        {/* Role Authority */}
-                        <View style={{ flex: 1.5, justifyContent: 'center' }}>
-                            <View style={{
-                                alignSelf: 'flex-start',
-                                backgroundColor: roleCfg.bg,
-                                paddingHorizontal: 8,
-                                paddingVertical: 4,
-                                borderRadius: 6,
-                            }}>
-                                <Text style={{ fontSize: 10, fontWeight: '800', color: roleCfg.color, textTransform: 'uppercase' }}>
-                                    {p.authority}
-                                </Text>
-                            </View>
-                        </View>
-
-                        {/* Status */}
-                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncCfg.color }} />
-                        </View>
-                    </View>
-                );
-            })}
-        </View>
-    </ScrollView>
-)}
-                </SafeAreaView >
-            </Modal >
-        </SafeAreaView >
+                        </ScrollView>
+                    )}
+                </SafeAreaView>
+            </Modal>
+        </SafeAreaView>
     );
 };
 

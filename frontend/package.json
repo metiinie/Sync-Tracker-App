@@ -9,6 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.15.2",
     "@react-navigation/native": "^7.1.31",
@@ -25,7 +26,9 @@
     "expo-linear-gradient": "~15.0.8",
     "expo-sharing": "~14.0.8",
     "expo-status-bar": "~3.0.9",
+    "framer-motion": "^12.34.5",
     "lucide-react-native": "^0.575.0",
+    "moti": "^0.30.0",
     "nativewind": "^4.2.2",
     "react": "19.1.0",
     "react-native": "0.81.5",

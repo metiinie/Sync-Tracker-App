@@ -4,7 +4,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
   // Supabase handles login/register on the frontend.
   // Backend verifies JWT per request via JwtAuthGuard.
 
