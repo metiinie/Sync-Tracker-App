@@ -103,6 +103,7 @@ const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName
                 setNodes([...nodes]);
             });
 
+        simulation.alpha(1).restart(); // Animate transitions dynamically on updates
         simulationRef.current = simulation;
 
         return () => {
