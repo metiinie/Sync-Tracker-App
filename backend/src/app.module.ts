@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { WorkspaceSettingsModule } from './workspace/workspace.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { WorkspaceSettingsModule } from './workspace/workspace.module';
     NotificationsModule,
     ActivitiesModule,
     WorkspaceSettingsModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [],

@@ -49,6 +49,7 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').unique().notNull(),
+  avatarUrl: text('avatar_url'),
   isSuspended: boolean('is_suspended').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -57,6 +58,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   tasksAssigned: many(tasks, { relationName: 'assignedBy' }),
   tasksResponsible: many(tasks, { relationName: 'responsibleOwner' }),
   participations: many(taskParticipants),
+  attachments: many(taskAttachments),
 }));
 
 export const tasks = pgTable('tasks', {
@@ -93,6 +95,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   milestones: many(milestones),
   timeLogs: many(timeLogs),
   comments: many(taskComments),
+  attachments: many(taskAttachments),
 }));
 
 export const taskParticipants = pgTable('task_participants', {
@@ -314,5 +317,33 @@ export const responsibilityTransfersRelations = relations(responsibilityTransfer
     fields: [responsibilityTransfers.toUserId],
     references: [users.id],
     relationName: 'transferTo',
+  }),
+}));
+
+// ─── Task Attachments ────────────────────────────────────────────────────────
+export const taskAttachments = pgTable('task_attachments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id')
+    .references(() => tasks.id)
+    .notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id)
+    .notNull(),
+  url: text('url').notNull(),
+  fileName: text('file_name'),
+  fileType: text('file_type'), // image, document, etc.
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  taskIdx: index('attachments_task_idx').on(table.taskId),
+}));
+
+export const taskAttachmentsRelations = relations(taskAttachments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskAttachments.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [taskAttachments.userId],
+    references: [users.id],
   }),
 }));
