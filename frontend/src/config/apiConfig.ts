@@ -7,7 +7,7 @@
  * You can find your IP by running 'ipconfig' (Windows) or 'ifconfig' (Mac/Linux).
  */
 
-const BASE_IP = '10.22.140.80'; // Replace with your current local IP
+const BASE_IP = '192.168.8.182'; // Replace with your current local IP
 const PORT = '3000';
 
 export const API_BASE_URL = `http://${BASE_IP}:${PORT}/api/v1`;

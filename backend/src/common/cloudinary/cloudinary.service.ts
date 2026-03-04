@@ -11,6 +11,7 @@ export class CloudinaryService {
                 { resource_type: 'auto' },
                 (error, result) => {
                     if (error) return reject(error);
+                    if (!result) return reject(new Error('Upload failed: no result returned'));
                     resolve(result);
                 },
             );

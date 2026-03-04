@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -101,10 +102,14 @@ export class TasksController {
   @Patch(':id/sync')
   async updateSync(
     @Param('id') id: string,
-    @Body() body: { syncState: any; note?: string },
+    @Body() body: { syncState?: any; state?: any; note?: string },
     @Request() req: any,
   ) {
-    return this.tasksService.updateSyncState(id, req.user.userId, body.syncState, body.note);
+    const state = body.syncState || body.state;
+    if (!state) {
+      throw new BadRequestException('syncState or state is required');
+    }
+    return this.tasksService.updateSyncState(id, req.user.userId, state, body.note);
   }
 
   @Patch('sync-all')
