@@ -1,0 +1,15 @@
+﻿src/screens/ActivityScreen.tsx(182,36): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/screens/ActivityScreen.tsx(193,36): error TS7006: Parameter 'activity' implicitly has an 'any' type.
+src/screens/CreateTaskScreen.tsx(121,41): error TS7006: Parameter 'u' implicitly has an 'any' type.
+src/screens/CreateTaskScreen.tsx(360,51): error TS7006: Parameter 'u' implicitly has an 'any' type.
+src/screens/CreateTaskScreen.tsx(455,67): error TS7006: Parameter 'u' implicitly has an 'any' type.
+src/screens/CreateTaskScreen.tsx(504,54): error TS7006: Parameter 'u' implicitly has an 'any' type.
+src/screens/CreateTaskScreen.tsx(504,92): error TS7006: Parameter 'u' implicitly has an 'any' type.
+src/screens/TaskDetailScreen.tsx(774,44): error TS2304: Cannot find name 'acceptTask'.
+src/screens/TaskDetailScreen.tsx(775,39): error TS2304: Cannot find name 'acceptTask'.
+src/screens/TaskDetailScreen.tsx(785,30): error TS2304: Cannot find name 'acceptTask'.
+src/screens/TaskDetailScreen.tsx(909,34): error TS2304: Cannot find name 'ArrowRight'.
+src/screens/TaskDetailScreen.tsx(921,42): error TS2304: Cannot find name 'ArrowRight'.
+src/screens/TaskDetailScreen.tsx(953,38): error TS2552: Cannot find name 'MessageSquare'. Did you mean 'MessageQueue'?
+src/screens/TaskDetailScreen.tsx(1540,37): error TS2304: Cannot find name 'Keyboard'.
+src/screens/TaskDetailScreen.tsx(1950,76): error TS2304: Cannot find name 'Check'.

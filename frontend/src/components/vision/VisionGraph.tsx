@@ -85,6 +85,11 @@ const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName
         const simulation = d3.forceSimulation<Node>(nodes)
             .force('link', d3.forceLink<Node, Link>(links).id(d => (d as Node).id).distance(d => (d as Link).type === 'auth' ? 80 : 100))
             .force('charge', d3.forceManyBody().strength(-300))
+            .force('collide', d3.forceCollide().radius(d => {
+                const node = d as Node;
+                const size = node.type === 'task' ? 35 : node.type === 'owner' ? 30 : node.type === 'assigner' ? 20 : 25;
+                return size + 10;
+            }).iterations(3))
             .force('center', d3.forceCenter(SCREEN_WIDTH / 2, height / 2))
             .force('x', d3.forceX(SCREEN_WIDTH / 2).strength(0.1))
             .force('y', d3.forceY<Node>().y(d => {
@@ -146,7 +151,7 @@ const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName
                     const isBlocked = node.state === 'BLOCKED';
                     const isHelp = node.state === 'HELP_REQUESTED';
                     const color = node.type === 'task' ? '#111827' : getSyncColor(node.state || 'IN_SYNC');
-                    const size = node.type === 'task' ? 30 : node.type === 'owner' ? 35 : 28;
+                    const size = node.type === 'task' ? 35 : node.type === 'owner' ? 30 : node.type === 'assigner' ? 20 : 25;
 
                     return (
                         <G key={`node-${node.id}`} x={node.x} y={node.y}>
@@ -158,13 +163,21 @@ const VisionGraph: React.FC<VisionGraphProps> = ({ task, ownerName, assignerName
                                 <Circle r={size * 1.5} fill="url(#helpGlow)" />
                             )}
 
-                            {/* Node Body */}
+                            {/* Node Body Layer */}
+                            {node.type === 'owner' && (
+                                <Circle r={size + 6} fill="transparent" stroke={color} strokeWidth={1} strokeOpacity={0.5} strokeDasharray="3,3" />
+                            )}
+
                             <Circle
                                 r={size}
                                 fill={node.type === 'assigner' ? '#F3F4F6' : color}
                                 stroke={node.type === 'assigner' ? '#D1D5DB' : '#FFF'}
-                                strokeWidth={2}
+                                strokeWidth={node.type === 'task' ? 3 : 2}
                             />
+
+                            {node.type === 'task' && (
+                                <Circle r={size - 6} fill="transparent" stroke="#FFF" strokeWidth={1} strokeOpacity={0.3} />
+                            )}
 
                             {/* Initials for owners/participants */}
                             <SvgText

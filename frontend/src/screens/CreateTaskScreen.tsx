@@ -118,7 +118,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
         { label: 'Goals', icon: Target, filled: milestones.length > 0 },
     ];
 
-    const selectedOwner = allUsers.find(u => u.id === responsibleOwnerId);
+    const selectedOwner = allUsers.find((u: any) => u.id === responsibleOwnerId);
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
@@ -357,7 +357,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                         ) : (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                                    {allUsers.map(u => {
+                                    {allUsers.map((u: any) => {
                                         const isSelected = responsibleOwnerId === u.id;
                                         return (
                                             <TouchableOpacity
@@ -452,7 +452,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                         {participants.length > 0 && (
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 8 }}>
                                 {participants.map(p => {
-                                    const userObj = allUsers.find(u => u.id === p.userId);
+                                    const userObj = allUsers.find((u: any) => u.id === p.userId);
                                     if (!userObj) return null;
                                     return (
                                         <View key={p.userId} style={{
@@ -501,7 +501,7 @@ const CreateTaskScreen = ({ navigation }: any) => {
                         ) : (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                                    {allUsers.filter(u => u.id !== responsibleOwnerId).map(u => {
+                                    {allUsers.filter((u: any) => u.id !== responsibleOwnerId).map((u: any) => {
                                         const isAdded = !!participants.find(p => p.userId === u.id);
                                         return (
                                             <TouchableOpacity

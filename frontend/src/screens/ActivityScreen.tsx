@@ -179,7 +179,7 @@ const ActivityScreen = ({ navigation }: any) => {
         let result = activities;
 
         if (selectedFilter !== 'All') {
-            result = result.filter(a => a.type === selectedFilter);
+            result = result.filter((a: any) => a.type === selectedFilter);
         }
 
         return result;
@@ -190,7 +190,7 @@ const ActivityScreen = ({ navigation }: any) => {
         const groups: Record<string, any[]> = {
             'TODAY': [], 'YESTERDAY': [], 'LATER': []
         };
-        filteredActivities.forEach(activity => {
+        filteredActivities.forEach((activity: any) => {
             const group = getDateGroup(activity.timestamp);
             groups[group].push(activity);
         });

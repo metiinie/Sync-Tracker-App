@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity, RefreshControl,
-    TextInput, ActivityIndicator, Dimensions, Modal, KeyboardAvoidingView, Platform, StatusBar, Alert, Image
+    TextInput, ActivityIndicator, Dimensions, Modal, KeyboardAvoidingView, Platform, StatusBar, Alert, Image, Keyboard
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     ChevronLeft, Network, Clock, FileText, CheckCircle2,
     AlertCircle, HelpCircle, User, Users, Plus, X, ArrowRightLeft,
-    ChevronDown, ChevronUp, History, Eye, Send, RefreshCcw, Paperclip, Image as ImageIcon, MessageCircle, Trash2, BarChart2, Target
+    ChevronDown, ChevronUp, History, Eye, Send, RefreshCcw, Paperclip, Image as ImageIcon, MessageCircle, Trash2, BarChart2, Target, ArrowRight, MessageSquare, Check
 } from 'lucide-react-native';
 import VisionGraph from '../components/vision/VisionGraph';
 import * as ImagePicker from 'expo-image-picker';
@@ -104,11 +104,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const { data: comments = [], isLoading: commentsLoading } = useTaskComments(taskId);
     const { data: transfers = [] } = useTaskTransfers(taskId);
 
-    const {
-        updateSyncState, logTime, addMilestone, updateMilestone,
-        deleteMilestone, transferTask, addComment, deleteComment,
-        nudgeTask, editTask, deleteTask, addParticipant, removeParticipant
-    } = useTaskMutations(taskId);
+    const { acceptTask, updateSyncState, addParticipant, removeParticipant, logTime, addMilestone, updateMilestone, deleteMilestone, editTask, addComment, deleteComment, transferTask, nudgeTask, deleteTask } = useTaskMutations(taskId);
 
     const { acceptTransfer, rejectTransfer } = useTransferActions();
 
