@@ -183,8 +183,12 @@ const ProfileScreen = ({ navigation }: any) => {
                 style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.05, shadowRadius: 20, elevation: 5 }}
             >
                 <View className="relative mb-4">
-                    <View className="w-20 h-20 rounded-full border-4 border-white shadow-sm items-center justify-center bg-blue-50">
-                        <UserIcon size={40} color="#3b82f6" />
+                    <View className="w-20 h-20 rounded-full border-4 border-white shadow-sm items-center justify-center bg-blue-50 overflow-hidden">
+                        {user?.user_metadata?.avatar_url ? (
+                            <Image source={{ uri: user.user_metadata.avatar_url }} style={{ width: '100%', height: '100%' }} />
+                        ) : (
+                            <UserIcon size={40} color="#3b82f6" />
+                        )}
                     </View>
                     <TouchableOpacity
                         onPress={() => navigation.navigate('EditProfile')}

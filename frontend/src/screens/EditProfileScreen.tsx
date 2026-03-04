@@ -58,13 +58,15 @@ const EditProfileScreen = ({ navigation }: any) => {
             });
 
             // Update local state
-            setUser({
-                ...user,
-                user_metadata: {
-                    ...user.user_metadata,
-                    avatar_url: newAvatarUrl
-                }
-            });
+            if (user) {
+                setUser({
+                    ...user,
+                    user_metadata: {
+                        ...(user.user_metadata || {}),
+                        avatar_url: newAvatarUrl
+                    }
+                });
+            }
 
             Alert.alert('Success', 'Profile photo updated.');
         } catch (error: any) {

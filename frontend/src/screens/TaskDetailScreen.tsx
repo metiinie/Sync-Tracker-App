@@ -18,6 +18,8 @@ import { getSocket } from '../services/socket';
 import { timeAgo } from '../utils/timeAgo';
 import { useTaskDetail, useTaskComments, useTaskMutations, useTransferActions, useTaskTransfers, useUsers } from '../hooks/useTaskDetail';
 import { useQueryClient } from '@tanstack/react-query';
+import VisionGraph from '../components/vision/VisionGraph';
+import { Image } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -69,6 +71,28 @@ const getAvatarColor = (name: string) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
+const UserAvatar = ({ name, url, size = 40, border = 0, borderColor = 'transparent' }: { name: string, url?: string, size?: number, border?: number, borderColor?: string }) => {
+    return (
+        <View style={{
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: getAvatarColor(name),
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderWidth: border,
+            borderColor: borderColor
+        }}>
+            {url ? (
+                <Image source={{ uri: url }} style={{ width: '100%', height: '100%' }} />
+            ) : (
+                <Text style={{ fontSize: size * 0.35, fontWeight: '700', color: '#FFF' }}>{getInitials(name)}</Text>
+            )}
+        </View>
+    );
+};
+
 
 
 const TaskDetailScreen = ({ route, navigation }: any) => {
@@ -114,6 +138,46 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
     const [showEditMilestoneModal, setShowEditMilestoneModal] = useState(false);
     const [commentText, setCommentText] = useState('');
     const [userSearch, setUserSearch] = useState('');
+    const [uploadingAttachment, setUploadingAttachment] = useState(false);
+
+    const handleUploadAttachment = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images', 'videos'],
+            allowsEditing: true,
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            setUploadingAttachment(true);
+            try {
+                const uri = result.assets[0].uri;
+                const formData = new FormData();
+                const filename = uri.split('/').pop();
+                const match = /\.(\w+)$/.exec(filename || '');
+                const type = match ? `${result.assets[0].type}/${match[1]}` : result.assets[0].type;
+
+                formData.append('file', {
+                    uri,
+                    name: filename,
+                    type: result.assets[0].type === 'image' ? `image/${match ? match[1] : 'jpg'}` : `video/${match ? match[1] : 'mp4'}`,
+                } as any);
+
+                await api.post(`/upload/task-attachment/${taskId}`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+
+                queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+                Alert.alert('Success', 'Attachment uploaded.');
+            } catch (error: any) {
+                console.error('Attachment upload error:', error);
+                Alert.alert('Error', 'Failed to upload attachment.');
+            } finally {
+                setUploadingAttachment(false);
+            }
+        }
+    };
     const { data: searchedUsers = [], isLoading: searchingUsers } = useUsers(userSearch.length >= 2 ? userSearch : '');
     const users = searchedUsers.filter((u: any) => u.id !== user?.id);
     const [selectedNewOwner, setSelectedNewOwner] = useState<any>(null);
@@ -769,9 +833,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                             <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{ownerName}</Text>
                                         </View>
                                     </View>
-                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: getAvatarColor(ownerName), alignItems: 'center', justifyContent: 'center' }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>{getInitials(ownerName)}</Text>
-                                    </View>
+                                    <UserAvatar name={ownerName} url={task.owner?.avatarUrl} size={40} />
                                 </View>
 
                                 <View style={{ height: 1, backgroundColor: '#F3F4F6', marginBottom: 15 }} />
@@ -801,8 +863,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                 {/* ORIGINATOR */}
                                 <View style={{ alignItems: 'center', marginRight: 15 }}>
-                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', borderStyle: 'dashed', borderWidth: 1, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-                                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280' }}>{getInitials(assignerName)}</Text>
+                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', borderStyle: 'dashed', borderWidth: 1, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', marginBottom: 6, overflow: 'hidden' }}>
+                                        <UserAvatar name={assignerName} url={task.assigner?.avatarUrl} size={44} />
                                     </View>
                                     <Text style={{ fontSize: 10, color: '#9CA3AF', fontWeight: '700' }}>ORIGIN</Text>
                                 </View>
@@ -812,9 +874,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 {/* RESPONSIBLE */}
                                 <View style={{ alignItems: 'center' }}>
                                     <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#FFF', borderWidth: 3, borderColor: syncConfig.color, alignItems: 'center', justifyContent: 'center', marginBottom: 6, shadowColor: syncConfig.color, shadowOpacity: 0.2, shadowRadius: 4, elevation: 3 }}>
-                                        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: getAvatarColor(ownerName), alignItems: 'center', justifyContent: 'center' }}>
-                                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>{getInitials(ownerName)}</Text>
-                                        </View>
+                                        <UserAvatar name={ownerName} url={task.owner?.avatarUrl} size={44} />
                                     </View>
                                     <Text style={{ fontSize: 10, color: syncConfig.color, fontWeight: '800' }}>RESPONSIBLE</Text>
                                 </View>
@@ -824,8 +884,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                         <ArrowRight size={16} color="#D1D5DB" style={{ marginHorizontal: 15, marginTop: -15 }} />
                                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                             {task.participants.slice(0, 3).map((p: any, i: number) => (
-                                                <View key={p.id} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: getAvatarColor(p.user?.name), marginLeft: i === 0 ? 0 : -10, borderWidth: 2, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
+                                                <View key={p.id} style={{ marginLeft: i === 0 ? 0 : -10 }}>
+                                                    <UserAvatar name={p.user?.name} url={p.user?.avatarUrl} size={34} border={2} borderColor="#FFF" />
                                                 </View>
                                             ))}
                                             {task.participants.length > 3 && (
@@ -858,6 +918,44 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                     <Text style={{ fontSize: 10, color: '#16A34A', fontWeight: '700' }}>REMARKS</Text>
                                 </View>
                             </View>
+                        </View>
+
+                        {/* 5.5️⃣ ATTACHMENTS */}
+                        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>Media & Attachments</Text>
+                                <TouchableOpacity onPress={handleUploadAttachment} disabled={uploadingAttachment}>
+                                    {uploadingAttachment ? (
+                                        <ActivityIndicator size="small" color="#3B82F6" />
+                                    ) : (
+                                        <Text style={{ fontSize: 12, color: '#3B82F6', fontWeight: '600' }}>+ Add Media</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+
+                            {!task?.attachments || task.attachments.length === 0 ? (
+                                <View style={{ backgroundColor: '#F9FAFB', borderRadius: 12, padding: 20, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#D1D5DB' }}>
+                                    <Paperclip size={24} color="#9CA3AF" />
+                                    <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>No attachments yet.</Text>
+                                </View>
+                            ) : (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                                    {task.attachments.map((att: any) => (
+                                        <View key={att.id} style={{ width: 100 }}>
+                                            <View style={{ width: 100, height: 100, borderRadius: 12, backgroundColor: '#F3F4F6', overflow: 'hidden', borderWidth: 1, borderColor: '#E5E7EB' }}>
+                                                {att.fileType.startsWith('image') ? (
+                                                    <Image source={{ uri: att.url }} style={{ width: '100%', height: '100%' }} />
+                                                ) : (
+                                                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                                        <FileText size={32} color="#9CA3AF" />
+                                                    </View>
+                                                )}
+                                            </View>
+                                            <Text numberOfLines={1} style={{ fontSize: 10, color: '#4B5563', marginTop: 4, textAlign: 'center' }}>{att.fileName}</Text>
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            )}
                         </View>
 
                         {/* 5️⃣ DESCRIPTION */}
@@ -912,10 +1010,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                         ) : (
                             comments.map((comment: any) => (
                                 <View key={comment.id} style={{ marginBottom: 16, flexDirection: 'row' }}>
-                                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: getAvatarColor(comment.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                                        <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>{getInitials(comment.user?.name)}</Text>
-                                    </View>
-                                    <View style={{ flex: 1, backgroundColor: comment.userId === user?.id ? '#EFF6FF' : '#F9FAFB', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: comment.userId === user?.id ? '#DBEAFE' : '#F3F4F6' }}>
+                                    <UserAvatar name={comment.user?.name} url={comment.user?.avatarUrl} size={36} />
+                                    <View style={{ flex: 1, backgroundColor: comment.userId === user?.id ? '#EFF6FF' : '#F9FAFB', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: comment.userId === user?.id ? '#DBEAFE' : '#F3F4F6', marginLeft: 12 }}>
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                                             <Text style={{ fontSize: 12, fontWeight: '700', color: '#1F2937' }}>{comment.user?.name}</Text>
                                             <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
@@ -1007,9 +1103,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 ASSIGNED BY
                             </Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: getAvatarColor(assignerName), alignItems: 'center', justifyContent: 'center' }}>
-                                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFF' }}>{getInitials(assignerName)}</Text>
-                                </View>
+                                <UserAvatar name={assignerName} url={task.assigner?.avatarUrl} size={24} />
                                 <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151', marginLeft: 8 }}>{assignerName}</Text>
                             </View>
                         </View>
@@ -1021,9 +1115,7 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                             </Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: getAvatarColor(ownerName), alignItems: 'center', justifyContent: 'center' }}>
-                                        <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFF' }}>{getInitials(ownerName)}</Text>
-                                    </View>
+                                    <UserAvatar name={ownerName} url={task.owner?.avatarUrl} size={24} />
                                     <Text style={{ fontSize: 14, fontWeight: '500', color: '#111827', marginLeft: 8 }}>{ownerName}</Text>
                                 </View>
                                 {task.status === 'PENDING' ? (
@@ -1063,8 +1155,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                     <View style={{ flexDirection: 'row', marginLeft: 4 }}>
                                         {task.participants?.slice(0, 3).map((p: any, i: number) => (
-                                            <View key={i} style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#E5E7EB', borderWidth: 2, borderColor: '#FFF', marginLeft: -8, alignItems: 'center', justifyContent: 'center' }}>
-                                                <Text style={{ fontSize: 8, fontWeight: '700', color: '#6B7280' }}>{getInitials(p.user?.name)}</Text>
+                                            <View key={i} style={{ marginLeft: i === 0 ? 0 : -8 }}>
+                                                <UserAvatar name={p.user?.name} url={p.user?.avatarUrl} size={24} border={2} borderColor="#FFF" />
                                             </View>
                                         ))}
                                     </View>
@@ -1196,10 +1288,8 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                                         </View>
                                         {isCompleted && m.completedByUser && (
                                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                                <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: getAvatarColor(m.completedByUser.name), alignItems: 'center', justifyContent: 'center', marginRight: 6 }}>
-                                                    <Text style={{ fontSize: 6, fontWeight: '800', color: '#FFF' }}>{getInitials(m.completedByUser.name)}</Text>
-                                                </View>
-                                                <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600' }}>
+                                                <UserAvatar name={m.completedByUser.name} url={m.completedByUser.avatarUrl} size={14} />
+                                                <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600', marginLeft: 6 }}>
                                                     Completed by {m.completedByUser.name.split(' ')[0]}
                                                 </Text>
                                             </View>
@@ -1882,140 +1972,131 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                     </View>
 
                     {visionTab === 'graph' ? (
-                        <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#F9FAFB', paddingTop: 20 }}>
-                            <Svg height="100%" width="100%">
-                                {/* Lines from Center to Owner */}
-                                <Line x1={SCREEN_WIDTH / 2} y1={80} x2={SCREEN_WIDTH / 2} y2={180} stroke="#E5E7EB" strokeWidth="2" strokeDasharray="5,5" />
+                        <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+                            <VisionGraph task={task} height={SCREEN_HEIGHT - 150} />
 
-                                {/* Lines from Owner to Participants */}
-                                {task.participants?.map((p: any, i: number) => {
-                                    const total = task.participants.length;
-                                    const radius = 120;
-                                    const angle = (Math.PI / (total + 1)) * (i + 1);
-                                    const pos = {
-                                        x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
-                                        y: 180 + radius * Math.sin(Math.PI + angle)
-                                    };
-                                    return <Line key={`l-${i}`} x1={SCREEN_WIDTH / 2} y1={180} x2={pos.x} y2={pos.y} stroke="#E2E8F0" strokeWidth="1.5" />;
-                                })}
-
-                                {/* Center Node: Task */}
-                                <G>
-                                    <Circle cx={SCREEN_WIDTH / 2} cy={80} r="30" fill="#111827" />
-                                    <SvgText x={SCREEN_WIDTH / 2} y={85} fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">TASK</SvgText>
-                                </G>
-
-                                {/* Owner Node */}
-                                <G>
-                                    <Circle cx={SCREEN_WIDTH / 2} cy={180} r="36" fill={getSyncConfig(task.syncState).color} />
-                                    <Circle cx={SCREEN_WIDTH / 2} cy={180} r="30" fill="#fff" />
-                                    <SvgText x={SCREEN_WIDTH / 2} y={185} fill="#111827" fontSize="10" textAnchor="middle" fontWeight="bold">
-                                        {getInitials(ownerName)}
-                                    </SvgText>
-                                    <SvgText x={SCREEN_WIDTH / 2} y={230} fill="#4B5563" fontSize="11" textAnchor="middle" fontWeight="600">
-                                        {ownerName}
-                                    </SvgText>
-                                    <SvgText x={SCREEN_WIDTH / 2} y={245} fill="#9CA3AF" fontSize="9" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
-                                        OWNER
-                                    </SvgText>
-                                </G>
-
-                                {/* Participant Nodes */}
-                                {task.participants?.map((p: any, i: number) => {
-                                    const total = task.participants.length;
-                                    const radius = 120;
-                                    const angle = (Math.PI / (total + 1)) * (i + 1);
-                                    const pos = {
-                                        x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
-                                        y: 180 + radius * Math.sin(Math.PI + angle)
-                                    };
-                                    const roleColor = getRoleConfig(p.role === 'contributor' ? 'Contributor' : 'Helper').color;
-                                    return (
-                                        <G key={`p-${i}`}>
-                                            <Circle cx={pos.x} cy={pos.y} r="22" fill="#F8FAFC" stroke={getSyncConfig(p.syncState || 'IN_SYNC').color} strokeWidth="2.5" />
-                                            <SvgText x={pos.x} y={pos.y + 4} fill="#64748B" fontSize="9" textAnchor="middle" fontWeight="700">
-                                                {getInitials(p.user?.name)}
-                                            </SvgText>
-                                            <SvgText x={pos.x} y={pos.y + 35} fill="#9CA3AF" fontSize="8" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
-                                                {p.role.toUpperCase()}
-                                            </SvgText>
-                                        </G>
-                                    );
-                                })}
-                            </Svg>
-                        </View>
-                    ) : (
-                        <ScrollView style={{ flex: 1, backgroundColor: '#FAFAFA' }} contentContainerStyle={{ padding: 20 }}>
-                            <View style={{ borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFF' }}>
-                                {/* Header Row */}
-                                <View style={{ flexDirection: 'row', backgroundColor: '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-                                    <Text style={{ flex: 2, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>STAKEHOLDER</Text>
-                                    <Text style={{ flex: 1.5, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>ROLE AUTHORITY</Text>
-                                    <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, textAlign: 'right' }}>STATUS</Text>
-                                </View>
-
-                                {/* Hierarchy Rows */}
-                                {treeParticipants.map((p, i) => {
-                                    const roleCfg = getRoleConfig(p.authority);
-                                    const syncCfg = getSyncConfig(p.syncState || 'IN_SYNC');
-                                    const isNodeBlocked = p.syncState === 'BLOCKED';
-
-                                    return (
-                                        <View key={i} style={{
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            paddingVertical: 14,
-                                            paddingHorizontal: 16,
-                                            borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
-                                            borderBottomColor: '#F3F4F6',
-                                            backgroundColor: isNodeBlocked ? '#FEF2F2' : '#FFFFFF',
-                                        }}>
-                                            {/* Stakeholder */}
-                                            <TouchableOpacity
-                                                onPress={() => {
-                                                    setSelectedUserData({ ...p.user, role: p.role, authority: p.authority });
-                                                    setShowUserModal(true);
-                                                }}
-                                                style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}
-                                            >
-                                                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                                                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
-                                                </View>
-                                                <View>
-                                                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
-                                                        {p.user?.name}
-                                                    </Text>
-                                                </View>
-                                            </TouchableOpacity>
-
-                                            {/* Role Authority */}
-                                            <View style={{ flex: 1.5, justifyContent: 'center' }}>
-                                                <View style={{
-                                                    alignSelf: 'flex-start',
-                                                    backgroundColor: roleCfg.bg,
-                                                    paddingHorizontal: 8,
-                                                    paddingVertical: 4,
-                                                    borderRadius: 6,
-                                                }}>
-                                                    <Text style={{ fontSize: 10, fontWeight: '800', color: roleCfg.color, textTransform: 'uppercase' }}>
-                                                        {p.authority}
-                                                    </Text>
-                                                </View>
-                                            </View>
-
-                                            {/* Status */}
-                                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-                                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncCfg.color }} />
-                                            </View>
-                                        </View>
-                                    );
-                                })}
+                            {/* Legend */}
+                            <View style={{ position: 'absolute', bottom: 30, left: 20, right: 20, backgroundColor: '#FFF', padding: 15, borderRadius: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 12, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 }}>
+                                {[
+                                    { label: 'In Sync', color: '#10B981' },
+                                    { label: 'Needs Update', color: '#F59E0B' },
+                                    { label: 'Blocked', color: '#EF4444' },
+                                    { label: 'Help Requested', color: '#3B82F6' }
+                                ].map(l => (
+                                    <View key={l.label} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Circle cx={0} cy={0} r={5} fill={l.color} />
+                                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: l.color, marginRight: 6 }} />
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#4B5563' }}>{l.label}</Text>
+                                    </View>
+                                ))}
                             </View>
-                        </ScrollView>
-                    )}
-                </SafeAreaView>
-            </Modal>
-        </SafeAreaView>
+                        </View>
+                                        {getInitials(ownerName)}
+                </SvgText>
+                <SvgText x={SCREEN_WIDTH / 2} y={230} fill="#4B5563" fontSize="11" textAnchor="middle" fontWeight="600">
+                    {ownerName}
+                </SvgText>
+                <SvgText x={SCREEN_WIDTH / 2} y={245} fill="#9CA3AF" fontSize="9" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
+                    OWNER
+                </SvgText>
+            </G>
+
+            {/* Participant Nodes */}
+            {task.participants?.map((p: any, i: number) => {
+                const total = task.participants.length;
+                const radius = 120;
+                const angle = (Math.PI / (total + 1)) * (i + 1);
+                const pos = {
+                    x: (SCREEN_WIDTH / 2) + radius * Math.cos(Math.PI + angle),
+                    y: 180 + radius * Math.sin(Math.PI + angle)
+                };
+                const roleColor = getRoleConfig(p.role === 'contributor' ? 'Contributor' : 'Helper').color;
+                return (
+                    <G key={`p-${i}`}>
+                        <Circle cx={pos.x} cy={pos.y} r="22" fill="#F8FAFC" stroke={getSyncConfig(p.syncState || 'IN_SYNC').color} strokeWidth="2.5" />
+                        <SvgText x={pos.x} y={pos.y + 4} fill="#64748B" fontSize="9" textAnchor="middle" fontWeight="700">
+                            {getInitials(p.user?.name)}
+                        </SvgText>
+                        <SvgText x={pos.x} y={pos.y + 35} fill="#9CA3AF" fontSize="8" textAnchor="middle" fontWeight="800" letterSpacing="0.5">
+                            {p.role.toUpperCase()}
+                        </SvgText>
+                    </G>
+                );
+            })}
+        </Svg>
+                        </View >
+                    ) : (
+    <ScrollView style={{ flex: 1, backgroundColor: '#FAFAFA' }} contentContainerStyle={{ padding: 20 }}>
+        <View style={{ borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFF' }}>
+            {/* Header Row */}
+            <View style={{ flexDirection: 'row', backgroundColor: '#F9FAFB', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+                <Text style={{ flex: 2, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>STAKEHOLDER</Text>
+                <Text style={{ flex: 1.5, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5 }}>ROLE AUTHORITY</Text>
+                <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, textAlign: 'right' }}>STATUS</Text>
+            </View>
+
+            {/* Hierarchy Rows */}
+            {treeParticipants.map((p, i) => {
+                const roleCfg = getRoleConfig(p.authority);
+                const syncCfg = getSyncConfig(p.syncState || 'IN_SYNC');
+                const isNodeBlocked = p.syncState === 'BLOCKED';
+
+                return (
+                    <View key={i} style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 14,
+                        paddingHorizontal: 16,
+                        borderBottomWidth: i === treeParticipants.length - 1 ? 0 : 1,
+                        borderBottomColor: '#F3F4F6',
+                        backgroundColor: isNodeBlocked ? '#FEF2F2' : '#FFFFFF',
+                    }}>
+                        {/* Stakeholder */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                setSelectedUserData({ ...p.user, role: p.role, authority: p.authority });
+                                setShowUserModal(true);
+                            }}
+                            style={{ flex: 2, flexDirection: 'row', alignItems: 'center' }}
+                        >
+                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: getAvatarColor(p.user?.name), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>{getInitials(p.user?.name)}</Text>
+                            </View>
+                            <View>
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }} numberOfLines={1}>
+                                    {p.user?.name}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Role Authority */}
+                        <View style={{ flex: 1.5, justifyContent: 'center' }}>
+                            <View style={{
+                                alignSelf: 'flex-start',
+                                backgroundColor: roleCfg.bg,
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                                borderRadius: 6,
+                            }}>
+                                <Text style={{ fontSize: 10, fontWeight: '800', color: roleCfg.color, textTransform: 'uppercase' }}>
+                                    {p.authority}
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* Status */}
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: syncCfg.color }} />
+                        </View>
+                    </View>
+                );
+            })}
+        </View>
+    </ScrollView>
+)}
+                </SafeAreaView >
+            </Modal >
+        </SafeAreaView >
     );
 };
 

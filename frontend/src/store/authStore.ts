@@ -18,6 +18,7 @@ interface AuthState {
     setSession: (session: Session | null) => Promise<void>;
     fetchSettings: () => Promise<void>;
     updateSettings: (data: Partial<UserSettings>) => Promise<void>;
+    setUser: (user: User | null) => void;
     logout: () => Promise<void>;
 }
 
@@ -89,6 +90,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
     },
 
+    setUser: (user) => set({ user }),
     logout: async () => {
         setAuthToken(null);
         disconnectSocket();

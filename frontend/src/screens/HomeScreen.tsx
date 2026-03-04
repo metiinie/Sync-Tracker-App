@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -240,18 +240,23 @@ const HomeScreen = ({ navigation }: any) => {
                     <TouchableOpacity
                         onPress={() => navigation.navigate('Profile')}
                         style={{
-                            width: 42,
-                            height: 42,
-                            borderRadius: 21,
+                            width: 50,
+                            height: 50,
+                            borderRadius: 25,
                             backgroundColor: isDark ? '#1F2937' : '#EFF6FF',
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginRight: 12,
                             borderWidth: 2,
                             borderColor: isDark ? '#374151' : '#DBEAFE',
+                            overflow: 'hidden'
                         }}
                     >
-                        <User size={20} color="#3B82F6" />
+                        {user?.user_metadata?.avatar_url ? (
+                            <Image source={{ uri: user.user_metadata.avatar_url }} style={{ width: '100%', height: '100%' }} />
+                        ) : (
+                            <User size={24} color="#3B82F6" />
+                        )}
                         <View style={{
                             position: 'absolute',
                             width: 10,
