@@ -865,6 +865,11 @@ export class TasksService {
             user: true,
           },
         },
+        attachments: {
+          with: {
+            user: true,
+          },
+        },
       },
     });
   }

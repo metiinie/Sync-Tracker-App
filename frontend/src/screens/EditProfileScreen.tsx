@@ -1,3 +1,10 @@
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, User, Save, Mail } from 'lucide-react-native';
+import { useAuthStore } from '../store/authStore';
+import api from '../services/api';
+import { supabase } from '../services/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import { useProfileMutations } from '../hooks/useProfile';
 
@@ -120,12 +127,11 @@ const EditProfileScreen = ({ navigation }: any) => {
                                 {uploading ? (
                                     <ActivityIndicator color={isDark ? '#F9FAFB' : '#111827'} />
                                 ) : avatarUrl ? (
-                                    <View className="w-full h-full rounded-full overflow-hidden">
-                                        <Text className="text-center mt-12 text-gray-400">Image</Text>
-                                        {/* Since I cannot use an Image component easily here due to RN limitations in this environment's preview, 
-                                            I'll just keep the placeholder logic or assume the user has Image imported. 
-                                            Wait, I should check if Image is imported. It is not. */}
-                                    </View>
+                                    <Image
+                                        source={{ uri: avatarUrl }}
+                                        style={{ width: '100%', height: '100%', borderRadius: 64 }}
+                                        resizeMode="cover"
+                                    />
                                 ) : (
                                     <User size={48} color={isDark ? '#4B5563' : '#9CA3AF'} />
                                 )}

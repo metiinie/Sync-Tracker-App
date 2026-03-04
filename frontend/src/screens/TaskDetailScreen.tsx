@@ -7,8 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     ChevronLeft, Network, Clock, FileText, CheckCircle2,
     AlertCircle, HelpCircle, User, Users, Plus, X, ArrowRightLeft,
-    ChevronDown, ChevronUp, History, Eye, Send, RefreshCcw
+    ChevronDown, ChevronUp, History, Eye, Send, RefreshCcw, Paperclip, Image as ImageIcon
 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import Svg, { Circle, Line, Text as SvgText, G } from 'react-native-svg';
 import api from '../services/api';
