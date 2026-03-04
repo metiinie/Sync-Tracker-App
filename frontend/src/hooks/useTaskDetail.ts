@@ -121,6 +121,11 @@ export const useTaskMutations = (taskId: string) => {
         onSuccess: invalidateTask
     });
 
+    const acceptTask = useMutation({
+        mutationFn: () => api.patch(`/tasks/${taskId}/accept`),
+        onSuccess: invalidateTask
+    });
+
     return {
         updateSyncState,
         logTime,
@@ -134,7 +139,8 @@ export const useTaskMutations = (taskId: string) => {
         editTask,
         deleteTask,
         addParticipant,
-        removeParticipant
+        removeParticipant,
+        acceptTask
     };
 };
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity, RefreshControl,
-    TextInput, ActivityIndicator, Dimensions, Modal, KeyboardAvoidingView, Platform, StatusBar, Alert
+    TextInput, ActivityIndicator, Dimensions, Modal, KeyboardAvoidingView, Platform, StatusBar, Alert, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -751,6 +751,44 @@ const TaskDetailScreen = ({ route, navigation }: any) => {
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={taskLoading} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['task', taskId] })} />}
             >
+                {/* 🚨 NEW TASK ACCEPTANCE BANNER */}
+                {task?.status === 'PENDING' && isOwner && (
+                    <View style={{
+                        backgroundColor: '#F5F3FF',
+                        margin: 20,
+                        padding: 16,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: '#DDD6FE',
+                    }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                            <CheckCircle2 size={20} color="#8B5CF6" />
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#5B21B6', marginLeft: 10 }}>
+                                Accept Responsibility
+                            </Text>
+                        </View>
+                        <Text style={{ fontSize: 13, color: '#6D28D9', marginBottom: 16 }}>
+                            {task.assigner?.name || 'Someone'} has assigned you as the Responsible Owner for this track. You must accept to begin tracking.
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => acceptTask.mutate()}
+                            disabled={acceptTask.isPending}
+                            style={{
+                                backgroundColor: '#8B5CF6',
+                                paddingVertical: 12,
+                                borderRadius: 8,
+                                alignItems: 'center',
+                                flexDirection: 'row',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            {acceptTask.isPending ? <ActivityIndicator size="small" color="#FFF" /> : (
+                                <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>Accept Track</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {/* 🚨 PENDING TRANSFER BANNER */}
                 {task?.status === 'TRANSFER_PENDING' && pendingTransfer && (
                     <View style={{

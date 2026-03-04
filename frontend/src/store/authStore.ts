@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '../services/supabase';
 import api, { setAuthToken } from '../services/api';
 import { disconnectSocket, connectSocket } from '../services/socket';
 
@@ -92,6 +93,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     setUser: (user) => set({ user }),
     logout: async () => {
+        await supabase.auth.signOut();
         setAuthToken(null);
         disconnectSocket();
         set({ session: null, user: null, token: null, settings: null });
