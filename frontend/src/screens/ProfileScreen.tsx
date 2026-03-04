@@ -277,7 +277,7 @@ const ProfileScreen = ({ navigation }: any) => {
             </View>
 
             {/* Settings Card */}
-            <View className={`flex-1 bg-white rounded-t-3xl pt-6 pb-24 border-t border-gray-100 ${isDark ? 'bg-gray-800 border-gray-700' : ''}`}>
+            <View className={`flex-1 rounded-t-3xl pt-6 pb-24 border-t ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
                 <Text className={`px-8 text-xl font-black mb-4 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>Settings</Text>
 
                 <SettingItem
@@ -375,7 +375,7 @@ const ProfileScreen = ({ navigation }: any) => {
                     onPress={handleLogout}
                     className="flex-row items-center mt-8 px-8 py-6"
                 >
-                    <View className="w-10 h-10 rounded-full items-center justify-center bg-red-50">
+                    <View className={`w-10 h-10 rounded-full items-center justify-center ${isDark ? 'bg-red-900/30' : 'bg-red-50'}`}>
                         <LogOut size={20} color="#ef4444" />
                     </View>
                     <Text className="ml-4 font-black text-red-500 uppercase tracking-widest text-sm">Sign Out</Text>
@@ -390,9 +390,9 @@ const ProfileScreen = ({ navigation }: any) => {
             <View className="flex-row justify-between items-center px-6 pt-2 pb-4">
                 <TouchableOpacity
                     onPress={() => view === 'settings' ? setView('profile') : navigation.goBack()}
-                    className="w-10 h-10 items-center justify-center rounded-full bg-white border border-gray-50 shadow-sm"
+                    className={`w-10 h-10 items-center justify-center rounded-full border shadow-sm ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-50'}`}
                 >
-                    <ArrowLeft size={20} color="#111827" />
+                    <ArrowLeft size={20} color={isDark ? '#F9FAFB' : '#111827'} />
                 </TouchableOpacity>
 
                 <Text className={`text-lg font-black ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
@@ -402,9 +402,9 @@ const ProfileScreen = ({ navigation }: any) => {
                 {view === 'profile' ? (
                     <TouchableOpacity
                         onPress={() => setView('settings')}
-                        className="w-10 h-10 items-center justify-center rounded-full bg-white border border-gray-50 shadow-sm"
+                        className={`w-10 h-10 items-center justify-center rounded-full border shadow-sm ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-50'}`}
                     >
-                        <SettingsIcon size={20} color="#111827" />
+                        <SettingsIcon size={20} color={isDark ? '#F9FAFB' : '#111827'} />
                     </TouchableOpacity>
                 ) : (
                     <TouchableOpacity

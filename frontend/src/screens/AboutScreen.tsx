@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Share2, Info, ArrowLeft, ExternalLink, Shield, Code, ChevronRight } from 'lucide-react-native';
+import { Share2, Info, ArrowLeft, ExternalLink, Shield, Code, ChevronRight, Mail, RefreshCw } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 
 const AboutScreen = ({ navigation }: any) => {
@@ -48,11 +48,21 @@ const AboutScreen = ({ navigation }: any) => {
                         SyncTracker
                     </Text>
                     <View className="bg-blue-50 px-3 py-1 rounded-full mb-2">
-                        <Text className="text-blue-600 font-bold text-xs tracking-widest">VERSION 1.0.4</Text>
+                        <Text className="text-blue-600 font-bold text-xs tracking-widest">VERSION 1.0.5</Text>
                     </View>
                     <Text className={`text-sm text-center px-8 mt-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                         The comprehensive workflow and accountability platform for modern teams.
                     </Text>
+
+                    <TouchableOpacity
+                        onPress={() => {
+                            Alert.alert("Checking for updates", "You are using the latest version of SyncTracker.");
+                        }}
+                        className="mt-6 flex-row items-center bg-blue-600 px-6 py-3 rounded-2xl shadow-sm"
+                    >
+                        <RefreshCw size={16} color="#FFFFFF" className="mr-2" />
+                        <Text style={{ marginLeft: 8 }} className="text-white font-bold">Check for Updates</Text>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Links Section */}
@@ -68,20 +78,22 @@ const AboutScreen = ({ navigation }: any) => {
                     Alert.alert("Notice", "Privacy Policy document is not available offline.");
                 })}
 
-                {renderLinkItem(Code, "Open Source Licenses", "Software we utilize", () => {
-                    Alert.alert("Notice", "License details are not available offline.");
+                {renderLinkItem(Mail, "Support", "abumahilkerim@gmail.com", () => {
+                    Linking.openURL('mailto:abumahilkerim@gmail.com').catch(() => {
+                        Alert.alert("Error", "Could not open mail app.");
+                    });
                 })}
 
-                {renderLinkItem(ExternalLink, "Visit our Website", "synctracker.io", () => {
-                    Linking.openURL('https://synctracker.io').catch(() => { });
+                {renderLinkItem(ExternalLink, "Visit our Website", "Portfolio", () => {
+                    Linking.openURL('https://orion-personal-portfolio.vercel.app/').catch(() => { });
                 })}
 
                 <View className="my-8 items-center opacity-50">
                     <Text className={`text-xs font-bold tracking-widest ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        DEVELOPED BY
+                        POWERED BY
                     </Text>
                     <Text className={`text-sm font-black mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Google Deepmind Team
+                        Awol
                     </Text>
                     <Text className={`text-xs mt-4 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
                         © {new Date().getFullYear()} SyncTracker Inc.
