@@ -18,11 +18,11 @@ const SEGMENTS = [
 
 // ─── STATUS FILTER CHIPS ───────────────────────────
 const STATUS_FILTERS = [
-    { id: 'BLOCKED', label: 'Blocked', color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' },
     { id: 'HELP_REQUESTED', label: 'Help Requested', color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
+    { id: 'PENDING', label: 'Accept', color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
+    { id: 'BLOCKED', label: 'Blocked', color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' },
     { id: 'NEEDS_UPDATE', label: 'Needs Update', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
     { id: 'IN_SYNC', label: 'In Sync', color: '#10B981', bg: '#F0FDF4', border: '#BBF7D0' },
-    { id: 'PENDING', label: 'Pending Acceptance', color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
 ];
 
 // ─── SYNC STATE SORT PRIORITY ──────────────────────
@@ -157,7 +157,12 @@ const TasksScreen = ({ navigation, route }: any) => {
             result = result.filter((t: any) =>
                 t.title?.toLowerCase().includes(q) ||
                 t.owner?.name?.toLowerCase().includes(q) ||
-                t.owner?.email?.toLowerCase().includes(q)
+                t.owner?.email?.toLowerCase().includes(q) ||
+                t.id?.toLowerCase().includes(q) ||
+                t.participants?.some((p: any) =>
+                    p.user?.name?.toLowerCase().includes(q) ||
+                    p.user?.email?.toLowerCase().includes(q)
+                )
             );
         }
 

@@ -100,7 +100,7 @@ const FILTERS = [
     { id: 'Transfers', label: 'Transfers', color: '#F59E0B', bg: '#FFFBEB' },
     { id: 'Milestones', label: 'Milestones', color: '#8B5CF6', bg: '#F5F3FF' },
     { id: 'Time Logged', label: 'Time Logged', color: '#14B8A6', bg: '#F0FDFA' },
-    { id: 'Communication', label: 'Comm', color: '#3B82F6', bg: '#EFF6FF' },
+    { id: 'Communication', label: 'Communication', color: '#3B82F6', bg: '#EFF6FF' },
     { id: 'Team', label: 'Team', color: '#8B5CF6', bg: '#F5F3FF' }
 ];
 
@@ -108,7 +108,7 @@ const FILTERS = [
 const ActivityScreen = ({ navigation }: any) => {
     const { user, settings } = useAuthStore();
     const isDark = settings?.theme === 'dark';
-    const [scope, setScope] = useState<'my_tasks' | 'delegated' | 'all' | 'workspace'>('all');
+    const [scope, setScope] = useState<'my_tasks' | 'delegated' | 'all' | 'workspace'>('workspace');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('All');
     const queryClient = useQueryClient();
@@ -336,6 +336,13 @@ const ActivityScreen = ({ navigation }: any) => {
         );
     };
 
+    const SCOPE_OPTIONS = [
+        { id: 'workspace', label: 'Workspace' },
+        { id: 'my_tasks', label: 'Owned' },
+        { id: 'delegated', label: 'Delegated' },
+        { id: 'all', label: 'Members' }
+    ];
+
     // ─── MAIN RENDER ────────────────────────────────────
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#FAFAFA' }}>
@@ -366,12 +373,7 @@ const ActivityScreen = ({ navigation }: any) => {
                 <View style={{
                     flexDirection: 'row', backgroundColor: isDark ? '#1F2937' : '#F3F4F6', borderRadius: 12, padding: 4, marginBottom: 16
                 }}>
-                    {[
-                        { id: 'all', label: 'Members' },
-                        { id: 'workspace', label: 'Workspace' },
-                        { id: 'my_tasks', label: 'Owned' },
-                        { id: 'delegated', label: 'Delegated' }
-                    ].map((opt) => (
+                    {SCOPE_OPTIONS.map((opt) => (
                         <TouchableOpacity
                             key={opt.id}
                             onPress={() => setScope(opt.id as any)}

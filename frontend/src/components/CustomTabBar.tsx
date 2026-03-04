@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Home as HomeIcon, ListPlus, Bell, UserCircle2 } from 'lucide-react-native';
+import { Home as HomeIcon, ListPlus, Activity as ActivityIcon, UserCircle2 } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
@@ -60,7 +60,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                     switch (route.name) {
                         case 'Home': return <HomeIcon size={size} color={color} strokeWidth={strokeWidth} />;
                         case 'Tasks': return <ListPlus size={size} color={color} strokeWidth={strokeWidth} />;
-                        case 'Activity': return <Bell size={size} color={color} strokeWidth={strokeWidth} />;
+                        case 'Activity': return <ActivityIcon size={size} color={color} strokeWidth={strokeWidth} />;
                         case 'Profile': return <UserCircle2 size={size} color={color} strokeWidth={strokeWidth} />;
                         default: return null;
                     }

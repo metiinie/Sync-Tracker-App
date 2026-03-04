@@ -58,7 +58,11 @@ export class ActivitiesService {
                     conditions.push(sql`${l.taskId} = ANY(${taskIdsQuery})`);
                 }
                 if (search) {
-                    conditions.push(ilike(l.action, `%${search}%`));
+                    const searchPattern = `%${search}%`;
+                    conditions.push(or(
+                        ilike(l.action, searchPattern),
+                        sql`EXISTS (SELECT 1 FROM ${schema.tasks} t WHERE t.id = ${l.taskId} AND t.title ILIKE ${searchPattern})`
+                    ));
                 }
                 return conditions.length > 0 ? and(...conditions) : undefined;
             },

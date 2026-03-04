@@ -10,7 +10,7 @@ export class ActivitiesController {
     @Get()
     async getActivities(
         @Request() req: any,
-        @Query('scope') scope: 'my_tasks' | 'delegated' | 'all' | 'workspace' = 'all',
+        @Query('scope') scope: 'my_tasks' | 'delegated' | 'all' | 'workspace' = 'workspace',
         @Query('limit') limit?: number,
         @Query('search') search?: string,
     ) {
