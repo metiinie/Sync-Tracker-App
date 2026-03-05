@@ -22,7 +22,7 @@ WORKDIR /app
 
 # Install production dependencies
 COPY package.json package-lock.json ./
-RUN npm install --only=production
+RUN npm install --omit=dev
 
 # Re-install drizzle-kit and its peer deps specifically for the migration tool
 # OR just install everything if it's for local dev. 

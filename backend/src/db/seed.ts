@@ -122,17 +122,17 @@ async function seed() {
       {
         taskId: task1Id,
         title: 'Auth Endpoints Done',
-        isCompleted: 'true',
+        isCompleted: true,
       },
       {
         taskId: task1Id,
         title: 'Task Endpoints Done',
-        isCompleted: 'false',
+        isCompleted: false,
       },
       {
         taskId: task2Id,
         title: 'Color Palette Decided',
-        isCompleted: 'true',
+        isCompleted: true,
       },
     ]);
 

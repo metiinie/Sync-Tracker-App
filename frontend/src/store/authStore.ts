@@ -53,18 +53,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     },
     fetchSettings: async () => {
         try {
-            // Timeout fetch after 5 seconds
+            // Increase timeout to 10 seconds for initial load stability
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Settings fetch timeout')), 5000)
+                setTimeout(() => reject(new Error('Settings fetch timeout')), 10000)
             );
             const fetchPromise = api.get('/users/settings');
 
             const res: any = await Promise.race([fetchPromise, timeoutPromise]);
             set({ settings: res.data });
-        } catch (err) {
-            console.error('Failed to fetch user settings', err);
+        } catch (err: any) {
+            console.error('Failed to fetch user settings:', err.message);
             // Default settings if fetch fails or times out
-            set({ settings: { theme: 'light', inAppNotif: true, emailDigest: false, realTimeSync: true } });
+            if (!get().settings) {
+                set({ settings: { theme: 'light', inAppNotif: true, emailDigest: false, realTimeSync: true } });
+            }
         }
     },
     updateSettings: async (data) => {

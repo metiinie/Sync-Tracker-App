@@ -50,6 +50,7 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   email: text('email').unique().notNull(),
   avatarUrl: text('avatar_url'),
+  googleId: text('google_id').unique(),
   isSuspended: boolean('is_suspended').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -158,7 +159,7 @@ export const milestones = pgTable('milestones', {
     .references(() => tasks.id)
     .notNull(),
   title: text('title').notNull(),
-  isCompleted: text('is_completed').default('false').notNull(),
+  isCompleted: boolean('is_completed').default(false).notNull(),
   completedBy: uuid('completed_by').references(() => users.id),
   dueDate: timestamp('due_date'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -183,7 +184,7 @@ export const timeLogs = pgTable('time_logs', {
   userId: uuid('user_id')
     .references(() => users.id)
     .notNull(),
-  durationMinutes: text('duration_minutes').notNull(),
+  durationMinutes: text('duration_minutes').notNull(), // kept as text to avoid breaking TasksService string conversion for now, will cast or parse there if needed
   description: text('description'),
   timestamp: timestamp('timestamp').defaultNow().notNull(),
 });
@@ -208,7 +209,7 @@ export const notifications = pgTable('notifications', {
   activityId: uuid('activity_id').references(() => syncLogs.id),
   type: text('type').notNull(), // ASSIGNED, PARTICIPANT_ADDED, HELP_REQUESTED, TRANSFER_INITIATED, MILESTONE_COMPLETED
   content: text('content').notNull(),
-  isRead: text('is_read').default('false').notNull(),
+  isRead: boolean('is_read').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('notifications_user_idx').on(table.userId),

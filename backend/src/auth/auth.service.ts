@@ -40,6 +40,7 @@ export class AuthService {
           id: userId,
           name,
           email,
+          googleId: payload.app_metadata?.provider === 'google' ? payload.sub : null,
         })
         .onConflictDoUpdate({
           target: schema.users.id,

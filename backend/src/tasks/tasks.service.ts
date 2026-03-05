@@ -49,7 +49,7 @@ export class TasksService {
         taskId: task.id,
         type: 'ASSIGNED',
         content: `You have been assigned as the responsible owner for "${title}"`,
-        isRead: 'false',
+        isRead: false,
       });
 
       // Add additional participants if any
@@ -69,7 +69,7 @@ export class TasksService {
             taskId: task.id,
             type: 'PARTICIPANT_ADDED',
             content: `You have been added as a ${p.role} to "${title}"`,
-            isRead: 'false',
+            isRead: false,
           })),
         );
       }
@@ -105,7 +105,7 @@ export class TasksService {
         taskId: taskDetails.id,
         type: 'ASSIGNED',
         content: `You have been assigned as the responsible owner for "${title}"`,
-        isRead: 'false',
+        isRead: false,
       });
 
     // Add additional participants if any
@@ -116,7 +116,7 @@ export class TasksService {
           taskId: taskDetails.id,
           type: 'PARTICIPANT_ADDED',
           content: `You have been added as a ${p.role} to "${title}"`,
-          isRead: 'false',
+          isRead: false,
         });
       });
     }
@@ -153,7 +153,7 @@ export class TasksService {
     if (data.dueDate !== undefined)
       updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     if (data.isCompleted !== undefined) {
-      updateData.isCompleted = data.isCompleted ? 'true' : 'false';
+      updateData.isCompleted = data.isCompleted;
       updateData.completedBy = data.isCompleted ? userId : null;
     }
 

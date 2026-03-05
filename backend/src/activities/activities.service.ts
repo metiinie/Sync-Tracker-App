@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from '../db/db.module';
 import * as schema from '../db/schema';
-import { eq, or, desc, and, ne, sql, ilike } from 'drizzle-orm';
+import { eq, or, desc, and, ne, sql, ilike, inArray } from 'drizzle-orm';
 
 @Injectable()
 export class ActivitiesService {
@@ -69,7 +69,7 @@ export class ActivitiesService {
                 if (scope === 'personal') {
                     conditions.push(sql`${l.userId} = ${userId}`);
                 } else if (taskIdsQuery) {
-                    conditions.push(sql`${l.taskId} = ANY(${taskIdsQuery})`);
+                    conditions.push(inArray(l.taskId, taskIdsQuery));
                 }
 
                 if (search) {

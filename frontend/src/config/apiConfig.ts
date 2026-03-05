@@ -1,14 +1,17 @@
 /**
  * API Configuration
- * 
- * IMPORTANT: If you change your network or the IP address of your computer changes,
- * update the BASE_IP constant below with your new local IP address.
- * 
- * You can find your IP by running 'ipconfig' (Windows) or 'ifconfig' (Mac/Linux).
+ *
+ * IMPORTANT: Specify your API base URL in the frontend/.env file using the
+ * EXPO_PUBLIC_API_URL variable.
+ *
+ * Example:
+ * EXPO_PUBLIC_API_URL=http://10.X.X.X:3000 (Local Dev)
+ * EXPO_PUBLIC_API_URL=https://your-api.onrender.com (Production)
  */
 
-const BASE_IP = '10.22.140.80'; // Replace with your current local IP
-const PORT = '3000';
+// Use the environment variable if defined, otherwise fallback to localhost (for simulator) or a default IP
+const defaultApiUrl = 'http://10.22.140.80:3000';
+const apiUrl = process.env.EXPO_PUBLIC_API_URL || defaultApiUrl;
 
-export const API_BASE_URL = `http://${BASE_IP}:${PORT}/api/v1`;
-export const SOCKET_URL = `http://${BASE_IP}:${PORT}`;
+export const API_BASE_URL = `${apiUrl}/api/v1`;
+export const SOCKET_URL = apiUrl;
