@@ -46,6 +46,8 @@ const LoginScreen = () => {
     const handleSSO = async (provider: 'google') => {
         try {
             const redirectUrl = Linking.createURL('auth');
+            console.log('Redirecting to:', redirectUrl);
+
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
                 options: {
