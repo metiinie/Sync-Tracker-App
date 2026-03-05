@@ -36,10 +36,10 @@ Since your database (Neon), Auth (Supabase), and Storage (Cloudinary) are alread
 3. **Configuration Settings**:
    - **Name**: `sync-tracker-api`
    - **Root Directory**: `backend` (Crucial step since your repo is a monorepo).
-   - **Environment**: Node
-   - **Build Command**: `npm install && npm run build`
-   - **Start Command**: `npm run db:push && npm run start:prod` 
-     *(Note: `db:push` applies your Drizzle schema to Neon before the server starts).*
+   - **Environment**: Docker
+   - **Build Command**: Leave blank (Render will use your Dockerfile)
+   - **Start Command**: Leave blank (Render will use your entrypoint.sh)
+     *(Note: The Drizzle schema `db:push` applies to Neon automatically when the container starts because of the entrypoint.sh script).* 
 
 ### Phase 3: Environment Variables
 Go to your Render Web Service **Environment** tab and add the exact variables from your `.env`:
