@@ -1,5 +1,6 @@
 services:
   backend:
+    container_name: Sync-track-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -14,7 +15,7 @@ services:
       SUPABASE_URL: https://wqvsmotfimbfhmsbuiom.supabase.co
       SUPABASE_ANON_KEY: sb_publishable_CbQQ1m4bKg25mVBxjbdnZA_flzlejyZ
       SUPABASE_JWT_SECRET: v0jtuha69+xj7fgmfcFafObzfw/c/kaJdR7zNhdLT+wni8w7tCyony0JKdYtyAUjq6yXwf/y0sZ+u+4f0dVo7Q==
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://sync-redis:6379
       CLOUDINARY_CLOUD_NAME: dvkknkmtt
       CLOUDINARY_API_KEY: 296254495749393
       CLOUDINARY_API_SECRET: KzAr12AoVBGsF-7n0A4os9H6T70
@@ -22,7 +23,8 @@ services:
       - redis
 
   redis:
+    container_name: sync-redis
     image: redis:7-alpine
     ports:
-      - "6380:6379"
+      - "6379:6379"
     restart: always
