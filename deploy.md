@@ -1,91 +1,136 @@
-# Deployment Strategy
+# Comprehensive Deployment Strategy: Sync-Tracker-App
 
-This document outlines the deployment strategy for the Sync-Tracker-App, divided into the **NestJS Backend** (deployed to Render) and the **Expo React Native Frontend** (deployed via Expo Application Services - EAS).
+This guide outlines exactly how to deploy your specific tech stack. Based on the project setup, your stack includes:
+
+### Tech Stack Breakdown
+**Backend (NestJS)**
+- **Database**: PostgreSQL hosted on **Neon** (`ep-plain-fog-aithzseg-pooler`)
+- **ORM**: Drizzle ORM
+- **Authentication**: **Supabase** JWT Integration
+- **Caching/WebSockets**: **Redis** (Local currently, needs Cloud Redis for prod) & Socket.io
+- **Media Storage**: **Cloudinary**
+
+**Frontend (React Native)**
+- **Framework**: Expo / React Native
+- **Styling**: NativeWind (TailwindCSS)
+- **Deployment Platform**: EAS (Expo Application Services - "expovas")
 
 ---
 
-## 1. Project Overview
-- **Backend**: NestJS, PostgreSQL (via Drizzle ORM), Redis, Socket.io, Cloudinary.
-- **Frontend**: React Native, Expo, Supabase Client, NativeWind, Zustand.
+## 1. Backend Deployment Guide (Render)
 
----
+Render is the optimal choice for a Node.js/NestJS backend because it natively builds and scales Node applications without requiring a Dockerfile.
 
-## 2. Backend Deployment (Render)
-Render offers a very straightforward "Web Service" deployment for Node.js apps. There is no need for a Dockerfile as Render can build and run NestJS natively.
+### Phase 1: Preparation & Redis Setup
+Since your database (Neon), Auth (Supabase), and Storage (Cloudinary) are already hosted on external cloud providers, you only need to host the NestJS API and a Production Redis instance.
 
-### Steps to Deploy:
-1. **Prepare the Repository**: Ensure your project is pushed to a git provider (GitHub/GitLab).
-2. **Create Backing Services** (If not already using an external provider like Supabase):
-   - Navigate to the Render Dashboard and create a **PostgreSQL** database.
-   - Create a **Redis** instance (needed for your `@socket.io/redis-adapter`).
-3. **Create the Web Service**:
-   - In Render, click "New +" -> "Web Service".
-   - Connect your repository and select the project.
-   - If your repository contains both frontend and backend, set the **Root Directory** to `backend`.
-4. **Configuration Settings**:
+1. **Production Redis**: 
+   - You currently use `redis://localhost:6379`. 
+   - **Action**: Go to the **Render Dashboard** -> **New +** -> **Redis**.
+   - Create a free or paid Redis instance.
+   - Copy the "Internal Redis URL" (e.g., `redis://red-xxxx:6379`).
+
+### Phase 2: Deploying the NestJS API
+1. On the **Render Dashboard**, click **New +** -> **Web Service**.
+2. Connect your GitHub/GitLab repository.
+3. **Configuration Settings**:
+   - **Name**: `sync-tracker-api`
+   - **Root Directory**: `backend` (Crucial step since your repo is a monorepo).
    - **Environment**: Node
    - **Build Command**: `npm install && npm run build`
-   - **Start Command**: `npm run db:push && npm run start:prod` *(Note: Using `db:push` will automatically sync the schema to the database. For production, generating and applying structured migrations with `drizzle-kit migrate` is generally safer).*
-5. **Environment Variables**: Open your Render Web Service settings and add all required environment variables from your local `.env`:
-   - `DATABASE_URL` (Use the internal/external URL of your chosen Postgres DB)
-   - `REDIS_URL` (Use the internal/external URL of your Redis instance)
-   - `JWT_SECRET`, `CLOUDINARY_URL`, etc.
-   - `PORT` (Usually Render automatically handles `PORT`, but ensure your `main.ts` correctly listens to `process.env.PORT || 3000`).
-6. **Deploy**: Save and let Render build and deploy the application. It provides automatic HTTPS and WebSocket support out of the box.
+   - **Start Command**: `npm run db:push && npm run start:prod` 
+     *(Note: `db:push` applies your Drizzle schema to Neon before the server starts).*
+
+### Phase 3: Environment Variables
+Go to your Render Web Service **Environment** tab and add the exact variables from your `.env`:
+
+```env
+# Database (Already hosted on Neon)
+DATABASE_URL=postgresql://neondb_owner:***@ep-plain-fog-aithzseg-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=verify-full
+
+# Supabase Auth
+SUPABASE_URL=https://wqvsmotfimbfhmsbuiom.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_***
+SUPABASE_JWT_SECRET=***
+
+# Redis (Use the Internal Render Redis URL you created in Phase 1)
+REDIS_URL=redis://red-xxxxxxxxxxxx:6379
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=dvkknkmtt
+CLOUDINARY_API_KEY=296254495749393
+CLOUDINARY_API_SECRET=***
+CLOUDINARY_URL=cloudinary://***
+```
+*Note: Ensure NO quotation marks are used around values in Render.*
+
+4. Click **Deploy**. Render will build the app, apply the DB migrations to Neon, and provide you a live URL: `https://sync-tracker-api.onrender.com`.
 
 ---
 
-## 3. Frontend Deployment (Expo EAS)
-The "expovas" mentioned refers to **Expo Application Services (EAS)**, which is the official cloud build and submission service for Expo apps.
+## 2. Frontend Deployment Guide (Expo EAS)
 
-### Prerequisites:
-- An Expo account (sign up at [expo.dev](https://expo.dev)).
-- EAS CLI installed globally: `npm install -g eas-cli`
+You will deploy the React Native frontend using Expo Application Services (EAS), which handles cloud compilation for iOS and Android.
 
-### Steps to Deploy:
-1. **Initialize EAS**:
-   Navigate to your frontend directory and login:
+### Phase 1: Connect Frontend to Production Backend
+1. In your `frontend` folder, locate your `.env` file (or `config.ts`/API client files).
+2. Update your API base URL to point to the newly deployed Render backend:
+   ```env
+   EXPO_PUBLIC_API_URL=https://sync-tracker-api.onrender.com
+   EXPO_PUBLIC_SOCKET_URL=wss://sync-tracker-api.onrender.com
+   ```
+   *(Ensure WebSockets use `wss://` for secure connections).*
+
+### Phase 2: EAS Configuration & Build
+1. **Login to Expo via CLI:**
    ```bash
    cd frontend
-   eas login
-   eas build:configure
+   npx eas login
    ```
-   This generates an `eas.json` file where you configure your build profiles (development, preview, production).
+2. **Configure EAS:**
+   ```bash
+   npx eas build:configure
+   ```
+   This generates an `eas.json` file. Ensure it has a production profile:
+   ```json
+   {
+     "build": {
+       "production": {
+         "env": {
+            "EXPO_PUBLIC_API_URL": "https://sync-tracker-api.onrender.com"
+         }
+       }
+     }
+   }
+   ```
+3. **Trigger Cloud Builds:**
+   Run these commands to generate the installable app binaries:
    
-2. **Environment Variables**:
-   Your frontend must communicate with the new Render backend. 
-   - Update your local `.env` with the new production Render API URL (e.g., `EXPO_PUBLIC_API_URL=https://sync-tracker-api.onrender.com`).
-   - Store these keys securely in your Expo dashboard (Project -> Secrets) or encode them in your `eas.json` depending on your security needs.
-
-3. **Build the App**:
-   Run the following commands to trigger cloud builds. This generates the standalone binaries (APK/AAB for Android, IPA for iOS).
-   
-   **For Android**:
+   **For Android (Generates an .aab or .apk)**:
    ```bash
-   eas build -p android --profile production
+   npx eas build -p android --profile production
    ```
-   **For iOS** *(Requires an active Apple Developer Program membership)*:
+   **For iOS (Generates an .ipa - requires Apple Developer Account)**:
    ```bash
-   eas build -p ios --profile production
+   npx eas build -p ios --profile production
    ```
 
-4. **Submit to App Stores**:
-   Once the builds complete, you can use EAS Submit to automatically upload them to the Google Play Console and Apple App Store Connect:
-   ```bash
-   eas submit -p android
-   eas submit -p ios
-   ```
-
-### Over-The-Air (OTA) Updates
-One of the key benefits of Expo is **EAS Update**. This allows you to push minor JavaScript, style, or asset changes directly to users without going through the App Store review process.
+### Phase 3: Submit to App Stores (Optional/Future)
+Once the builds are complete, EAS can automatically upload them to the stores:
 ```bash
-eas update --branch production --message "Fixed UI bugs in VisionGraph"
+npx eas submit -p android
+npx eas submit -p ios
 ```
-*(Requires the `expo-updates` library to be installed and configured in your `app.json`)*
+
+### Phase 4: Over-The-Air (OTA) Updates
+For minor UI changes or bug fixes (like updating `VisionGraph.tsx`), you can push updates directly to users' phones without store review:
+```bash
+npx eas update --branch production --message "Fixed graph UI"
+```
 
 ---
 
-## 4. Final Verification
-- **CORS Setup**: Ensure the NestJS backend's `main.ts` has CORS configured to accept requests from your compiled frontend (usually any origin for a mobile app or specific origins for web).
-- **Socket Connections**: Verify that `socket.io-client` on the frontend connects to the correct Render WS URL via `wss://`.
-- **Database Rules**: Check that production databases (especially if using Supabase DB) have secure policies and complex passwords.
+## 3. Pre-Flight Checklist
+- [ ] **CORS**: Ensure `backend/src/main.ts` accepts CORS requests from any origin (`*`) or specifically your Expo app.
+- [ ] **Neon DB Pooler**: Ensure `DATABASE_URL` is using Neon's connection pooler URL (it is currently, based on `.env`).
+- [ ] **Render Sleep**: Free Tier Render instances go to sleep after 15 minutes of inactivity. For production, upgrade the NestJS service to a $7/mo Starter plan to keep WebSockets alive permanently.
