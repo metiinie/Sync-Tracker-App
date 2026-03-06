@@ -36,15 +36,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             set({
                 session,
                 user,
-                token
+                token,
+                // Set default settings immediately so app renders without waiting
+                settings: { theme: 'light', inAppNotif: true, emailDigest: false, realTimeSync: true },
             });
-            // Fetch settings and initialize socket if needed
-            await get().fetchSettings();
 
-            const currentSettings = get().settings;
-            if (currentSettings?.realTimeSync && token && user?.id) {
-                connectSocket(token, user.id);
-            }
+            // Fetch real settings in background — don't block app startup on this
+            get().fetchSettings().then(() => {
+                const currentSettings = get().settings;
+                if (currentSettings?.realTimeSync && token && user?.id) {
+                    connectSocket(token, user.id);
+                }
+            });
         } else {
             setAuthToken(null);
             disconnectSocket();
@@ -55,7 +58,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
             // Increase timeout to 10 seconds for initial load stability
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Settings fetch timeout')), 10000)
+                setTimeout(() => reject(new Error('Settings fetch timeout')), 5000)
             );
             const fetchPromise = api.get('/users/settings');
 

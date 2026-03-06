@@ -24,10 +24,10 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
         const timer = setTimeout(() => {
             Animated.timing(fadeAnim, {
                 toValue: 0,
-                duration: 500,
+                duration: 300,
                 useNativeDriver: true,
             }).start(() => onFinish());
-        }, 2500);
+        }, 1200);
 
         return () => clearTimeout(timer);
     }, [fadeAnim, slideAnim, onFinish]);
