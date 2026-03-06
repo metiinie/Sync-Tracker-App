@@ -1,0 +1,26 @@
+{
+    "build": {
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal"
+        },
+        "preview": {
+            "distribution": "internal",
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://sync-tracker-app-r1nq.onrender.com",
+                "EXPO_PUBLIC_SUPABASE_URL": "https://wqvsmotfimbfhmsbuiom.supabase.co",
+                "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_CbQQ1m4bKg25mVBxjbdnZA_flzlejyZ"
+            }
+        },
+        "production": {
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://sync-tracker-app-r1nq.onrender.com",
+                "EXPO_PUBLIC_SUPABASE_URL": "https://wqvsmotfimbfhmsbuiom.supabase.co",
+                "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_CbQQ1m4bKg25mVBxjbdnZA_flzlejyZ"
+            }
+        }
+    }
+}
