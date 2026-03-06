@@ -9,26 +9,35 @@ export class UserSettingsService {
     constructor(@Inject(DRIZZLE) private db: NodePgDatabase<typeof schema>) { }
 
     async getSettings(userId: string) {
-        let settings = await this.db.query.userSettings.findFirst({
-            where: eq(schema.userSettings.userId, userId),
-        });
+        try {
+            console.log(`[UserSettingsService] Querying settings for userId: ${userId}`);
+            let settings = await this.db.query.userSettings.findFirst({
+                where: eq(schema.userSettings.userId, userId),
+            });
 
-        if (!settings) {
-            // Create default settings if they don't exist
-            const [newSettings] = await this.db
-                .insert(schema.userSettings)
-                .values({
-                    userId,
-                    theme: 'light',
-                    inAppNotif: true,
-                    emailDigest: false,
-                    realTimeSync: true,
-                })
-                .returning();
-            settings = newSettings;
+            if (!settings) {
+                console.log(`[UserSettingsService] No settings found for userId: ${userId}, creating defaults...`);
+                const [newSettings] = await this.db
+                    .insert(schema.userSettings)
+                    .values({
+                        userId,
+                        theme: 'light',
+                        inAppNotif: true,
+                        emailDigest: false,
+                        realTimeSync: true,
+                    })
+                    .returning();
+                console.log(`[UserSettingsService] Successfully created settings for userId: ${userId}`);
+                settings = newSettings;
+            } else {
+                console.log(`[UserSettingsService] Found existing settings for userId: ${userId}`);
+            }
+
+            return settings;
+        } catch (error) {
+            console.error(`[UserSettingsService] Critical error in getSettings for userId: ${userId}:`, error);
+            throw error;
         }
-
-        return settings;
     }
 
     async updateSettings(userId: string, data: Partial<typeof schema.userSettings.$inferInsert>) {

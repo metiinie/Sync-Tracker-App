@@ -30,7 +30,15 @@ export class UsersController {
 
   @Get('settings')
   async getSettings(@Request() req: any) {
-    return this.settingsService.getSettings(req.user.userId);
+    try {
+      console.log(`[UsersController] Fetching settings for user: ${req.user?.userId}`);
+      const settings = await this.settingsService.getSettings(req.user.userId);
+      console.log(`[UsersController] Successfully fetched settings for user: ${req.user?.userId}`);
+      return settings;
+    } catch (error) {
+      console.error(`[UsersController] Error fetching settings for user ${req.user?.userId}:`, error);
+      throw error;
+    }
   }
 
   @Patch('settings')

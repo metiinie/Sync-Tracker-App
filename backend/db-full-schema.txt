@@ -1,0 +1,109 @@
+﻿[dotenv@17.2.3] injecting env (10) from .env -- tip: ≡ƒöä add secrets lifecycle management: https://dotenvx.com/ops
+Connected to database.
+
+Table: milestones
+- id: uuid (Default: gen_random_uuid())
+- task_id: uuid (Default: null)
+- title: text (Default: null)
+- is_completed: boolean (Default: false)
+- due_date: timestamp without time zone (Default: null)
+- created_at: timestamp without time zone (Default: now())
+- completed_by: uuid (Default: null)
+
+Table: notifications
+- id: uuid (Default: gen_random_uuid())
+- user_id: uuid (Default: null)
+- task_id: uuid (Default: null)
+- type: text (Default: null)
+- content: text (Default: null)
+- is_read: boolean (Default: false)
+- created_at: timestamp without time zone (Default: now())
+- activity_id: uuid (Default: null)
+
+Table: responsibility_transfers
+- id: uuid (Default: gen_random_uuid())
+- task_id: uuid (Default: null)
+- from_user_id: uuid (Default: null)
+- to_user_id: uuid (Default: null)
+- status: USER-DEFINED (Default: 'PENDING'::transfer_status)
+- resolved_at: timestamp without time zone (Default: null)
+- note: text (Default: null)
+- initiated_at: timestamp without time zone (Default: now())
+
+Table: sync_logs
+- id: uuid (Default: gen_random_uuid())
+- task_id: uuid (Default: null)
+- user_id: uuid (Default: null)
+- action: text (Default: null)
+- timestamp: timestamp without time zone (Default: now())
+- metadata: jsonb (Default: null)
+
+Table: task_attachments
+- id: uuid (Default: gen_random_uuid())
+- task_id: uuid (Default: null)
+- user_id: uuid (Default: null)
+- url: text (Default: null)
+- file_name: text (Default: null)
+- file_type: text (Default: null)
+- created_at: timestamp without time zone (Default: now())
+
+Table: task_comments
+- id: uuid (Default: gen_random_uuid())
+- task_id: uuid (Default: null)
+- user_id: uuid (Default: null)
+- content: text (Default: null)
+- created_at: timestamp without time zone (Default: now())
+
+Table: task_participants
+- id: uuid (Default: gen_random_uuid())
+- task_id: uuid (Default: null)
+- user_id: uuid (Default: null)
+- role: USER-DEFINED (Default: 'contributor'::user_role)
+- sync_state: USER-DEFINED (Default: 'IN_SYNC'::sync_state)
+- joined_at: timestamp without time zone (Default: now())
+- last_updated_at: timestamp without time zone (Default: now())
+
+Table: tasks
+- id: uuid (Default: gen_random_uuid())
+- title: text (Default: null)
+- description: text (Default: null)
+- assigned_by: uuid (Default: null)
+- responsible_owner: uuid (Default: null)
+- status: USER-DEFINED (Default: 'PENDING'::task_status)
+- priority: USER-DEFINED (Default: 'MEDIUM'::task_priority)
+- sync_state: USER-DEFINED (Default: 'IN_SYNC'::sync_state)
+- last_updated_at: timestamp without time zone (Default: now())
+- completed_at: timestamp without time zone (Default: null)
+- created_at: timestamp without time zone (Default: now())
+
+Table: time_logs
+- id: uuid (Default: gen_random_uuid())
+- task_id: uuid (Default: null)
+- user_id: uuid (Default: null)
+- duration_minutes: text (Default: null)
+- description: text (Default: null)
+- timestamp: timestamp without time zone (Default: now())
+
+Table: user_settings
+- user_id: uuid (Default: null)
+- theme: text (Default: 'light'::text)
+- in_app_notif: boolean (Default: true)
+- email_digest: boolean (Default: false)
+- real_time_sync: boolean (Default: true)
+- updated_at: timestamp without time zone (Default: now())
+
+Table: users
+- id: uuid (Default: null)
+- name: text (Default: null)
+- email: text (Default: null)
+- is_suspended: boolean (Default: false)
+- created_at: timestamp without time zone (Default: now())
+- avatar_url: text (Default: null)
+- google_id: text (Default: null)
+
+Table: workspace_settings
+- id: uuid (Default: gen_random_uuid())
+- stale_threshold_hours: text (Default: '24'::text)
+- allow_responsibility_transfer: boolean (Default: true)
+- enable_helper_role: boolean (Default: true)
+- updated_at: timestamp without time zone (Default: now())

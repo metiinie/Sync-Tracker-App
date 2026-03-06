@@ -10,7 +10,7 @@
  */
 
 // Use the environment variable if defined, otherwise fallback to localhost (for simulator) or a default IP
-const defaultApiUrl = 'http://10.22.140.80:3000';
+const defaultApiUrl = 'http://localhost:3000';
 const apiUrl = process.env.EXPO_PUBLIC_API_URL || defaultApiUrl;
 
 export const API_BASE_URL = `${apiUrl}/api/v1`;
