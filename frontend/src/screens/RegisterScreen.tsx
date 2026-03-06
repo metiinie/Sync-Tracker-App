@@ -15,6 +15,8 @@ const RegisterScreen = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const navigation = useNavigation<any>();
 
@@ -43,7 +45,19 @@ const RegisterScreen = () => {
                 },
             });
 
-            if (error) throw error;
+            if (error) {
+                if (error.message.includes('already registered') || error.message.includes('already exists')) {
+                    Alert.alert('Registration Failed', 'An account with this email already exists.');
+                    return;
+                }
+                throw error;
+            }
+
+            // Check if identities is empty (happens when account exists but email confirmation is ON)
+            if (data?.user && data.user.identities && data.user.identities.length === 0) {
+                Alert.alert('Registration Failed', 'An account with this email already exists.');
+                return;
+            }
 
             if (data.session) {
                 setSession(data.session);
@@ -77,15 +91,35 @@ const RegisterScreen = () => {
                 const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
                 if (result.type === 'success' && result.url) {
-                    // @ts-ignore - Supabase types might be outdated, but getSessionFromUrl exists in runtime for OAuth parsing
-                    const { data: sessionData, error: sessionError } = await supabase.auth.getSessionFromUrl({
-                        url: result.url,
-                    });
+                    const params = (function (url: string) {
+                        const p: Record<string, string> = {};
+                        const qs = url.split('?')[1]?.split('#')[0] || '';
+                        const hs = url.split('#')[1] || '';
+                        [qs, hs].forEach(str => {
+                            if (!str) return;
+                            str.split('&').forEach(pair => {
+                                const [k, v] = pair.split('=');
+                                if (k) p[k] = decodeURIComponent(v || '');
+                            });
+                        });
+                        return p;
+                    })(result.url);
 
-                    if (sessionError) throw sessionError;
-
-                    if (sessionData.session) {
-                        setSession(sessionData.session);
+                    if (params.error_description) {
+                        throw new Error(params.error_description.replace(/\\+/g, ' '));
+                    } else if (params.access_token && params.refresh_token) {
+                        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+                            access_token: params.access_token,
+                            refresh_token: params.refresh_token,
+                        });
+                        if (sessionError) throw sessionError;
+                        if (sessionData.session) setSession(sessionData.session);
+                    } else if (params.code) {
+                        const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(params.code);
+                        if (sessionError) throw sessionError;
+                        if (sessionData.session) setSession(sessionData.session);
+                    } else {
+                        throw new Error('No valid authentication data found in the OAuth redirect URL.');
                     }
                 }
             }
@@ -154,8 +188,18 @@ const RegisterScreen = () => {
                                 placeholder="••••••••"
                                 value={password}
                                 onChangeText={setPassword}
-                                secureTextEntry
+                                secureTextEntry={!showPassword}
                             />
+                            <TouchableOpacity
+                                className="p-3"
+                                onPress={() => setShowPassword(!showPassword)}
+                            >
+                                <Ionicons
+                                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                                    size={20}
+                                    color="#94a3b8"
+                                />
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -170,8 +214,18 @@ const RegisterScreen = () => {
                                 placeholder="••••••••"
                                 value={confirmPassword}
                                 onChangeText={setConfirmPassword}
-                                secureTextEntry
+                                secureTextEntry={!showConfirmPassword}
                             />
+                            <TouchableOpacity
+                                className="p-3"
+                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                            >
+                                <Ionicons
+                                    name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                                    size={20}
+                                    color="#94a3b8"
+                                />
+                            </TouchableOpacity>
                         </View>
                     </View>
 

@@ -39,6 +39,9 @@
         "projectId": "eb49d4fb-3fb6-4dc9-b916-4ca750cc0b6b"
       }
     },
-    "owner": "abu-mahi"
+    "owner": "abu-mahi",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
