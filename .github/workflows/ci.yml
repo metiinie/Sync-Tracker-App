@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx eslint "src/**/*.ts" --fix
+
+  backend-build:
+    name: Backend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  docker-compose-validate:
+    name: Validate docker-compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create stub .env from example
+        run: cp backend/.env.example backend/.env
+      - run: docker compose config --quiet
+
+  env-example-check:
+    name: Env examples match code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Backend – every env var referenced via process.env or configService
+      # must have a corresponding entry in backend/.env.example
+      - name: Check backend .env.example
+        run: |
+          missing=0
+          for var in DATABASE_URL SUPABASE_URL REDIS_URL PORT \
+                     CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET; do
+            if ! grep -q "^${var}=" backend/.env.example; then
+              echo "::error::backend/.env.example is missing ${var}"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      # Frontend – every EXPO_PUBLIC_* var used in source must appear
+      - name: Check frontend .env.example
+        run: |
+          missing=0
+          for var in EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY \
+                     EXPO_PUBLIC_API_URL; do
+            if ! grep -q "^${var}=" frontend/.env.example; then
+              echo "::error::frontend/.env.example is missing ${var}"
+              missing=1
+            fi
+          done
+          exit $missing
