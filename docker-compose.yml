@@ -8,11 +8,42 @@ services:
       - "3000:3000"
     env_file:
       - ./backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://sync_user:sync_pass@postgres:5432/sync_tracker
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    container_name: sync-postgres
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sync_user
+      POSTGRES_PASSWORD: sync_pass
+      POSTGRES_DB: sync_tracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sync_user -d sync_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     container_name: sync-redis
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
